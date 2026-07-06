@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && npx react-snap",
+    "build":"vite build && node -e \"if (!process.env.VERCEL) require('child_process').execSync('npx react-snap')\"",
     "lint": "eslint .",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.app.json"
