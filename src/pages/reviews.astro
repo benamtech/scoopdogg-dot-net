@@ -1,0 +1,29 @@
+---
+import Base from '../layouts/Base.astro';
+import Nav from '../components/Nav';
+import Footer from '../components/Footer';
+import { SITE_URL } from '../lib/constants';
+import { FEATURED_REVIEWS } from '../lib/reviews';
+import Page from '../pages_react/ReviewsPage';
+// Review objects only. NO aggregateRating and NO reviewRating: reviews.ts carries the
+// quote and the author, not a star value, and inventing one would be a fabricated claim
+// about real customers.
+const jsonLd = {
+  '@context': 'https://schema.org', '@type': 'ItemList',
+  name: 'Customer reviews of Scoop Dogg',
+  itemListElement: FEATURED_REVIEWS.map((r, i) => ({
+    '@type': 'ListItem', position: i + 1,
+    item: {
+      '@type': 'Review',
+      author: { '@type': 'Person', name: r.name },
+      reviewBody: r.quote,
+      itemReviewed: { '@type': 'LocalBusiness', '@id': `${SITE_URL}/#business`, name: 'Scoop Dogg' },
+    },
+  })),
+};
+---
+<Base jsonLd={jsonLd} title={'Reviews | What Ventura County Customers Say About Scoop Dogg'} description={'Real Google reviews from customers across Ventura County. Reliable, thorough, and easy to work with.'} canonicalPath="/reviews">
+  <Nav client:load />
+  <main><Page  /></main>
+  <Footer />
+</Base>

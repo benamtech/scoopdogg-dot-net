@@ -1,5 +1,77 @@
 {
-  "framework": "vite",
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "astro",
   "buildCommand": "npm run build",
-  "outputDirectory": "dist"
+  "outputDirectory": "dist",
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        },
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=31536000; includeSubDomains"
+        }
+      ]
+    },
+    {
+      "source": "/_astro/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.scoopdogg.net"
+        }
+      ],
+      "destination": "https://scoopdogg.net/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/areas/westlake",
+      "destination": "/areas/westlake-village",
+      "permanent": true
+    },
+    {
+      "source": "/areas/:city(ventura|ojai|oak-view|oxnard|camarillo|santa-paula|thousand-oaks|newbury-park|moorpark|simi-valley|santa-barbara|westlake-village|malibu|fillmore|agoura-hills|carpinteria)/:service(weekly-pooper-scooper-service|one-time-dog-poop-cleanup|artificial-turf-deodorizing|yard-deep-clean|weekly-turf-maintenance|weekly-yard-maintenance|kitty-litter-exchange|dog-run-cleanups|cat-tree-cleaning|pressure-washing|kitty-litter-robot-cleaning)",
+      "destination": "/services/:service",
+      "permanent": true
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/admin/:path*",
+      "destination": "/api/admin"
+    },
+    {
+      "source": "/admin/leads/:id",
+      "destination": "/admin/lead"
+    },
+    {
+      "source": "/admin/messages/:id",
+      "destination": "/admin/message"
+    }
+  ]
 }

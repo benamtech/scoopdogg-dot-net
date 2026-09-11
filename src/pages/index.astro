@@ -1,0 +1,50 @@
+---
+import Base from '../layouts/Base.astro';
+import Nav from '../components/Nav';
+import Footer from '../components/Footer';
+import Hero from '../components/home/Hero';
+import Services from '../components/home/Services';
+import HowItWorks from '../components/home/HowItWorks';
+import AboutTrust from '../components/home/AboutTrust';
+import Testimonials from '../components/home/Testimonials';
+import HomeGallery from '../components/home/HomeGallery';
+import Areas from '../components/home/Areas';
+import HomeFAQ from '../components/home/HomeFAQ';
+import BookingSection from '../components/home/BookingSection';
+import { SITE_URL, PHONE, EMAIL } from '../lib/constants';
+
+const title = 'Dog Poop Cleaning Services in Ventura County, CA | Scoop Dogg';
+const description =
+  'Professional dog poop cleaning services in Ventura County. Weekly yard scoops, one-time cleanups, turf deodorizing. No contracts. Free quote in 60 seconds.';
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'LocalBusiness',
+  '@id': `${SITE_URL}/#business`,
+  name: 'Scoop Dogg',
+  description,
+  telephone: '+18058698070',
+  email: EMAIL,
+  url: SITE_URL,
+  image: `${SITE_URL}/horizontallogo.png`,
+  address: { '@type': 'PostalAddress', addressLocality: 'Ventura', addressRegion: 'CA', addressCountry: 'US' },
+  priceRange: '$$',
+};
+---
+<Base title={title} description={description} canonicalPath="/" jsonLd={jsonLd}>
+  <!-- Nav and the booking form need JavaScript. Everything between them is static
+       HTML with no client directive, so the page reads completely with JS off. -->
+  <Nav client:load />
+  <main>
+    <Hero />
+    <Services />
+    <HowItWorks />
+    <AboutTrust />
+    <Testimonials />
+    <HomeGallery />
+    <Areas />
+    <HomeFAQ />
+    <BookingSection client:load />
+  </main>
+  <Footer />
+</Base>

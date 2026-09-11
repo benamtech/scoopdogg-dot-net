@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Check, ChevronDown, Phone, Mail, ArrowLeft } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { CITIES } from '../lib/cities';
 
 interface Props {
@@ -242,20 +241,18 @@ export default function BookingWidget({ preselectedCity, preselectedService, sou
         source_page: sourcePage || window.location.pathname,
         status: 'new',
       };
-      const { data: inserted, error: insertError } = await supabase.from('leads').insert(leadData).select().maybeSingle();
-      if (insertError) throw new Error(insertError.message);
-      const payload = inserted ?? { ...leadData, created_at: new Date().toISOString() };
-      fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notify-new-lead`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          },
-          body: JSON.stringify(payload),
-        }
-      );
+      // POST to our own endpoint. The browser holds no database credential: the old
+      // path inserted straight into Supabase with an anon key that shipped in this
+      // bundle and could read every customer record back out.
+      const res = await fetch('/api/lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(leadData),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || 'submit failed');
+      }
       if (typeof window.gtag === 'function') {
         window.gtag('event', 'generate_lead', {
           service_type: service,
@@ -264,8 +261,13 @@ export default function BookingWidget({ preselectedCity, preselectedService, sou
       }
       setSubmitting(false);
       goTo(5);
-    } catch (_) {
-      setSubmitError('Something went wrong submitting your request. Please try again or call us at (805) 869-8070.');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '';
+      setSubmitError(
+        msg && msg !== 'submit failed'
+          ? msg
+          : 'Something went wrong submitting your request. Please try again or call us at (805) 869-8070.',
+      );
       setSubmitting(false);
     }
   };
@@ -301,7 +303,7 @@ export default function BookingWidget({ preselectedCity, preselectedService, sou
                     done
                       ? 'w-8 h-8 bg-forest text-white'
                       : current
-                      ? 'w-10 h-10 bg-amber text-white shadow-md'
+                      ? 'w-10 h-10 bg-amber text-dark shadow-md'
                       : 'w-8 h-8 bg-white/20 text-white/50'
                   }`}
                 >
@@ -339,7 +341,7 @@ export default function BookingWidget({ preselectedCity, preselectedService, sou
                   onClick={() => handleCitySelect(c.name)}
                   className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 font-medium text-sm transition-all min-h-[44px] ${
                     city === c.name
-                      ? 'border-amber bg-amber text-white'
+                      ? 'border-amber bg-amber text-dark'
                       : 'border-white/30 bg-white/10 text-white hover:border-white hover:bg-white/20'
                   }`}
                 >
@@ -370,7 +372,7 @@ export default function BookingWidget({ preselectedCity, preselectedService, sou
                   }`}
                 >
                   {s.badge && (
-                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber text-white text-xs font-bold px-3 py-0.5 rounded-full">
+                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber text-dark text-xs font-bold px-3 py-0.5 rounded-full">
                       {s.badge}
                     </span>
                   )}
@@ -598,7 +600,7 @@ export default function BookingWidget({ preselectedCity, preselectedService, sou
               <button
                 type="button"
                 onClick={() => goTo(4)}
-                className="bg-amber hover:bg-amber-hover text-white font-semibold px-6 py-3 rounded-full transition-all hover:scale-[1.02] hover:shadow-md text-sm"
+                className="bg-amber hover:bg-amber-hover text-dark font-semibold px-6 py-3 rounded-full transition-all hover:scale-[1.02] hover:shadow-md text-sm"
               >
                 Continue →
               </button>
@@ -690,7 +692,7 @@ export default function BookingWidget({ preselectedCity, preselectedService, sou
                 type="button"
                 onClick={handleSubmit}
                 disabled={submitting}
-                className="bg-amber hover:bg-amber-hover text-white font-semibold px-8 py-3.5 rounded-full transition-all hover:scale-[1.02] hover:shadow-lg text-base disabled:opacity-60 disabled:cursor-not-allowed"
+                className="bg-amber hover:bg-amber-hover text-dark font-semibold px-8 py-3.5 rounded-full transition-all hover:scale-[1.02] hover:shadow-lg text-base disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {submitting ? 'Sending...' : 'Submit Request →'}
               </button>

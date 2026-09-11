@@ -1,0 +1,10 @@
+# gates/ is NOT ignored on purpose: `npm run build` runs it, so a regression fails the
+# Vercel build rather than shipping. Excluding it is what broke the first deploy.
+node_modules
+dist
+.git
+assets-originals
+supabase
+output
+planning
+*.md

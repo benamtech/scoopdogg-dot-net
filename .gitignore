@@ -21,3 +21,18 @@ dist-ssr
 *.sln
 *.sw?
 .env
+.vercel
+.env*
+
+# Admin screens captured by gates/admin-browser.mjs. They show real customer names,
+# emails and phone numbers straight out of the leads table. Evidence for a run, never
+# something to commit.
+output/admin-screens/
+
+# Astro's generated types and content cache.
+.astro/
+
+# Installed agent skills, and the symlinks into them. `skills-lock.json` is the record
+# worth committing; these are the node_modules of it, and the symlinks break on clone.
+.agents/
+.claude/

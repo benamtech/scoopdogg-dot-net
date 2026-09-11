@@ -19,7 +19,7 @@ const steps = [
 ];
 
 export default function HowItWorks() {
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(true);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

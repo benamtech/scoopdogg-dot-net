@@ -1,0 +1,22 @@
+---
+import Base from '../layouts/Base.astro';
+import Nav from '../components/Nav';
+import Footer from '../components/Footer';
+import { SITE_URL } from '../lib/constants';
+import Page from '../pages_react/AboutPage';
+const jsonLd = {
+  '@context': 'https://schema.org', '@type': 'AboutPage',
+  name: 'About Scoop Dogg',
+  mainEntity: {
+    '@type': 'LocalBusiness', '@id': `${SITE_URL}/#business`, name: 'Scoop Dogg',
+    telephone: '+18058698070', email: 'josue@scoopdogg.net', url: SITE_URL,
+    founder: { '@type': 'Person', name: 'Josue' },
+    address: { '@type': 'PostalAddress', addressLocality: 'Ventura', addressRegion: 'CA', addressCountry: 'US' },
+  },
+};
+---
+<Base jsonLd={jsonLd} title={'About Scoop Dogg | Locally Owned Dog Waste Removal in Ventura County'} description={'Founded and operated by Josue, a Ventura County resident. Not a franchise. Background-checked, insured, and no contracts.'} canonicalPath="/about">
+  <Nav client:load />
+  <main><Page  /></main>
+  <Footer />
+</Base>

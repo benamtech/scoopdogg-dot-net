@@ -20,6 +20,12 @@ function setMetaTag(attr: string, key: string, content: string) {
 }
 
 function applyTags({ title, description, canonicalPath, ogImage, jsonLd }: SEOProps) {
+  // Astro emits the head server-side from src/layouts/Base.astro, so during a static
+  // render there is no document and nothing for this to do. Leaving it unguarded would
+  // crash the build; leaving it ACTIVE in the browser would let a runtime mutation
+  // silently disagree with the served HTML, which is the defect this whole rebuild is
+  // about. So: inert on the server, and it stays only for the React admin bundle.
+  if (typeof document === 'undefined') return;
   document.title = title;
 
   const canonicalUrl = `${SITE_URL}${canonicalPath}`;

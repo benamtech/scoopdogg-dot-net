@@ -1,0 +1,33 @@
+---
+import Base from '../../layouts/Base.astro';
+import Nav from '../../components/Nav';
+import Footer from '../../components/Footer';
+import ServicePage from '../../pages_react/ServicePage';
+import { SERVICES } from '../../lib/services';
+import { SITE_URL } from '../../lib/constants';
+
+export function getStaticPaths() {
+  return SERVICES.map((s) => ({ params: { service: s.slug }, props: { s } }));
+}
+const { s } = Astro.props;
+const jsonLd = [
+  {
+    '@context': 'https://schema.org', '@type': 'Service',
+    name: s.name, description: s.metaDescription,
+    provider: { '@type': 'LocalBusiness', name: 'Scoop Dogg', '@id': `${SITE_URL}/#business` },
+    areaServed: { '@type': 'AdministrativeArea', name: 'Ventura County, CA' },
+  },
+  {
+    '@context': 'https://schema.org', '@type': 'FAQPage',
+    mainEntity: s.faqs.map((f) => ({
+      '@type': 'Question', name: f.q,
+      acceptedAnswer: { '@type': 'Answer', text: f.a },
+    })),
+  },
+];
+---
+<Base title={s.metaTitle} description={s.metaDescription} canonicalPath={`/services/${s.slug}`} jsonLd={jsonLd}>
+  <Nav client:load />
+  <main><ServicePage service={s.slug} /></main>
+  <Footer />
+</Base>

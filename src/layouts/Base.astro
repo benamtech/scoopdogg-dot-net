@@ -1,0 +1,73 @@
+---
+/**
+ * The one <head> for every page, emitted SERVER-SIDE.
+ *
+ * The old site built its head at runtime with useSEO(), which mutated document.head
+ * after React mounted. With prerendering skipped in production that never ran, so all
+ * 71 URLs served index.html's homepage <title> and no <h1>. Passing meta as props to a
+ * layout is what makes "every page has its own title" true by construction instead of
+ * true only when JavaScript happens to execute.
+ */
+import '../index.css';
+import { SITE_URL, DEFAULT_OG_IMAGE, SITE_NAME } from '../lib/constants';
+
+export interface Props {
+  title: string;
+  description: string;
+  canonicalPath: string;
+  ogImage?: string;
+  jsonLd?: object | object[];
+  noindex?: boolean;
+}
+
+const { title, description, canonicalPath, ogImage, jsonLd, noindex = false } = Astro.props;
+const canonical = `${SITE_URL}${canonicalPath}`;
+const image = ogImage || DEFAULT_OG_IMAGE;
+const schema = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : null;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="/horizontallogo.png" />
+
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta name="robots" content={noindex ? 'noindex, nofollow' : 'index, follow'} />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Outfit:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={SITE_NAME} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={image} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={image} />
+
+    {schema && (
+      <script type="application/ld+json" set:html={JSON.stringify(schema.length === 1 ? schema[0] : schema)} />
+    )}
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-SNLVJNSP05"></script>
+    <script is:inline>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-SNLVJNSP05');
+    </script>
+  </head>
+  <body class="bg-cream text-dark font-sans antialiased">
+    <slot />
+  </body>
+</html>

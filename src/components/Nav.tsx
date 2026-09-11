@@ -162,7 +162,7 @@ export default function Nav() {
               </a>
               <Link
                 to="/book"
-                className="bg-amber hover:bg-amber-hover text-white font-semibold px-5 py-2.5 rounded-full text-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-md"
+                className="bg-amber hover:bg-amber-hover text-dark font-semibold px-5 py-2.5 rounded-full text-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-md"
               >
                 Book Now
               </Link>
@@ -275,7 +275,7 @@ export default function Nav() {
               </a>
               <Link
                 to="/book"
-                className="flex items-center justify-center bg-amber hover:bg-amber-hover text-white font-semibold py-3.5 rounded-full transition-colors"
+                className="flex items-center justify-center bg-amber hover:bg-amber-hover text-dark font-semibold py-3.5 rounded-full transition-colors"
               >
                 Book Now
               </Link>

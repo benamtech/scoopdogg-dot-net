@@ -1,0 +1,26 @@
+---
+import Base from '../../layouts/Base.astro';
+import Nav from '../../components/Nav';
+import Footer from '../../components/Footer';
+import ArticlePage from '../../pages_react/ArticlePage';
+import { ARTICLES } from '../../lib/articles';
+import { SITE_URL } from '../../lib/constants';
+
+export function getStaticPaths() {
+  return ARTICLES.map((a) => ({ params: { slug: a.slug }, props: { a } }));
+}
+const { a } = Astro.props;
+const jsonLd = {
+  '@context': 'https://schema.org', '@type': 'Article',
+  headline: a.title, description: a.metaDescription,
+  datePublished: a.publishedDate, dateModified: a.updatedDate || a.publishedDate,
+  author: { '@type': 'Organization', name: 'Scoop Dogg' },
+  publisher: { '@type': 'Organization', name: 'Scoop Dogg', '@id': `${SITE_URL}/#business` },
+  mainEntityOfPage: `${SITE_URL}/resources/${a.slug}`,
+};
+---
+<Base title={a.metaTitle} description={a.metaDescription} canonicalPath={`/resources/${a.slug}`} jsonLd={jsonLd}>
+  <Nav client:load />
+  <main><ArticlePage slug={a.slug} /></main>
+  <Footer />
+</Base>

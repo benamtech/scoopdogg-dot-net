@@ -1,0 +1,53 @@
+{
+  "_note": "Initial values only. Once seeded, the DATABASE is the source of truth and Josue edits these in the admin. Every default is sourced - most from promises his own website already makes. See planning/01-SETTINGS.md.",
+
+  "business.name":            {"v": "Scoop Dogg", "why": "site"},
+  "business.timezone":        {"v": "America/Los_Angeles", "why": "current notify-new-lead function"},
+  "business.phone":           {"v": "(805) 869-8070", "why": "site"},
+  "business.email":           {"v": "josue@scoopdogg.net", "why": "site"},
+  "business.region_label":    {"v": "Ventura County and nearby", "why": "factual; covers 13 of 16 cities"},
+  "business.brand_region":    {"v": "the 805", "why": "researched 2026-09-10. Headline copy only, never a boundary claim - Malibu/Agoura/Westlake are LA County"},
+
+  "service_area.booking_mode":             {"v": "listed_cities_only", "why": "16 city pages exist and no others"},
+  "service_area.outside_area_behaviour":   {"v": "capture_lead_and_notify", "why": "never turn away a lead; let Josue decide"},
+
+  "pricing.currency":               {"v": "USD", "why": "-"},
+  "pricing.tax_mode":               {"v": "none", "why": "no tax appears anywhere on the site"},
+  "pricing.quote_required_message": {"v": "We'll confirm your price after a quick look at your yard.", "why": "from his own pricing notes"},
+
+  "billing.deposit_mode":          {"v": "none", "why": "'No sign-up fees.' His words. The capability exists; the default is off"},
+  "billing.deposit_amount_cents":  {"v": 0, "why": "as above"},
+  "billing.charge_timing":         {"v": "after_visit", "why": "matches how a scooping round works"},
+  "billing.invoice_cadence":       {"v": "monthly", "why": "a weekly $15 charge is 4 Stripe fees a month; monthly is cheaper for him"},
+  "billing.card_on_file_required": {"v": false, "why": "weekly service. One-time jobs over $99 ask for one"},
+  "billing.card_required_above_cents": {"v": 9900, "why": "protects him on big jobs without touching the weekly promise"},
+  "billing.offline_methods":       {"v": ["cash", "venmo"], "why": "how he is paid today. Stripe is ADDED, not substituted"},
+  "billing.platform_fee_bps":      {"v": 400, "why": "Ben, 2026-09-10. 4%"},
+  "billing.connect_account_type":  {"v": "standard", "why": "forced by the requirement that he can bring an existing Stripe account"},
+
+  "schedule.service_days":           {"v": [0,1,2,3,4,5,6], "why": "Ben, 2026-09-10: any day of the week"},
+  "schedule.day_start":              {"v": "07:00", "why": "Ben, 2026-09-10"},
+  "schedule.day_end":                {"v": "17:00", "why": "Ben, 2026-09-10"},
+  "schedule.same_day_every_week":    {"v": true, "why": "'Same day every week.' His core promise and a real routing constraint"},
+  "schedule.driver_consistency":     {"v": "preferred", "why": "his reviews praise exactly this. 'required' once there is enough crew"},
+  "schedule.visit_window_hours":     {"v": 4, "why": "an arrival window, not a time. Nothing on the site promises a time"},
+  "schedule.new_customer_start_days":{"v": 3, "why": "'start within a few days, depending on route availability'"},
+  "schedule.lead_response_hours":    {"v": 24, "why": "'confirmed within 24 hours'"},
+
+  "visit.require_completion_photo":  {"v": true, "why": "his differentiator is proof of care, and it costs the crew four seconds"},
+  "visit.completion_notify_channel": {"v": "sms", "why": "'Same-day text confirmation when complete.'"},
+  "visit.skip_charge_policy":        {"v": "no_charge", "why": "'No fees for skipping or pausing.'"},
+  "visit.skip_notice_hours":         {"v": 0, "why": "'Just let us know in advance' - no number given, so none invented"},
+  "visit.failed_access_policy":      {"v": "no_charge_notify_owner", "why": "he drove there, but nothing on his site warns customers. Notify him; let him set a policy"},
+  "visit.gate_code_visible_to":      {"v": "assigned_crew_only", "why": "the most sensitive value in this database"},
+
+  "subscription.min_term_visits":     {"v": 0, "why": "'Never [a contract].'"},
+  "subscription.cancel_notice_hours": {"v": 0, "why": "'Cancel anytime with no questions asked.'"},
+  "subscription.pause_max_weeks":     {"v": 12, "why": "no published limit; a cap that stops a paused row living forever"},
+  "subscription.auto_resume_after_pause": {"v": true, "why": "pausing for vacation should not silently end service"},
+
+  "notify.lead_recipients":          {"v": ["josue@scoopdogg.net", "scoopdogg129@gmail.com"], "why": "the current edge function"},
+  "notify.from_address":             {"v": "leads@mail.amtechleads.com", "why": "current; authenticates independently of his own SPF"},
+  "notify.customer_channel_default": {"v": "sms", "why": "phone-first business"},
+  "notify.on_the_way_enabled":       {"v": true, "why": "the Uber comparison lives or dies on this"}
+}

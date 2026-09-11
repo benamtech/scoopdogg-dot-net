@@ -1,0 +1,23 @@
+---
+import Base from '../layouts/Base.astro';
+import Nav from '../components/Nav';
+import Footer from '../components/Footer';
+import { SITE_URL } from '../lib/constants';
+import { SERVICES } from '../lib/services';
+import Page from '../pages_react/ServicesPage';
+const jsonLd = {
+  '@context': 'https://schema.org', '@type': 'CollectionPage',
+  name: 'Scoop Dogg Services',
+  mainEntity: {
+    '@type': 'ItemList',
+    itemListElement: SERVICES.map((s, i) => ({
+      '@type': 'ListItem', position: i + 1, name: s.name, url: `${SITE_URL}/services/${s.slug}`,
+    })),
+  },
+};
+---
+<Base jsonLd={jsonLd} title={'Our Services | Dog Waste Removal & Yard Care in Ventura County'} description={'Weekly pooper scooper service from $15, one-time cleanups, turf deodorizing, yard maintenance, litter box service and more across Ventura County.'} canonicalPath="/services">
+  <Nav client:load />
+  <main><Page  /></main>
+  <Footer />
+</Base>

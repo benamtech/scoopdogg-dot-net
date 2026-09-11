@@ -1,0 +1,23 @@
+---
+import Base from '../layouts/Base.astro';
+import Nav from '../components/Nav';
+import Footer from '../components/Footer';
+import { SITE_URL } from '../lib/constants';
+import { CITIES } from '../lib/cities';
+import Page from '../pages_react/AreasPage';
+const jsonLd = {
+  '@context': 'https://schema.org', '@type': 'CollectionPage',
+  name: 'Areas Scoop Dogg Serves',
+  mainEntity: {
+    '@type': 'ItemList',
+    itemListElement: CITIES.map((c, i) => ({
+      '@type': 'ListItem', position: i + 1, name: c.name, url: `${SITE_URL}/areas/${c.slug}`,
+    })),
+  },
+};
+---
+<Base jsonLd={jsonLd} title={'Areas We Serve | Scoop Dogg, Ventura County & Nearby'} description={'Ventura, Oxnard, Camarillo, Thousand Oaks, Simi Valley, Ojai, Santa Barbara and more. Weekly and one-time dog waste removal.'} canonicalPath="/areas">
+  <Nav client:load />
+  <main><Page  /></main>
+  <Footer />
+</Base>

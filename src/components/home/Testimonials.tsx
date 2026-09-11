@@ -6,7 +6,7 @@ import { FEATURED_REVIEWS, GOOGLE_PROFILE_URL } from '../../lib/reviews';
 const HOMEPAGE_REVIEWS = [FEATURED_REVIEWS[5], FEATURED_REVIEWS[0], FEATURED_REVIEWS[1]]; // Alex Torres, Wendy Ramirez, Amber Morua
 
 export default function Testimonials() {
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(true);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

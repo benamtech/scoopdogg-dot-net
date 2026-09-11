@@ -1,0 +1,22 @@
+---
+import Base from '../layouts/Base.astro';
+import Nav from '../components/Nav';
+import Footer from '../components/Footer';
+import { SITE_URL } from '../lib/constants';
+import Page from '../pages_react/BookPage';
+const jsonLd = {
+  '@context': 'https://schema.org', '@type': 'WebPage',
+  name: 'Book Scoop Dogg',
+  potentialAction: {
+    '@type': 'ReserveAction',
+    target: { '@type': 'EntryPoint', urlTemplate: `${SITE_URL}/book`, actionPlatform: 'https://schema.org/DesktopWebPlatform' },
+    result: { '@type': 'Reservation', name: 'Dog waste removal booking' },
+  },
+  about: { '@type': 'LocalBusiness', '@id': `${SITE_URL}/#business`, name: 'Scoop Dogg' },
+};
+---
+<Base jsonLd={jsonLd} title={'Book Dog Poop Cleanup | Free Quote in 60 Seconds | Scoop Dogg'} description={'Book weekly or one-time dog waste removal across Ventura County. No contracts, no sign-up fees, cancel anytime.'} canonicalPath="/book">
+  <Nav client:load />
+  <main><Page client:load /></main>
+  <Footer />
+</Base>

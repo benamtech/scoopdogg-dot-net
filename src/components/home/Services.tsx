@@ -1,11 +1,45 @@
 import { useEffect, useRef, useState } from 'react';
+import type { ComponentType } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, RefreshCw, Sparkles, Leaf, Waves, Cat, Wind, Scissors, Brush } from 'lucide-react';
+
+/**
+ * One shape for every service card on this page. There used to be two card renderers —
+ * `ServiceCard` and an inline block for the pet add-ons — so a prop added to the
+ * component reached half the cards. `framedMascot` was one of them, which is why the
+ * Litter-Robot artwork sat over its own card heading for two reports running.
+ *
+ * Optional fields are optional because the add-ons genuinely have no pricing table and
+ * the yard services genuinely have no "learn more" page. Absence renders nothing.
+ */
+type Service = {
+  icon: ComponentType<{ size?: number; className?: string }>;
+  label: string;
+  sub: string;
+  desc: string;
+  price: string;
+  cta: string;
+  href: string;
+  badge?: string | null;
+  details?: string[];
+  detailsLabel?: string;
+  priceNote?: string | null;
+  accent?: boolean;
+  mascot?: string;
+  mascotAlt?: string;
+  learnHref?: string;
+  /**
+   * The artwork is a complete illustrated scene with its own border, not a transparent
+   * cut-out. Floated over a card it reads as a rectangle pasted on top, so it is framed
+   * and placed in the flow instead. Gate `framed-art-not-floated` enforces it.
+   */
+  framedMascot?: boolean;
+};
 
 /* ═══════════════════════════════════════════
    Section 1 — Pet Waste & Yard Cleaning
    ═══════════════════════════════════════════ */
-const yardServices = [
+const yardServices: Service[] = [
   {
     icon: RefreshCw,
     label: 'Keep It Clean',
@@ -21,14 +55,13 @@ const yardServices = [
     accent: true,
     mascot: '/2dog-with-shovel.png',
     mascotAlt: 'Dog holding scooping tools',
-    cropMascot: false,
   },
 ];
 
 /* ═══════════════════════════════════════════
    Section 2 — Turf Maintenance
    ═══════════════════════════════════════════ */
-const turfServices = [
+const turfServices: Service[] = [
   {
     icon: Sparkles,
     label: 'Turf Deep Clean',
@@ -44,7 +77,6 @@ const turfServices = [
     accent: false,
     mascot: '/dog-with-lawn-mower.png',
     mascotAlt: 'Dog with lawn mower',
-    cropMascot: true,
   },
   {
     icon: Brush,
@@ -67,7 +99,7 @@ const turfServices = [
 /* ═══════════════════════════════════════════
    Section 3 — Landscaping & Yard Maintenance
    ═══════════════════════════════════════════ */
-const landscapingServices = [
+const landscapingServices: Service[] = [
   {
     icon: Leaf,
     label: 'Yard Deep Clean & Overgrowth Reset',
@@ -97,16 +129,15 @@ const landscapingServices = [
     cta: 'Get a Maintenance Quote',
     href: '/book?service=yard-maintenance',
     accent: false,
-    mascot: 'https://i.ibb.co/prvTXTXd/transp-dog-character-mowing-grass.png',
+    mascot: '/img/transp-dog-character-mowing-grass.png',
     mascotAlt: 'Dog character with leaf blower',
-    cropMascot: true,
   },
 ];
 
 /* ═══════════════════════════════════════════
    Section 4 — Pressure Washing (standalone)
    ═══════════════════════════════════════════ */
-const pressureWashService = {
+const pressureWashService: Service = {
   icon: Waves,
   label: 'Pressure Washing',
   sub: 'Patios, driveways, hardscape & dog runs',
@@ -121,7 +152,7 @@ const pressureWashService = {
 /* ═══════════════════════════════════════════
    Section 5 — Extra Pet Services
    ═══════════════════════════════════════════ */
-const petAddonServices = [
+const petAddonServices: Service[] = [
   {
     icon: Cat,
     label: 'Kitty Litter Exchange',
@@ -131,7 +162,7 @@ const petAddonServices = [
     cta: 'Book Litter Exchange',
     href: '/book?service=kitty-litter',
     learnHref: '/services/kitty-litter-exchange',
-    mascot: 'https://i.ibb.co/B5YqDzzq/transp-cat-character-cleaning-litter-box.png',
+    mascot: '/img/transp-cat-character-cleaning-litter-box.png',
     mascotAlt: 'Cat character cleaning a litter box',
   },
   {
@@ -143,7 +174,7 @@ const petAddonServices = [
     cta: 'Book Cat Tree Cleaning',
     href: '/book?service=cat-tree',
     learnHref: '/services/cat-tree-cleaning',
-    mascot: 'https://i.ibb.co/C5W7dZ5x/transp-cat-character-cleaning-cat-tree.png',
+    mascot: '/img/transp-cat-character-cleaning-cat-tree.png',
     mascotAlt: 'Cat character cleaning a cat tree',
   },
   {
@@ -155,8 +186,12 @@ const petAddonServices = [
     cta: 'Book Litter Robot Cleaning',
     href: '/book?service=litter-robot',
     learnHref: '/services/kitty-litter-robot-cleaning',
-    mascot: 'https://i.ibb.co/h3QqsW8/5878.png',
+    mascot: '/img/5878.jpg',
     mascotAlt: 'Litter-Robot automatic litter box',
+    // This artwork is a full illustrated scene with its own border, not a transparent
+    // cut-out like the other mascots. Floated at -top-28 -right-10 it reads as a
+    // rectangle pasted onto the card. Framed, centred and given room, it reads as art.
+    framedMascot: true,
   },
 ];
 
@@ -164,13 +199,26 @@ const petAddonServices = [
    Service Card Components
    ═══════════════════════════════════════════ */
 
-function ServiceCard({ s, i, visible, accent }: { s: typeof yardServices[0]; i: number; visible: boolean; accent?: boolean }) {
+/**
+ * The only card renderer on this page. Every section maps through it.
+ *
+ * A transparent cut-out mascot is floated above the card by FLOAT_RISE; the wrapper
+ * reserves exactly that much space so the float never needs a clearance gap on the
+ * grid. The two constants are a pair — change one and change the other.
+ */
+const FLOAT_RISE = 'min-[640px]:-top-28';   // how far the cut-out rises above the card
+const FLOAT_ROOM = 'min-[640px]:pt-28';     // the room the wrapper reserves for it
+
+function ServiceCard({ s, i, visible, accent }: { s: Service; i: number; visible: boolean; accent?: boolean }) {
   const Icon = s.icon;
   const isAccent = accent ?? s.accent;
-  const cropStyle = s.cropMascot ? { clipPath: 'inset(3px 6px 0 0)' } : undefined;
+  const isFramed = s.framedMascot === true;
+  const isFloating = Boolean(s.mascot) && !isFramed;
 
   return (
-    <div>
+    // h-full down the whole chain so cards in a grid row end level, whether or not they
+    // reserved room for a float above them.
+    <div className={`h-full flex flex-col ${isFloating ? FLOAT_ROOM : ''}`}>
       {s.mascot && (
         <div className="flex justify-center min-[640px]:hidden mb-3">
           <img
@@ -180,14 +228,17 @@ function ServiceCard({ s, i, visible, accent }: { s: typeof yardServices[0]; i: 
             decoding="async"
             width={144}
             height={144}
-            style={cropStyle}
-            className="h-36 w-auto object-contain drop-shadow-md pointer-events-none select-none"
+            className={
+              isFramed
+                ? 'h-44 w-auto object-contain rounded-xl ring-1 ring-dark/10 shadow-sm bg-white p-1.5 pointer-events-none select-none'
+                : 'h-36 w-auto object-contain drop-shadow-md pointer-events-none select-none'
+            }
           />
         </div>
       )}
 
       <div
-        className={`transition-all duration-700 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
+        className={`flex-1 flex flex-col transition-all duration-700 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
         style={{ transitionDelay: `${i * 120}ms` }}
       >
         <div
@@ -199,13 +250,25 @@ function ServiceCard({ s, i, visible, accent }: { s: typeof yardServices[0]; i: 
         >
           {s.badge && (
             <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-              <span className={`text-white text-xs font-bold px-5 py-1.5 rounded-full tracking-[0.06em] shadow-sm ${s.badge === 'New' ? 'bg-forest' : 'bg-amber'}`}>
+              <span className={`text-xs font-bold px-5 py-1.5 rounded-full tracking-[0.06em] shadow-sm ${s.badge === 'New' ? 'bg-forest text-white' : 'bg-amber text-dark'}`}>
                 {s.badge}
               </span>
             </div>
           )}
 
-          {s.mascot && (
+          {s.mascot && (isFramed ? (
+            <div className="hidden min-[640px]:flex justify-center -mt-2 mb-6">
+              <img
+                src={s.mascot}
+                alt={s.mascotAlt}
+                loading="lazy"
+                decoding="async"
+                width={200}
+                height={260}
+                className="h-56 w-auto object-contain rounded-xl ring-1 ring-dark/10 shadow-sm bg-white p-2 pointer-events-none select-none"
+              />
+            </div>
+          ) : (
             <img
               src={s.mascot}
               alt={s.mascotAlt}
@@ -213,10 +276,9 @@ function ServiceCard({ s, i, visible, accent }: { s: typeof yardServices[0]; i: 
               decoding="async"
               width={208}
               height={208}
-              style={cropStyle}
-              className="hidden min-[640px]:block absolute -top-28 -right-10 w-52 h-52 object-contain drop-shadow-md pointer-events-none select-none"
+              className={`hidden min-[640px]:block absolute ${FLOAT_RISE} -right-10 w-52 h-52 object-contain drop-shadow-md pointer-events-none select-none`}
             />
-          )}
+          ))}
 
           <div className="w-11 h-11 rounded-xl bg-sage-light flex items-center justify-center mb-6">
             <Icon size={20} className="text-forest" />
@@ -226,17 +288,19 @@ function ServiceCard({ s, i, visible, accent }: { s: typeof yardServices[0]; i: 
           <p className="text-[0.72rem] font-bold text-forest uppercase tracking-[0.1em] mb-4">{s.sub}</p>
           <p className="text-dark/60 text-[0.95rem] leading-[1.75] mb-5">{s.desc}</p>
 
-          <div className="bg-sage-light/70 rounded-xl px-4 py-3 mb-6">
-            <p className="text-[0.7rem] font-bold text-forest uppercase tracking-[0.1em] mb-2">{s.detailsLabel}</p>
-            <ul className="flex flex-col gap-1.5">
-              {s.details.map((d) => (
-                <li key={d} className="text-xs text-dark/60 flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-sage flex-shrink-0" />
-                  {d}
-                </li>
-              ))}
-            </ul>
-          </div>
+          {s.details && s.details.length > 0 && (
+            <div className="bg-sage-light/70 rounded-xl px-4 py-3 mb-6">
+              <p className="text-[0.7rem] font-bold text-forest uppercase tracking-[0.1em] mb-2">{s.detailsLabel}</p>
+              <ul className="flex flex-col gap-1.5">
+                {s.details.map((d) => (
+                  <li key={d} className="text-xs text-dark/60 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-sage flex-shrink-0" />
+                    {d}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <div className="mt-auto">
             <div className="mb-4">
@@ -247,13 +311,21 @@ function ServiceCard({ s, i, visible, accent }: { s: typeof yardServices[0]; i: 
               to={s.href}
               className={`flex items-center justify-center gap-2 w-full py-3.5 rounded-full font-semibold text-sm transition-all duration-200 hover:scale-[1.02] ${
                 isAccent
-                  ? 'bg-amber hover:bg-amber-hover text-white hover:shadow-[0_4px_14px_rgba(244,160,36,0.35)]'
+                  ? 'bg-amber hover:bg-amber-hover text-dark hover:shadow-[0_4px_14px_rgba(244,160,36,0.35)]'
                   : 'bg-forest hover:bg-forest-dark text-white hover:shadow-[0_4px_14px_rgba(27,67,50,0.25)]'
               }`}
             >
               {s.cta}
               <ArrowRight size={15} />
             </Link>
+            {s.learnHref && (
+              <Link
+                to={s.learnHref}
+                className="flex items-center justify-center gap-1 w-full py-2 mt-2 text-xs text-dark/40 hover:text-forest transition-colors font-medium"
+              >
+                Learn more
+              </Link>
+            )}
           </div>
         </div>
       </div>
@@ -276,7 +348,7 @@ function SectionHeading({ label, title, description }: { label: string; title: s
    ═══════════════════════════════════════════ */
 
 export default function Services() {
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(true);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -289,12 +361,12 @@ export default function Services() {
   }, []);
 
   return (
-    <section className="pt-10 pb-0 overflow-visible" ref={ref}>
+        <section className="pt-0 pb-0 overflow-visible" ref={ref}>
       {/* Intro */}
       <div className="bg-amber pt-10 pb-16 md:pt-14 md:pb-20">
         <div className="max-w-site mx-auto px-4 sm:px-6 text-center">
-          <h2 className="font-serif text-4xl sm:text-[2.6rem] text-white mb-5">Our Services</h2>
-          <p className="text-white/80 text-lg max-w-2xl mx-auto leading-relaxed">
+          <h2 className="font-serif text-4xl sm:text-[2.6rem] text-forest-dark mb-5">Our Services</h2>
+          <p className="text-forest-dark/85 text-lg max-w-2xl mx-auto leading-relaxed">
             We are the only dedicated turf maintenance and pet waste service in Ventura County.
             From a messy first visit to a clean-every-week routine — here is how we get your yard, turf, and patio looking right and keep it that way.
           </p>
@@ -309,14 +381,14 @@ export default function Services() {
                 playsInline
                 className="rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.25)] w-full md:w-72 lg:w-80 object-cover"
               >
-                <source src="https://i.imgur.com/kAUWMAw.mp4" type="video/mp4" />
+                <source src="/video/before-after.mp4" type="video/mp4" />
               </video>
             </div>
             <div className="flex flex-col justify-center text-left">
-              <p className="text-white font-serif text-2xl sm:text-3xl leading-snug mb-3">
+              <p className="text-forest-dark font-serif text-2xl sm:text-3xl leading-snug mb-3">
                 The results speak for themselves.
               </p>
-              <p className="text-white/75 leading-relaxed">
+              <p className="text-forest-dark/75 leading-relaxed">
                 Animation created using real before and after photos.
               </p>
             </div>
@@ -333,7 +405,7 @@ export default function Services() {
             description="The foundation of everything we do. Consistent weekly visits to keep your yard clean, so you never have to think about dog poop again. Billed monthly — first month is half off."
           />
 
-          <div className="flex flex-col gap-10 min-[640px]:grid min-[640px]:grid-cols-1 min-[640px]:max-w-lg overflow-visible min-[640px]:mt-36">
+          <div className="flex flex-col gap-10 min-[640px]:grid min-[640px]:grid-cols-1 min-[640px]:max-w-lg overflow-visible">
             {yardServices.map((s, i) => (
               <ServiceCard key={s.label} s={s} i={i} visible={visible} />
             ))}
@@ -350,7 +422,7 @@ export default function Services() {
             description="Most people install artificial turf thinking it is zero maintenance. It is not — especially with dogs. We have the SwipeSmith turf sweeper, pressure washing equipment, and professional-grade enzyme treatments to keep your turf looking and smelling like the day it was installed. Whether you have pets or not."
           />
 
-          <div className="flex flex-col gap-10 min-[640px]:grid min-[640px]:grid-cols-2 min-[640px]:gap-y-28 min-[640px]:gap-x-6 min-[640px]:mt-36 overflow-visible">
+          <div className="flex flex-col gap-10 min-[640px]:grid min-[640px]:grid-cols-2 min-[640px]:gap-6 overflow-visible">
             {turfServices.map((s, i) => (
               <ServiceCard key={s.label} s={s} i={i} visible={visible} />
             ))}
@@ -374,7 +446,7 @@ export default function Services() {
             description="Some yards need a serious reset before weekly upkeep makes sense. We handle the heavy lifting — overgrowth, debris, dead brush — then transition into regular maintenance that keeps things looking clean. Mowing, trimming, edging, or all of the above."
           />
 
-          <div className="flex flex-col gap-10 min-[640px]:grid min-[640px]:grid-cols-2 min-[640px]:gap-y-28 min-[640px]:gap-x-6 min-[640px]:mt-36 overflow-visible">
+          <div className="flex flex-col gap-10 min-[640px]:grid min-[640px]:grid-cols-2 min-[640px]:gap-6 overflow-visible">
             {landscapingServices.map((s, i) => (
               <ServiceCard key={s.label} s={s} i={i} visible={visible} />
             ))}
@@ -403,12 +475,12 @@ export default function Services() {
               <div className="flex justify-center lg:hidden mb-6">
                 <div className="relative w-full max-w-sm">
                   <img
-                    src="https://i.ibb.co/DffTVcmD/IMG-20260523-162331.png"
+                    src="/img/img-20260523-162331.jpg"
                     alt="Pressure washing a patio"
                     loading="lazy"
                     className="w-full h-64 object-contain rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.35)] pointer-events-none select-none"
                   />
-                  <div className="absolute -top-2 -right-2 bg-amber text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
+                  <div className="absolute -top-2 -right-2 bg-amber text-dark text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
                     Most requested add-on
                   </div>
                 </div>
@@ -432,7 +504,7 @@ export default function Services() {
               <p className="text-white/40 text-xs mb-6">Driveways, patios, dog runs, and more</p>
               <Link
                 to={pressureWashService.href}
-                className="inline-flex items-center gap-2 bg-amber hover:bg-amber-hover text-white font-semibold px-8 py-4 rounded-full transition-all hover:scale-[1.02] hover:shadow-[0_6px_24px_rgba(244,160,36,0.45)]"
+                className="inline-flex items-center gap-2 bg-amber hover:bg-amber-hover text-dark font-semibold px-8 py-4 rounded-full transition-all hover:scale-[1.02] hover:shadow-[0_6px_24px_rgba(244,160,36,0.45)]"
               >
                 {pressureWashService.cta}
                 <ArrowRight size={16} />
@@ -442,12 +514,12 @@ export default function Services() {
             <div className="hidden lg:flex items-center justify-center">
               <div className="relative w-full">
                 <img
-                  src="https://i.ibb.co/DffTVcmD/IMG-20260523-162331.png"
+                  src="/img/img-20260523-162331.jpg"
                   alt="Pressure washing a patio"
                   loading="lazy"
                   className="w-full h-[480px] object-contain rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.35)] pointer-events-none select-none"
                 />
-                <div className="absolute -top-4 -right-4 bg-amber text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg">
+                <div className="absolute -top-4 -right-4 bg-amber text-dark text-xs font-bold px-4 py-2 rounded-full shadow-lg">
                   Most requested add-on
                 </div>
               </div>
@@ -465,52 +537,10 @@ export default function Services() {
             description="Not just yards. We also handle the indoor stuff that nobody wants to deal with — litter boxes and cat tree cleaning. Same diligent team, same reliable schedule."
           />
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-44 gap-x-6 max-w-2xl mt-40">
-            {petAddonServices.map((s, i) => {
-              const Icon = s.icon;
-              return (
-                <div key={s.label}>
-                <div
-                  className={`relative bg-cream rounded-2xl border border-sage-light p-6 flex flex-col hover:shadow-card hover:-translate-y-1 transition-all duration-200 overflow-visible ${
-                    visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-                  }`}
-                  style={{ transitionDelay: `${(i + 6) * 120}ms` }}
-                >
-                  {s.mascot && (
-                    <img
-                      src={s.mascot}
-                      alt={s.mascotAlt}
-                      loading="lazy"
-                      className="absolute -top-36 -right-6 w-64 h-64 object-contain drop-shadow-md pointer-events-none select-none"
-                    />
-                  )}
-                  <div className="w-10 h-10 rounded-xl bg-white border border-sage-light flex items-center justify-center mb-4">
-                    <Icon size={18} className="text-forest" />
-                  </div>
-                  <h4 className="font-serif text-lg text-dark mb-1">{s.label}</h4>
-                  <p className="text-[0.68rem] font-bold text-forest uppercase tracking-[0.1em] mb-3">{s.sub}</p>
-                  <p className="text-dark/60 text-sm leading-relaxed mb-[60px]">{s.desc}</p>
-
-                  <div className="mt-auto">
-                    <p className="font-bold text-dark text-sm mb-3">{s.price}</p>
-                    <Link
-                      to={s.href}
-                      className="flex items-center justify-center gap-2 w-full py-3 rounded-full font-semibold text-xs bg-forest hover:bg-forest-dark text-white transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_4px_14px_rgba(27,67,50,0.25)] mb-2"
-                    >
-                      {s.cta}
-                      <ArrowRight size={13} />
-                    </Link>
-                    <Link
-                      to={s.learnHref}
-                      className="flex items-center justify-center gap-1 w-full py-2 text-xs text-dark/40 hover:text-forest transition-colors font-medium"
-                    >
-                      Learn more
-                    </Link>
-                  </div>
-                </div>
-                </div>
-              );
-            })}
+          <div className="flex flex-col gap-10 min-[640px]:grid min-[640px]:grid-cols-2 lg:grid-cols-3 min-[640px]:gap-6 overflow-visible">
+            {petAddonServices.map((s, i) => (
+              <ServiceCard key={s.label} s={s} i={i + 6} visible={visible} />
+            ))}
           </div>
         </div>
       </div>

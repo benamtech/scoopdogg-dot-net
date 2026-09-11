@@ -15,22 +15,22 @@ const FEATURED: GalleryItem[] = [
     id: 'backyard',
     title: 'Full Backyard Cleanup',
     description: 'A heavily used backyard brought back to a clean, usable state. Waste removed, surfaces treated, and ready for weekly maintenance.',
-    before: { src: 'https://i.ibb.co/cXNyTLZV/backyard-before.jpg', alt: 'Backyard before cleanup' },
-    after: { src: 'https://i.ibb.co/jvBZ46R5/backyard-after.jpg', alt: 'Backyard after cleanup' },
+    before: { src: '/img/backyard-before.jpg', alt: 'Backyard before cleanup' },
+    after: { src: '/img/backyard-after.jpg', alt: 'Backyard after cleanup' },
   },
   {
     id: 'paved-dog-run',
     title: 'Paved Dog Run Restored',
     description: 'Years of buildup on a paved dog run require more than a hose. Pressure-washed, scrubbed, and sanitized so odors don\'t come back.',
-    before: { src: 'https://i.ibb.co/tTjkfNpD/paved-dog-run-before.jpg', alt: 'Paved dog run before cleanup' },
-    after: { src: 'https://i.ibb.co/B2wTdf9p/paved-dog-run-after.jpg', alt: 'Paved dog run after cleanup' },
+    before: { src: '/img/paved-dog-run-before.jpg', alt: 'Paved dog run before cleanup' },
+    after: { src: '/img/paved-dog-run-after.jpg', alt: 'Paved dog run after cleanup' },
   },
 ];
 
 function GalleryCard({ item, index }: { item: GalleryItem; index: number }) {
   const [view, setView] = useState<'before' | 'after'>('before');
   const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(true);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -86,7 +86,7 @@ function GalleryCard({ item, index }: { item: GalleryItem; index: number }) {
 
 export default function HomeGallery() {
   const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(true);
 
   useEffect(() => {
     const observer = new IntersectionObserver(

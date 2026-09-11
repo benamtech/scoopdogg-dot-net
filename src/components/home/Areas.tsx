@@ -4,7 +4,7 @@ import { Phone } from 'lucide-react';
 import { CITIES } from '../../lib/cities';
 
 export default function Areas() {
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(true);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

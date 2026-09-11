@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Users, MessageSquare, LogOut, Menu, X } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { adminApi } from '../../lib/adminApi';
 
 const navItems = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
@@ -15,7 +15,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    await adminApi.logout();
     navigate('/admin/login');
   };
 

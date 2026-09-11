@@ -10,7 +10,7 @@ const badges = [
 ];
 
 export default function AboutTrust() {
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(true);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -32,7 +32,7 @@ export default function AboutTrust() {
             <div className="relative">
               <div className="bg-sage-light rounded-card max-w-md mx-auto lg:mx-0 overflow-hidden shadow-[0_4px_16px_rgba(0,0,0,0.08),0_16px_48px_rgba(0,0,0,0.1)]">
                 <img
-                  src="https://i.ibb.co/WvDqz4S0/4824.png"
+                  src="/img/4824.jpg"
                   alt="Josue, owner of Scoop Dogg"
                   loading="lazy"
                   decoding="async"

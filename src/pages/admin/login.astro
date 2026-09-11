@@ -1,0 +1,7 @@
+---
+import Base from '../../layouts/Base.astro';
+import AdminIsland from '../../components/admin/AdminIsland';
+---
+<Base title="Sign in | Scoop Dogg admin" description="Scoop Dogg admin sign in." canonicalPath="/admin/login" noindex={true}>
+  <AdminIsland client:load screen="login" />
+</Base>

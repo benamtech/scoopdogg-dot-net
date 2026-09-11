@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Phone } from 'lucide-react';
 
 export default function Hero() {
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(true);
 
   useEffect(() => {
     const timer = setTimeout(() => setVisible(true), 80);
@@ -16,9 +16,11 @@ export default function Hero() {
         muted
         loop
         playsInline
+        preload="metadata"
+        poster="/video/hero-poster.jpg"
         className="absolute inset-0 w-full h-full object-cover object-center"
       >
-        <source src="https://videos.pexels.com/video-files/854383/854383-hd_1280_720_30fps.mp4" type="video/mp4" />
+        <source src="/video/hero.mp4" type="video/mp4" />
       </video>
 
       <div className="absolute inset-0 bg-gradient-to-b from-dark/60 via-dark/50 to-dark/70" />
@@ -55,7 +57,7 @@ export default function Hero() {
           >
             <a
               href="#booking"
-              className="inline-flex items-center justify-center gap-2 bg-amber hover:bg-amber-hover text-white font-semibold px-10 py-4 rounded-full transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_6px_24px_rgba(244,160,36,0.45)] text-base"
+              className="inline-flex items-center justify-center gap-2 bg-amber hover:bg-amber-hover text-dark font-semibold px-10 py-4 rounded-full transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_6px_24px_rgba(244,160,36,0.45)] text-base"
             >
               Book in 60 Seconds →
             </a>

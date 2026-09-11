@@ -10,7 +10,7 @@ export interface Lead {
   email: string;
   address: string;
   city: string;
-  service_type: ServiceType | string;
+  service_slug: ServiceType | string;
   yard_size: YardSize | string;
   num_dogs: number;
   frequency: Frequency | string;

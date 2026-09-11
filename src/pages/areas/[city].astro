@@ -1,0 +1,25 @@
+---
+import Base from '../../layouts/Base.astro';
+import Nav from '../../components/Nav';
+import Footer from '../../components/Footer';
+import CityPage from '../../pages_react/CityPage';
+import { CITIES } from '../../lib/cities';
+import { SITE_URL } from '../../lib/constants';
+
+export function getStaticPaths() {
+  return CITIES.map((c) => ({ params: { city: c.slug }, props: { c } }));
+}
+const { c } = Astro.props;
+const jsonLd = {
+  '@context': 'https://schema.org', '@type': 'LocalBusiness',
+  '@id': `${SITE_URL}/areas/${c.slug}#business`,
+  name: `Scoop Dogg — ${c.name}`, description: c.metaDescription,
+  telephone: '+18058698070', url: `${SITE_URL}/areas/${c.slug}`,
+  areaServed: { '@type': 'City', name: c.name, addressRegion: 'CA' },
+};
+---
+<Base title={c.metaTitle} description={c.metaDescription} canonicalPath={`/areas/${c.slug}`} jsonLd={jsonLd}>
+  <Nav client:load />
+  <main><CityPage city={c.slug} /></main>
+  <Footer />
+</Base>
