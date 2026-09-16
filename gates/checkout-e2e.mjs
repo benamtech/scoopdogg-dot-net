@@ -130,5 +130,9 @@ try {
 check('no JavaScript errors', errors.length === 0, errors.slice(0, 2).join(' | '));
 await browser.close();
 const failed = results.filter((r) => !r.ok).length;
-console.log(`\n${failed === 0 ? `PASS(${outcome})` : 'FAIL'} ${results.length - failed}/${results.length}`);
+const verdict = failed === 0 ? `PASS(${outcome})` : 'FAIL';
+const { mkdirSync, writeFileSync } = await import('node:fs');
+mkdirSync('output', { recursive: true });
+writeFileSync('output/checkout-e2e-receipt.json', JSON.stringify({ ran_at: new Date().toISOString(), base: BASE, verdict, outcome, results }, null, 2));
+console.log(`\n${verdict} ${results.length - failed}/${results.length}`);
 process.exit(failed ? 1 : 0);
