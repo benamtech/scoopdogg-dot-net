@@ -66,7 +66,9 @@ try {
 await c.end();
 
 const map = new Map(rows.map((r) => [r.key, r.value]));
-const mode = map.get('demo.mode') === true;
+// A Vercel Preview environment forces demo mode (SD_FORCE_DEMO=1) so a preview can never take a
+// live payment or mail a real inbox - and it must SAY so on every page, like any demo build.
+const mode = process.env.SD_FORCE_DEMO === '1' || map.get('demo.mode') === true;
 const banner = typeof map.get('demo.banner_text') === 'string' ? map.get('demo.banner_text') : '';
 
 if (mode && !banner) {
