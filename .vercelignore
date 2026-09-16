@@ -1,10 +1,13 @@
-# gates/ is NOT ignored on purpose: `npm run build` runs it, so a regression fails the
-# Vercel build rather than shipping. Excluding it is what broke the first deploy.
-node_modules
-dist
-.git
+# Never uploaded to Vercel: AMTECH planning (the repo is public and the deployment source is
+# browsable), originals kept for regeneration, local artifacts, scratch builds.
+client-portal-and-ai-employee-plans
 assets-originals
-supabase
 output
+.gate-build
+dist
+node_modules
+old-site
+new-site
 planning
-*.md
+.env
+.env.*
