@@ -63,6 +63,8 @@ const plan = [
   ['messages',         `delete from messages where customer_id = any($1::uuid[])`, ids],
   ['visits',           `delete from visits where subscription_id in
                           (select id from subscriptions where customer_id = any($1::uuid[]))`, ids],
+  ['stripe_customers', `delete from stripe_customers where customer_id = any($1::uuid[])`, ids],
+  ['invoices (by sub)', `delete from invoices where subscription_id in (select id from subscriptions where customer_id = any($1::uuid[]))`, ids],
   ['subscriptions',    `delete from subscriptions where customer_id = any($1::uuid[])`, ids],
   ['properties',       `delete from properties where customer_id = any($1::uuid[])`, ids],
   ['customers',        `delete from customers where name like $1`, [like]],
@@ -101,7 +103,11 @@ if (dry) {
 await c.query('begin');
 const removed = {};
 for (const [label, sql, params] of plan) {
-  const r = params.length ? await c.query(sql, params) : await c.query(sql);
+  // `ids` is ONE array parameter ($1::uuid[]). Passing the array itself as the parameter list
+  // bound each uuid as its own parameter - invisible with one demo customer, a crash with seven
+  // (found 2026-09-16; the transaction rolled back and nothing was removed).
+  const bind = sql.includes('$1::uuid[]') ? [params] : params;
+  const r = params.length ? await c.query(sql, bind) : await c.query(sql);
   removed[label] = r.rowCount;
 }
 await c.query('commit');
