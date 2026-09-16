@@ -174,12 +174,8 @@ export const trust = {
   ),
 };
 
-export type ReferralTerms = { referrer_credit_cents: number; friend_credit_cents: number; headline: string };
-
 export const growth = {
   careers: setting<boolean>('growth.careers_enabled', true),
   commercial: setting<boolean>('growth.commercial_enabled', true),
-  referral: setting<boolean>('growth.referral_enabled', true),
-  // Market range $15-$50 each side (R5 §9). Default: $20 each, credited when the friend's first month is paid.
-  referralTerms: setting<ReferralTerms>('growth.referral_terms', { referrer_credit_cents: 2000, friend_credit_cents: 2000, headline: 'Give $20, get $20' }),
+  // Referrals removed by Ben, 2026-09-16 ("get rid of the referrals").
 };

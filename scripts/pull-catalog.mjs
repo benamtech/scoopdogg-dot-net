@@ -43,7 +43,7 @@ const PUBLIC_SETTINGS = [
   'visit.require_completion_photo', 'service_area.outside_area_behaviour',
   'reviews.google_rating', 'reviews.google_count', 'reviews.google_profile_url',
   'trust.insured_confirmed', 'trust.background_checked_confirmed', 'trust.guarantee_text',
-  'growth.careers_enabled', 'growth.commercial_enabled', 'growth.referral_enabled', 'growth.referral_terms',
+  'growth.careers_enabled', 'growth.commercial_enabled',
 ];
 
 const c = new pg.Client({ connectionString: url, ssl: { rejectUnauthorized: true } });

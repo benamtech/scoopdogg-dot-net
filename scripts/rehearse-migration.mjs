@@ -14,9 +14,14 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import pg from 'pg';
 
-const [dump, up, down] = process.argv.slice(2);
+// --prior a.sql,b.sql applies earlier migrations the dump predates, so a migration that depends
+// on them is rehearsed against the schema it will actually meet.
+const argv = process.argv.slice(2);
+const priorIdx = argv.indexOf('--prior');
+const prior = priorIdx >= 0 ? argv.splice(priorIdx, 2)[1].split(',').filter(Boolean) : [];
+const [dump, up, down] = argv;
 if (!dump || !up || !down) {
-  console.error('usage: rehearse-migration.mjs <dump> <migration.sql> <down.sql>');
+  console.error('usage: rehearse-migration.mjs <dump> <migration.sql> <down.sql> [--prior a.sql,b.sql]');
   process.exit(2);
 }
 const IMAGE = 'postgres:18-alpine';
@@ -66,6 +71,10 @@ try {
   };
   const settingsSnapshot = async () => JSON.stringify((await c.query(`select key, value from settings order by key`)).rows);
 
+  for (const f of prior) {
+    await c.query(readFileSync(f, 'utf8'));
+    await c.query(`insert into _migrations (name) values ($1) on conflict do nothing`, [f.split('/').pop()]);
+  }
   const before = { fp: await fingerprint(), counts: await counts(), settings: await settingsSnapshot() };
   const upSql = readFileSync(up, 'utf8');
   await c.query(upSql);
