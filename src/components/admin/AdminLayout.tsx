@@ -1,13 +1,94 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, MessageSquare, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Users, MessageSquare, LogOut, Menu, X, CreditCard } from 'lucide-react';
 import { adminApi } from '../../lib/adminApi';
+import { useAuth } from '../../lib/auth';
 
 const navItems = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { to: '/admin/leads', label: 'Leads', icon: Users, exact: false },
   { to: '/admin/messages', label: 'Messages', icon: MessageSquare, exact: false },
+  { to: '/admin/payments', label: 'Payments', icon: CreditCard, exact: false },
 ];
+
+/**
+ * The demo banner and its switch.
+ *
+ * It is here, in the shell, so it is on every admin screen without any screen having to
+ * remember it. A demo mode you cannot see from the screen you are looking at is a demo
+ * mode that ships - and the consequence of shipping in it is that every customer
+ * notification is silently swallowed.
+ *
+ * The switch says WHEN each surface changes, because the four surfaces do not change at
+ * the same moment. Mail, the booking journey and this admin read the setting on every
+ * request. The public pages are statically built, so their banner and their `noindex` are
+ * part of the published bytes and change on the next publish. A control that appears to do
+ * nothing to the public site is how somebody concludes it is broken and turns it off.
+ */
+function DemoBanner() {
+  const { demoMode, demoAddress, refresh } = useAuth();
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+
+  const toggle = async () => {
+    setBusy(true);
+    setNote(null);
+    try {
+      const r = await adminApi.setDemo(!demoMode);
+      setNote(
+        `Demo mode is ${r.demo_mode ? 'ON' : 'OFF'}. ` +
+        `${r.effective_now.join(', ')} changed now; ` +
+        `${r.effective_on_publish.join(', ')} change on the next publish.`,
+      );
+      await refresh();
+    } catch (e) {
+      setNote(e instanceof Error ? e.message : 'That did not work.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!demoMode) {
+    return (
+      <div className="bg-white border-b border-black/10 px-4 py-2 flex items-center justify-between gap-3 text-xs">
+        <span className="text-dark/60">
+          Live. Notifications go to the real recipients.
+        </span>
+        <button
+          onClick={toggle}
+          disabled={busy}
+          className="border border-forest text-forest px-3 py-1.5 font-semibold hover:bg-forest hover:text-white transition-colors disabled:opacity-50"
+        >
+          {busy ? 'Switching…' : 'Turn demo mode on'}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      data-demo-banner
+      role="status"
+      className="bg-[#FFF4D6] border-b-2 border-[#E0B000] text-[#6B4E00] px-4 py-2.5 text-sm"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span>
+          <strong>DEMO MODE.</strong> No message reaches a customer
+          {demoAddress ? <> — everything goes to <strong>{demoAddress}</strong></> : null}.
+          Bookings made now are marked and removable.
+        </span>
+        <button
+          onClick={toggle}
+          disabled={busy}
+          className="border-2 border-[#6B4E00] px-3 py-1.5 text-xs font-semibold hover:bg-[#6B4E00] hover:text-[#FFF4D6] transition-colors disabled:opacity-50"
+        >
+          {busy ? 'Switching…' : 'Turn demo mode off'}
+        </button>
+      </div>
+      {note && <p className="mt-1.5 text-xs opacity-80">{note}</p>}
+    </div>
+  );
+}
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
@@ -99,8 +180,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </aside>
 
       {/* Main content */}
-      <main className="md:ml-56 flex-1 p-4 md:p-6 lg:p-8 pt-16 md:pt-6 lg:pt-8 min-w-0 w-full">
-        {children}
+      <main className="md:ml-56 flex-1 min-w-0 w-full pt-12 md:pt-0">
+        <DemoBanner />
+        <div className="p-4 md:p-6 lg:p-8">
+          {children}
+        </div>
       </main>
     </div>
   );

@@ -1,0 +1,54 @@
+---
+/**
+ * A short form that posts to the existing /api/contact (saved to contact_messages, Josue
+ * emailed through the one send function). Progressive: without JavaScript it degrades to a
+ * mailto link; with it, it submits in place and confirms.
+ */
+import { business } from '../../lib/catalog';
+export interface Props { subject: string; fields?: { name: string; label: string; type?: string; required?: boolean; textarea?: boolean }[]; cta?: string; note?: string }
+const { subject, cta = 'Send', note, fields = [] } = Astro.props;
+const id = `inq-${subject.toLowerCase().replace(/[^a-z]+/g, '-')}`;
+---
+<form id={id} class="rounded-xl border border-line bg-paper p-6 shadow-sm sm:p-8" data-inquiry data-subject={subject} novalidate>
+  <div class="grid gap-5 sm:grid-cols-2">
+    <div><label class="field-label" for={`${id}-name`}>Name</label><input class="field" id={`${id}-name`} name="name" autocomplete="name" required /></div>
+    <div><label class="field-label" for={`${id}-phone`}>Phone</label><input class="field" id={`${id}-phone`} name="phone" type="tel" autocomplete="tel" /></div>
+    <div class="sm:col-span-2"><label class="field-label" for={`${id}-email`}>Email</label><input class="field" id={`${id}-email`} name="email" type="email" autocomplete="email" required /></div>
+    {fields.map((f) => (
+      <div class="sm:col-span-2">
+        <label class="field-label" for={`${id}-${f.name}`}>{f.label}</label>
+        {f.textarea ? <textarea class="field min-h-[110px]" id={`${id}-${f.name}`} name={f.name} required={f.required}></textarea>
+          : <input class="field" id={`${id}-${f.name}`} name={f.name} type={f.type ?? 'text'} required={f.required} />}
+      </div>
+    ))}
+  </div>
+  <p class="mt-4 hidden rounded-md bg-danger-100 px-3 py-2 text-sm text-danger" data-error role="alert"></p>
+  <button type="submit" class="btn-primary mt-6 w-full sm:w-auto">{cta}</button>
+  {note && <p class="mt-3 text-sm text-ink-500">{note}</p>}
+  <noscript><p class="mt-3 text-sm text-ink-700">Or email <a class="link" href={`mailto:${business.email}`}>{business.email}</a>.</p></noscript>
+</form>
+<div class="hidden rounded-xl border border-line bg-paper p-8 text-center" data-inquiry-done={id}>
+  <p class="text-h3 text-forest-900">Thanks — we got it.</p>
+  <p class="mt-2 text-base text-ink-700">We'll be in touch within a day. Need us sooner? Call <a class="link" href={business.phoneHref}>{business.phone}</a>.</p>
+</div>
+
+<script>
+  for (const form of document.querySelectorAll<HTMLFormElement>('form[data-inquiry]')) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const err = form.querySelector<HTMLElement>('[data-error]')!;
+      err.classList.add('hidden');
+      if (!form.reportValidity()) return;
+      const data = Object.fromEntries(new FormData(form).entries()) as Record<string, string>;
+      const extra = Object.entries(data).filter(([k]) => !['name', 'email', 'phone'].includes(k)).map(([k, v]) => `${k}: ${v}`).join('\n');
+      const btn = form.querySelector('button[type=submit]') as HTMLButtonElement;
+      btn.disabled = true;
+      try {
+        const r = await fetch('/api/contact', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: data.name, email: data.email, phone: data.phone, subject: form.dataset.subject, message: extra || form.dataset.subject, source_page: location.pathname }) });
+        if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Please try again.');
+        form.classList.add('hidden');
+        document.querySelector(`[data-inquiry-done="${form.id}"]`)?.classList.remove('hidden');
+      } catch (x) { err.textContent = (x as Error).message; err.classList.remove('hidden'); btn.disabled = false; }
+    });
+  }
+</script>

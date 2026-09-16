@@ -1,29 +1,32 @@
 ---
-import Base from '../layouts/Base.astro';
-import Nav from '../components/Nav';
-import Footer from '../components/Footer';
+import Site from '../layouts/Site.astro';
+import PageHero from '../components/site/PageHero.astro';
+import Stars from '../components/site/Stars.astro';
+import CloseCta from '../components/site/CloseCta.astro';
+import { reviews, reviewSummary } from '../lib/catalog';
 import { SITE_URL } from '../lib/constants';
-import { FEATURED_REVIEWS } from '../lib/reviews';
-import Page from '../pages_react/ReviewsPage';
-// Review objects only. NO aggregateRating and NO reviewRating: reviews.ts carries the
-// quote and the author, not a star value, and inventing one would be a fabricated claim
-// about real customers.
 const jsonLd = {
-  '@context': 'https://schema.org', '@type': 'ItemList',
-  name: 'Customer reviews of Scoop Dogg',
-  itemListElement: FEATURED_REVIEWS.map((r, i) => ({
-    '@type': 'ListItem', position: i + 1,
-    item: {
-      '@type': 'Review',
-      author: { '@type': 'Person', name: r.name },
-      reviewBody: r.quote,
-      itemReviewed: { '@type': 'LocalBusiness', '@id': `${SITE_URL}/#business`, name: 'Scoop Dogg' },
-    },
-  })),
+  '@context': 'https://schema.org', '@type': 'LocalBusiness', '@id': `${SITE_URL}/#business`, name: 'Scoop Dogg',
+  review: reviews.slice(0, 10).map((r) => ({ '@type': 'Review', author: { '@type': 'Person', name: r.author_name }, reviewBody: r.quote })),
 };
 ---
-<Base jsonLd={jsonLd} title={'Reviews | What Ventura County Customers Say About Scoop Dogg'} description={'Real Google reviews from customers across Ventura County. Reliable, thorough, and easy to work with.'} canonicalPath="/reviews">
-  <Nav client:load />
-  <main><Page  /></main>
-  <Footer />
-</Base>
+<Site title="Reviews | Scoop Dogg Pooper Scooper Reviews" description={`Read ${reviewSummary.count} Google reviews from Scoop Dogg customers.`} canonicalPath="/reviews" jsonLd={jsonLd}>
+  <PageHero eyebrow="Reviews" title="Dog owners say it best" lede={`Real Google reviews from real Scoop Dogg customers.`}>
+    <div class="mt-6 flex flex-wrap items-center gap-4">
+      {reviewSummary.rating && <span class="inline-flex items-center gap-2"><Stars rating={reviewSummary.rating} size={22} /><span class="text-lg font-semibold text-forest-900">{reviewSummary.rating.toFixed(1)}</span></span>}
+      <a href={reviewSummary.profileUrl} rel="noopener" class="link text-base">See us on Google</a>
+    </div>
+  </PageHero>
+  <section class="bg-paper py-section">
+    <div class="container-site columns-1 gap-5 md:columns-2 lg:columns-3">
+      {reviews.map((r) => (
+        <figure class="mb-5 break-inside-avoid rounded-lg border border-line bg-paper p-6 shadow-xs">
+          <Stars rating={5} size={15} />
+          <blockquote class="mt-3 text-base text-ink-700">“{r.quote}”</blockquote>
+          <figcaption class="mt-4 text-sm"><span class="font-semibold text-forest-900">{r.author_name}</span><span class="text-ink-500">{r.author_badge ? ` · ${r.author_badge}` : ''}{r.reviewed_on ? ` · ${r.reviewed_on}` : ''}</span></figcaption>
+        </figure>
+      ))}
+    </div>
+  </section>
+  <CloseCta source="reviews-close" title="Join them." />
+</Site>

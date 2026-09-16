@@ -14,6 +14,7 @@
  */
 import { createHmac, randomInt, randomBytes, timingSafeEqual } from 'node:crypto';
 import { db } from './db.js';
+import { sendEmail } from './notify.js';
 import type { ApiRequest, ApiResponse } from './http.js';
 
 const COOKIE = 'sd_admin';
@@ -81,28 +82,22 @@ export async function startLogin(emailRaw: string): Promise<{ sent: boolean; nam
      values ($1, $2, 'admin_login', now() + ($3 || ' minutes')::interval)`,
     [hmac(email), hmac(`${email}:${code}`), String(CODE_TTL_MINUTES)]);
 
-  const key = process.env.RESEND_API_KEY;
-  if (!key) throw new Error('RESEND_API_KEY is not configured.');
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${key}`,
-      'Content-Type': 'application/json',
-      // Resend is behind Cloudflare, which 403s a bare user agent with "error code: 1010".
-      'User-Agent': 'ScoopDogg-Site/1.0 (+https://scoopdogg.net)',
-    },
-    body: JSON.stringify({
-      from: `Scoop Dogg <${process.env.ADMIN_FROM || 'leads@mail.amtechleads.com'}>`,
-      to: [email],
-      subject: `Your Scoop Dogg admin code: ${code}`,
-      html: `<div style="font-family:system-ui,sans-serif">
-        <p style="font-size:15px;color:#444">Your sign-in code for the Scoop Dogg admin:</p>
-        <p style="font-size:34px;font-weight:700;letter-spacing:6px;color:#1B4332">${code}</p>
-        <p style="font-size:13px;color:#888">It expires in ${CODE_TTL_MINUTES} minutes and works once.
-        If you did not ask for it, you can ignore this email.</p></div>`,
-    }),
+  // Through the one send function, so the sign-in code honours demo mode like every other
+  // message. In demo mode the code for any address arrives at demo.address, which is what
+  // lets the acceptance walk sign in AS the owner without sending him anything.
+  const sent = await sendEmail({
+    purpose: 'admin_login',
+    recipients: { explicit: [email] },
+    subject: `Your Scoop Dogg admin code: ${code}`,
+    html: `<div style="font-family:system-ui,sans-serif">
+      <p style="font-size:15px;color:#444">Your sign-in code for the Scoop Dogg admin:</p>
+      <p style="font-size:34px;font-weight:700;letter-spacing:6px;color:#1B4332">${code}</p>
+      <p style="font-size:13px;color:#888">It expires in ${CODE_TTL_MINUTES} minutes and works once.
+      If you did not ask for it, you can ignore this email.</p></div>`,
   });
-  if (!res.ok) throw new Error(`resend_failed_${res.status}`);
+  // A code nobody can receive must not read as "wrong email" on the login screen -
+  // api/admin.ts turns this into a 503.
+  if (sent.state === 'failed') throw new Error(`resend_failed_${sent.error ?? 'unknown'}`);
   return { sent: true, name: rows[0].name };
 }
 

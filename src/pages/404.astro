@@ -1,0 +1,13 @@
+---
+import Site from '../layouts/Site.astro';
+---
+<Site title="Page not found | Scoop Dogg" description="That page is not here." canonicalPath="/404" noindex mobileCta={false}>
+  <section class="bg-cream py-section">
+    <div class="container-site flex flex-col items-center text-center">
+      <img src="/brand/mark-192.png" alt="" width="120" height="120" class="h-28 w-28 rounded-full shadow-md" />
+      <h1 class="mt-8 text-h1 text-forest-900">This page wandered off.</h1>
+      <p class="mt-4 max-w-md text-lg text-ink-700">Our dog sniffed everywhere and could not find it. Try one of these instead.</p>
+      <div class="mt-8 flex flex-wrap justify-center gap-3"><a href="/" class="btn-ghost">Home</a><a href="/pricing" class="btn-ghost">Pricing</a><a href="/book" class="btn-primary">See my price</a></div>
+    </div>
+  </section>
+</Site>

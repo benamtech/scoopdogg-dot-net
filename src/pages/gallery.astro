@@ -1,7 +1,5 @@
 ---
-import Base from '../layouts/Base.astro';
-import Nav from '../components/Nav';
-import Footer from '../components/Footer';
+import Site from '../layouts/Site.astro';
 import { SITE_URL } from '../lib/constants';
 import Page from '../pages_react/GalleryPage';
 const jsonLd = {
@@ -10,8 +8,6 @@ const jsonLd = {
   about: { '@type': 'LocalBusiness', '@id': `${SITE_URL}/#business`, name: 'Scoop Dogg' },
 };
 ---
-<Base jsonLd={jsonLd} title={'Gallery | Scoop Dogg Before and After'} description={'Yards, turf and dog runs across Ventura County, before and after a Scoop Dogg visit.'} canonicalPath="/gallery">
-  <Nav client:load />
-  <main><Page  /></main>
-  <Footer />
-</Base>
+<Site jsonLd={jsonLd} title={'Gallery | Scoop Dogg Before and After'} description={'Yards, turf and dog runs across Ventura County, before and after a Scoop Dogg visit.'} canonicalPath="/gallery">
+  <Page />
+</Site>

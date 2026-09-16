@@ -1,0 +1,30 @@
+---
+import Site from '../layouts/Site.astro';
+import PageHero from '../components/site/PageHero.astro';
+import InquiryForm from '../components/site/InquiryForm.astro';
+import { regionSentence } from '../lib/catalog';
+const points = [
+  { t: 'HOAs and common areas', d: 'Greenbelts, walking paths and dog areas kept clean on a set weekly schedule.' },
+  { t: 'Apartments and rentals', d: 'Dog runs, courtyards and pet relief areas serviced before residents notice.' },
+  { t: 'Property managers', d: 'One point of contact and one monthly invoice across your properties.' },
+  { t: 'Pet businesses', d: 'Daycares, boarding and training yards with heavier, more frequent use.' },
+];
+---
+<Site title="Commercial Pet Waste Removal | HOAs & Apartments | Scoop Dogg" description={`Pet waste removal for HOAs, apartment communities and property managers across ${regionSentence()}.`} canonicalPath="/commercial">
+  <PageHero eyebrow="Commercial" title="Pet waste handled for your whole community" lede="HOAs, apartment communities and property managers: a set weekly schedule, one invoice, and grounds residents actually notice." />
+  <section class="bg-paper py-section">
+    <div class="container-site grid gap-14 lg:grid-cols-12">
+      <div class="lg:col-span-6">
+        <h2 class="text-h2 text-forest-900">Built for properties</h2>
+        <div class="mt-8 grid gap-6 sm:grid-cols-2">
+          {points.map((p) => <div><h3 class="text-xl font-semibold text-forest-900">{p.t}</h3><p class="mt-2 text-base text-ink-700">{p.d}</p></div>)}
+        </div>
+      </div>
+      <div class="lg:col-span-6">
+        <h2 class="text-h3 text-forest-900">Get a property quote</h2>
+        <p class="mt-2 mb-6 text-base text-ink-500">Tell us about the property. We reply within one business day.</p>
+        <InquiryForm subject="Commercial quote" cta="Request a quote" fields={[{ name: 'property', label: 'Property name and address', required: true }, { name: 'details', label: 'Number of units or areas, and how often you need service', textarea: true }]} />
+      </div>
+    </div>
+  </section>
+</Site>

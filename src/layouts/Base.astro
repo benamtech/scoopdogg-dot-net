@@ -7,9 +7,19 @@
  * 71 URLs served index.html's homepage <title> and no <h1>. Passing meta as props to a
  * layout is what makes "every page has its own title" true by construction instead of
  * true only when JavaScript happens to execute.
+ *
+ * 2026-09-16: fonts are self-hosted (src/index.css), so there is no request to Google
+ * before first paint; icons and the manifest come from public/brand.
  */
 import '../index.css';
 import { SITE_URL, DEFAULT_OG_IMAGE, SITE_NAME } from '../lib/constants';
+// `demo.mode` from the database, baked in at build time by scripts/pull-demo-state.mjs.
+// The site is static, so a banner added after the page loaded would be invisible to a
+// crawler and to any gate that reads the built HTML.
+import { DEMO_MODE, DEMO_BANNER_TEXT } from '../lib/demo';
+// Preload the two faces every page paints with, so the headline does not wait on font discovery.
+import outfitUrl from '@fontsource-variable/outfit/files/outfit-latin-wght-normal.woff2?url';
+import serifUrl from '@fontsource/dm-serif-display/files/dm-serif-display-latin-400-normal.woff2?url';
 
 export interface Props {
   title: string;
@@ -18,9 +28,13 @@ export interface Props {
   ogImage?: string;
   jsonLd?: object | object[];
   noindex?: boolean;
+  bodyClass?: string;
 }
 
-const { title, description, canonicalPath, ogImage, jsonLd, noindex = false } = Astro.props;
+const { title, description, canonicalPath, ogImage, jsonLd, noindex = false, bodyClass = '' } = Astro.props;
+// A demo build is never indexable, whatever the page asked for. A demo booking page in
+// Google's index outlives the demo.
+const isNoindex = noindex || DEMO_MODE;
 const canonical = `${SITE_URL}${canonicalPath}`;
 const image = ogImage || DEFAULT_OG_IMAGE;
 const schema = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : null;
@@ -29,20 +43,19 @@ const schema = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : null;
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" type="image/png" href="/horizontallogo.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#143728" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/brand/mark-32.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/brand/mark-192.png" />
+    <link rel="apple-touch-icon" href="/brand/mark-180.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="preload" href={outfitUrl} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={serifUrl} as="font" type="font/woff2" crossorigin />
 
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
-    <meta name="robots" content={noindex ? 'noindex, nofollow' : 'index, follow'} />
-
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Outfit:wght@300;400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
+    <meta name="robots" content={isNoindex ? 'noindex, nofollow' : 'index, follow'} />
 
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content={SITE_NAME} />
@@ -55,19 +68,45 @@ const schema = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : null;
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={image} />
 
+    <slot name="head" />
+
     {schema && (
       <script type="application/ld+json" set:html={JSON.stringify(schema.length === 1 ? schema[0] : schema)} />
     )}
 
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-SNLVJNSP05"></script>
+    <!-- GA4, loaded after the first interaction or when the browser is idle. The tag cost ~500ms
+         of main-thread time on every page load (Lighthouse, 2026-09-16); events queue in
+         dataLayer until it arrives, so nothing is lost - including booking_step and purchase. -->
     <script is:inline>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
       gtag('config', 'G-SNLVJNSP05');
+      (function () {
+        var loaded = false;
+        function load() {
+          if (loaded) return; loaded = true;
+          var s = document.createElement('script');
+          s.async = true; s.src = 'https://www.googletagmanager.com/gtag/js?id=G-SNLVJNSP05';
+          document.head.appendChild(s);
+        }
+        ['pointerdown', 'keydown', 'scroll', 'touchstart'].forEach(function (e) { addEventListener(e, load, { once: true, passive: true }); });
+        addEventListener('load', function () {
+          if (window.requestIdleCallback) requestIdleCallback(load, { timeout: 3500 }); else setTimeout(load, 3500);
+        });
+      })();
     </script>
   </head>
-  <body class="bg-cream text-dark font-sans antialiased">
+  <body class={`bg-cream text-ink-900 font-sans antialiased ${bodyClass}`}>
+    {DEMO_MODE && (
+      <div
+        data-demo-banner
+        role="status"
+        class="border-b-2 border-amber-600 bg-amber-100 px-4 py-2.5 text-center text-sm font-medium text-amber-700"
+      >
+        {DEMO_BANNER_TEXT}
+      </div>
+    )}
     <slot />
   </body>
 </html>

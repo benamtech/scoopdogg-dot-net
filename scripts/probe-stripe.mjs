@@ -1,19 +1,30 @@
 /**
- * Probe what the Stripe key can actually do, and write the answer into
- * stripe_connection. A credential in a file is a claim; a live call is a fact.
+ * Probe what a Stripe key can actually do. A credential in a file is a claim; a live call
+ * is a fact.
  *
- *   node --env-file=.env.local scripts/probe-stripe.mjs
+ *   node --env-file=.env.local scripts/probe-stripe.mjs --mode test          # read-only
+ *   node --env-file=.env.local scripts/probe-stripe.mjs --mode live --write  # and record it
  *
- * Never prints the key. Prints one line per capability and updates the database so the
- * admin and every money verb read a measured state rather than an assumption.
+ * THE MODE PICKS THE KEY, and there is no fallback between modes. The earlier version fell
+ * back to AMTECH_STRIPE, a restricted rk_live_ key with no Connect scope, and went on
+ * reporting a Connect blocker for days after full keys existed. Keys come from the brain's
+ * sealed .env (the source bin/push-env.py pushes from) or STRIPE_SECRET_KEY_<MODE> in the
+ * environment. Never printed.
+ *
+ * Nothing is created: every POST is sent without its required parameters, so Stripe answers
+ * 400 parameter_missing, which proves the call is ALLOWED without making an object.
  */
 import pg from 'pg';
 import { readFileSync } from 'node:fs';
 
-// Vercel stores these as sensitive, so `vercel env pull` writes the literal string
-// "[SENSITIVE]" rather than the value. That is correct - the value is readable at
-// runtime and not on a laptop. For a local run, fall back to the brain's own .env,
-// which is the sealed source bin/push-env.py pushes from. The value is never printed.
+const args = process.argv.slice(2);
+const mode = args[args.indexOf('--mode') + 1];
+const write = args.includes('--write');
+if (!['test', 'live'].includes(mode)) {
+  console.error('usage: probe-stripe.mjs --mode test|live [--write]');
+  process.exit(2);
+}
+
 function fromBrainEnv(name) {
   const p = new URL('../../../.env', import.meta.url).pathname;
   try {
@@ -24,16 +35,21 @@ function fromBrainEnv(name) {
   } catch { /* not present */ }
   return null;
 }
-let key = process.env.STRIPE_SECRET_KEY;
-if (!key || key.includes('SENSITIVE')) key = fromBrainEnv('AMTECH_STRIPE');
-if (!key) { console.error('No Stripe key available (STRIPE_SECRET_KEY or AMTECH_STRIPE in brain/.env)'); process.exit(1); }
+const envName = `STRIPE_SECRET_KEY_${mode.toUpperCase()}`;
+let key = process.env[envName];
+if (!key || key.includes('SENSITIVE')) key = fromBrainEnv(mode === 'test' ? 'AMTECH_STRIPE_TEST_KEY' : 'AMTECH_STRIPE_LIVE_KEY');
+if (!key) { console.error(`No ${mode} key (${envName} or the brain .env)`); process.exit(1); }
+if (!key.startsWith(`sk_${mode}_`) && !key.startsWith(`rk_${mode}_`)) {
+  console.error(`The ${mode} key is not a ${mode}-mode key. Refusing to probe with a mismatched credential.`);
+  process.exit(1);
+}
 const UA = 'ScoopDogg-Site/1.0 (+https://scoopdogg.net)';
 
 async function call(method, path, body) {
   const res = await fetch(`https://api.stripe.com/v1/${path}`, {
     method,
     headers: { Authorization: `Bearer ${key}`, 'User-Agent': UA,
-               ...(body ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {}) },
+               ...(body !== undefined ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {}) },
     body,
   });
   const json = await res.json().catch(() => ({}));
@@ -41,46 +57,46 @@ async function call(method, path, body) {
 }
 
 const checks = {
-  'read balance':                 () => call('GET', 'balance'),
-  'read platform account':        () => call('GET', 'account'),
-  'list connected accounts':      () => call('GET', 'accounts?limit=1'),
-  'create onboarding link':       () => call('POST', 'account_links'),
-  'read payment intents':         () => call('GET', 'payment_intents?limit=1'),
-  'create payment intent':        () => call('POST', 'payment_intents'),
+  'read platform account':   () => call('GET', 'account'),
+  'list connected accounts': () => call('GET', 'accounts?limit=1'),
+  'create onboarding link':  () => call('POST', 'account_links', ''),
+  'create product':          () => call('POST', 'products', ''),
+  'create subscription':     () => call('POST', 'subscriptions', ''),
+  'create setup intent':     () => call('GET', 'setup_intents?limit=1'),
+  'list webhook endpoints':  () => call('GET', 'webhook_endpoints?limit=1'),
 };
 const results = {};
+let platform = null;
 for (const [label, fn] of Object.entries(checks)) {
   const r = await fn();
-  // 400 parameter_missing means the call was ALLOWED and merely incomplete.
-  const allowed = r.status === 200 || r.code === 'parameter_missing';
+  const allowed = r.status === 200 || r.code === 'parameter_missing' || r.code === 'parameter_unknown';
   results[label] = allowed;
+  if (label === 'read platform account' && r.status === 200) platform = r.json;
   console.log(`  ${allowed ? 'yes' : 'NO '}  ${label.padEnd(26)} ${r.status} ${r.code ?? ''}`);
 }
-
+const accounts = await call('GET', 'accounts?limit=100');
+const connected = accounts.status === 200 ? accounts.json.data.length : null;
 const connectReady = results['read platform account'] && results['list connected accounts'] && results['create onboarding link'];
-console.log(`\n  Stripe Connect usable: ${connectReady ? 'YES' : 'NO'}`);
-if (!connectReady) {
-  console.log('  The key authenticates but lacks Connect scope. In the Stripe dashboard,');
-  console.log('  edit this restricted key and grant WRITE on Connect > Accounts, plus read');
-  console.log('  on Account. Nothing else in the site is blocked by this.');
-}
+console.log(`\n  mode ${mode}  platform ${platform?.id ?? '?'}  connect usable: ${connectReady ? 'YES' : 'NO'}  connected accounts: ${connected}`);
 
-const c = new pg.Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: true } });
-await c.connect();
-await c.query(
-  `update stripe_connection set
-     charges_enabled = $1, details_submitted = false,
-     requirements_due = $2::jsonb, disabled_reason = $3,
-     last_probed_at = now(), probe_error = $4, livemode = $5, updated_at = now()
-   where id = true`,
-  // charges_enabled must mean "we can charge a customer FOR SCOOP DOGG", which is a
-  // Connect direct charge on his connected account. Being able to create a payment
-  // intent on AMTECH's own platform account is not that. Setting this true because the
-  // platform can take a payment is how a money verb ends up charging the wrong account.
-  [connectReady && Boolean(results['create payment intent']),
-   JSON.stringify(Object.entries(results).filter(([, v]) => !v).map(([k]) => k)),
-   connectReady ? null : 'stripe_key_missing_connect_scope',
-   connectReady ? null : 'Restricted key authenticates but has no Connect permissions',
-   key.includes('_live_')]);
-console.log('\n  stripe_connection updated from the probe');
-await c.end();
+if (write) {
+  const c = new pg.Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: true } });
+  await c.connect();
+  const { rows } = await c.query(
+    `select 1 from information_schema.columns where table_name='stripe_connection' and column_name='id'`,
+  );
+  if (rows.length) {
+    console.error('  stripe_connection is still the one-row table; apply the per-mode migration before --write.');
+    await c.end();
+    process.exit(1);
+  }
+  await c.query(
+    `insert into stripe_connection (livemode, last_probed_at, probe_error, updated_at)
+       values ($1, now(), $2, now())
+     on conflict (livemode) do update set last_probed_at = now(), probe_error = excluded.probe_error, updated_at = now()`,
+    [mode === 'live', connectReady ? null : 'platform key lacks Connect scope'],
+  );
+  console.log(`  stripe_connection[livemode=${mode === 'live'}] updated`);
+  await c.end();
+}
+process.exit(connectReady ? 0 : 1);

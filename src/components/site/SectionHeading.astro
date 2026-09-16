@@ -1,0 +1,20 @@
+---
+export interface Props {
+  eyebrow?: string;
+  title: string;
+  lede?: string;
+  align?: 'left' | 'center';
+  dark?: boolean;
+  id?: string;
+  level?: 'h1' | 'h2';
+}
+const { eyebrow, title, lede, align = 'left', dark = false, id, level = 'h2' } = Astro.props;
+const H = level;
+const center = align === 'center' ? 'mx-auto text-center' : '';
+---
+<div class={`max-w-narrow ${center}`}>
+  {eyebrow && <p class={dark ? 'eyebrow-on-dark mb-3' : 'eyebrow mb-3'}>{eyebrow}</p>}
+  <H id={id} class={`${level === 'h1' ? 'text-h1' : 'text-h2'} ${dark ? 'text-white' : 'text-forest-900'}`}>{title}</H>
+  {lede && <p class={`mt-4 text-lg ${dark ? 'text-forest-200' : 'text-ink-500'} ${align === 'center' ? 'mx-auto' : ''} max-w-prose`}>{lede}</p>}
+  <slot />
+</div>

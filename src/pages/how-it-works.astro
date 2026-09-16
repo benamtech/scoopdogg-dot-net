@@ -1,0 +1,48 @@
+---
+import Site from '../layouts/Site.astro';
+import PageHero from '../components/site/PageHero.astro';
+import PortalPreview from '../components/site/PortalPreview.astro';
+import Faq from '../components/site/Faq.astro';
+import CloseCta from '../components/site/CloseCta.astro';
+import { trust, setting } from '../lib/catalog';
+const startDays = setting<number>('schedule.new_customer_start_days', 3);
+const steps = [
+  { t: 'Enter your address', d: 'Tell us where your yard is. We check it is on one of our routes and show you the days we are in your city.' },
+  { t: 'See your price', d: 'Pick how many dogs you have. Your monthly price — and your half-off first month — are on the screen before we ask for your details.' },
+  { t: 'Pick your day and pay', d: `Choose a start day as soon as ${startDays} days from now. Pay your first month securely with card, Apple Pay or Google Pay.` },
+  { t: 'We show up every week', d: 'Same day every week. We walk the whole yard, scoop every pile, bag it, haul it away and close the gate behind us. You don’t need to be home.' },
+  { t: 'Run it from your account', d: 'See your next visit, skip a week, pause for vacation, update your card or cancel — all without a phone call.' },
+];
+const faqs = [
+  { q: 'Do I need to be home?', a: 'No. As long as we can get into the yard, we take care of everything and close the gate behind us.' },
+  { q: 'What if you miss a spot?', a: trust.guarantee ?? 'Tell us and we will make it right.' },
+  { q: 'What about rain?', a: 'We scoop in light rain. If weather makes a visit unsafe, we reschedule and let you know.' },
+  { q: 'How do I cancel?', a: 'From your account, in two taps. No calls, no forms, no questions.' },
+];
+---
+<Site title="How It Works | Book Weekly Dog Poop Cleanup Online | Scoop Dogg" description="See your price, pick your day and pay online in about a minute. Then we show up every week, and you manage everything from your account." canonicalPath="/how-it-works">
+  <PageHero eyebrow="How it works" title="Booked in a minute. Handled every week." lede="No phone tag, no quotes to wait for. Here's what happens from your first click to a clean yard." form source="how-hero" />
+  <section class="bg-paper py-section">
+    <div class="container-site grid gap-16 lg:grid-cols-12">
+      <ol class="space-y-10 lg:col-span-7">
+        {steps.map((s, i) => (
+          <li class="flex gap-6">
+            <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-forest-700 font-serif text-xl text-white">{i + 1}</span>
+            <div><h2 class="text-h3 text-forest-900">{s.t}</h2><p class="mt-2 text-lg text-ink-700">{s.d}</p></div>
+          </li>
+        ))}
+      </ol>
+      <div class="flex flex-col items-center gap-6 lg:col-span-5 lg:sticky lg:top-28 lg:self-start">
+        <PortalPreview variant="next-visit" />
+        <PortalPreview variant="plan" />
+      </div>
+    </div>
+  </section>
+  <section class="bg-cream py-section">
+    <div class="container-site">
+      <h2 class="text-center text-h2 text-forest-900">Good to know</h2>
+      <div class="mx-auto mt-10 max-w-narrow"><Faq items={faqs} /></div>
+    </div>
+  </section>
+  <CloseCta source="how-close" />
+</Site>

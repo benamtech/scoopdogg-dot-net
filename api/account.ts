@@ -1,0 +1,53 @@
+/**
+ * /api/account/* — the customer portal. Everything except login/* needs a customer session.
+ */
+import { sendJson, readJsonBody, safeError, type ApiRequest, type ApiResponse } from '../server/lib/http.js';
+import { rateLimit } from '../server/lib/admin-auth.js';
+import { startCustomerLogin, verifyCustomerLogin, getCustomerSession, endCustomerSession } from '../server/lib/customer-auth.js';
+import { AccountError, overview, skipVisit, unskipVisit, pausePlan, resumePlan, cancelPlan, keepPlan, billingPortalUrl } from '../server/lib/account.js';
+
+const routePath = (req: ApiRequest) =>
+  (new URL(req.url || '/', 'https://local.test').searchParams.get('path') || '').replace(/^\/+|\/+$/g, '');
+
+export default async function handler(req: ApiRequest, res: ApiResponse) {
+  const path = routePath(req);
+  try {
+    if (path === 'login/start' && req.method === 'POST') {
+      const body = await readJsonBody(req);
+      const email = String(body.email ?? '').trim();
+      if (!email) return sendJson(res, 400, { error: 'Enter your email address.' });
+      try { await rateLimit(`account_login:${email.toLowerCase()}`, 5, 15 * 60); } catch { return sendJson(res, 429, { error: 'Too many attempts. Try again in a few minutes.' }); }
+      try { await startCustomerLogin(email); } catch (e) { safeError('account:login/start', e); return sendJson(res, 503, { error: 'We could not send the code just now. Try again shortly.' }); }
+      return sendJson(res, 200, { ok: true });
+    }
+    if (path === 'login/verify' && req.method === 'POST') {
+      const body = await readJsonBody(req);
+      try { await rateLimit(`account_verify:${String(body.email ?? '').toLowerCase()}`, 10, 15 * 60); } catch { return sendJson(res, 429, { error: 'Too many attempts.' }); }
+      const s = await verifyCustomerLogin(res, String(body.email ?? ''), String(body.code ?? ''));
+      if (!s) return sendJson(res, 401, { error: 'That code is not right, or it has expired.' });
+      return sendJson(res, 200, { ok: true });
+    }
+    const session = await getCustomerSession(req);
+    if (!session) return sendJson(res, 401, { error: 'Not signed in.' });
+    if (path === 'logout') { await endCustomerSession(req, res); return sendJson(res, 200, { ok: true }); }
+    if (path === 'overview') return sendJson(res, 200, await overview(session.customerId));
+    if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed.' });
+    const body = await readJsonBody(req);
+    const sub = String(body.subscription_id ?? '');
+    if (path === 'visit/skip') return sendJson(res, 200, await skipVisit(session.customerId, String(body.visit_id ?? '')));
+    if (path === 'visit/unskip') return sendJson(res, 200, await unskipVisit(session.customerId, String(body.visit_id ?? '')));
+    if (path === 'plan/pause') return sendJson(res, 200, await pausePlan(session.customerId, sub, Number(body.weeks ?? 2)));
+    if (path === 'plan/resume') return sendJson(res, 200, await resumePlan(session.customerId, sub));
+    if (path === 'plan/cancel') return sendJson(res, 200, await cancelPlan(session.customerId, sub, String(body.reason ?? '')));
+    if (path === 'plan/keep') return sendJson(res, 200, await keepPlan(session.customerId, sub));
+    if (path === 'billing') {
+      const host = (req.headers['x-forwarded-host'] as string) || req.headers.host || 'scoopdogg.net';
+      return sendJson(res, 200, { url: await billingPortalUrl(session.customerId, `https://${host}/account`) });
+    }
+    return sendJson(res, 404, { error: 'Not found.' });
+  } catch (e) {
+    if (e instanceof AccountError) return sendJson(res, e.status, { error: e.userMessage });
+    safeError(`account:${path}`, e);
+    return sendJson(res, 503, { error: 'Something went wrong on our side. Please try again.' });
+  }
+}

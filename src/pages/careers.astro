@@ -1,0 +1,28 @@
+---
+import Site from '../layouts/Site.astro';
+import PageHero from '../components/site/PageHero.astro';
+import InquiryForm from '../components/site/InquiryForm.astro';
+import { regionSentence } from '../lib/catalog';
+---
+<Site title="Careers | Join the Scoop Dogg Team" description={`Work outdoors on a set weekly route across ${regionSentence()}. Scoop Dogg is growing.`} canonicalPath="/careers">
+  <PageHero eyebrow="Careers" title="We're growing. Join the crew." lede="Work outdoors, on a steady weekly route, with customers who are genuinely happy to see you." />
+  <section class="bg-paper py-section">
+    <div class="container-site grid gap-14 lg:grid-cols-12">
+      <div class="lg:col-span-6 space-y-6 text-lg text-ink-700">
+        <h2 class="text-h2 text-forest-900">What the job is</h2>
+        <p>You'll run a route of yards on set days — scooping, bagging and hauling away, turf care, and leaving every gate the way you found it.</p>
+        <ul class="space-y-3 text-base">
+          <li>✓ Outdoors, active, independent days</li>
+          <li>✓ A predictable weekly route</li>
+          <li>✓ Dog lovers wanted — you'll meet a lot of them</li>
+          <li>✓ A valid driver's license and a smartphone</li>
+        </ul>
+      </div>
+      <div class="lg:col-span-6">
+        <h2 class="text-h3 text-forest-900">Apply in two minutes</h2>
+        <p class="mt-2 mb-6 text-base text-ink-500">Tell us a little about yourself and we'll reach out.</p>
+        <InquiryForm subject="Job application" cta="Send application" fields={[{ name: 'city', label: 'Which city do you live in?', required: true }, { name: 'about', label: 'Tell us about yourself and your availability', textarea: true, required: true }]} />
+      </div>
+    </div>
+  </section>
+</Site>

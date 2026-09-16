@@ -1,0 +1,44 @@
+---
+/**
+ * What a customer's account looks like, drawn as real UI rather than a stock photo - the
+ * system is the proof of scale (P13 §1). It shows only things the portal actually does:
+ * the next visit, the plan, skip and pause. Illustrative values, labelled as an example.
+ */
+import { packages, formatCents } from '../../lib/catalog';
+export interface Props { variant?: 'next-visit' | 'plan' }
+const { variant = 'next-visit' } = Astro.props;
+// Every number on a page comes from the rows, including the ones in an illustration (S19).
+const pkg = packages.find((p) => p.featured) ?? packages[0];
+const planName = pkg ? pkg.name.replace(' · ', ' · ') : 'Weekly scooping';
+---
+{variant === 'next-visit' ? (
+  <div class="w-full max-w-sm rounded-xl border border-line bg-paper p-5 shadow-lg" aria-label="Example of the customer account: next visit">
+    <div class="flex items-center justify-between">
+      <p class="text-micro font-semibold uppercase text-ink-400">Your account · example</p>
+      <span class="inline-flex items-center gap-1.5 rounded-sm bg-success-100 px-2 py-1 text-micro font-semibold uppercase text-success">
+        <span class="h-1.5 w-1.5 rounded-full bg-success"></span>Active
+      </span>
+    </div>
+    <p class="mt-4 text-sm text-ink-500">Next visit</p>
+    <p class="font-serif text-h3 text-forest-900">Tuesday, 9am–1pm</p>
+    <p class="mt-1 text-sm text-ink-500">{planName} · same day every week</p>
+    <div class="mt-5 grid grid-cols-3 gap-2 text-center text-sm font-medium">
+      <span class="rounded-md border border-line py-2 text-forest-800">Skip</span>
+      <span class="rounded-md border border-line py-2 text-forest-800">Pause</span>
+      <span class="rounded-md border border-line py-2 text-forest-800">Manage</span>
+    </div>
+  </div>
+) : (
+  <div class="w-full max-w-sm rounded-xl border border-line bg-paper p-5 shadow-lg" aria-label="Example of the customer account: plan and billing">
+    <p class="text-micro font-semibold uppercase text-ink-400">Plan · example</p>
+    <div class="mt-3 flex items-baseline justify-between">
+      <p class="text-base font-semibold text-forest-900">{planName}</p>
+      {pkg && <p class="text-base text-ink-700" data-price-cents={pkg.monthly_price_cents}>{formatCents(pkg.monthly_price_cents)}/mo</p>}
+    </div>
+    <div class="mt-4 space-y-2 border-t border-line pt-4 text-sm">
+      <p class="flex justify-between text-ink-500"><span>Card</span><span class="text-ink-700">Visa ···· 4242</span></p>
+      <p class="flex justify-between text-ink-500"><span>Next payment</span><span class="text-ink-700">Oct 16</span></p>
+      <p class="flex justify-between text-ink-500"><span>Cancel</span><span class="text-ink-700">anytime, two taps</span></p>
+    </div>
+  </div>
+)}

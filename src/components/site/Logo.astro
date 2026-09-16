@@ -1,0 +1,22 @@
+---
+/** The mark and the wordmark. `tone` flips the wordmark for dark surfaces. */
+export interface Props {
+  tone?: 'light' | 'dark';
+  size?: 'sm' | 'md' | 'lg';
+  tagline?: boolean;
+  href?: string | null;
+}
+const { tone = 'light', size = 'md', tagline = false, href = '/' } = Astro.props;
+const mark = { sm: 'h-9 w-9', md: 'h-11 w-11', lg: 'h-16 w-16' }[size];
+const word = { sm: 'text-xl', md: 'text-logo', lg: 'text-logo-lg' }[size];
+const color = tone === 'dark' ? 'text-white' : 'text-forest-800';
+const sub = tone === 'dark' ? 'text-forest-300' : 'text-ink-500';
+const Tag = href ? 'a' : 'span';
+---
+<Tag href={href ?? undefined} class="group inline-flex items-center gap-2.5">
+  <img src="/brand/mark-96.webp" alt="" width="96" height="96" class={`${mark} shrink-0 rounded-full shadow-xs`} decoding="async" />
+  <span class="flex flex-col leading-none">
+    <span class={`font-serif ${word} leading-none tracking-tight ${color}`}>Scoop Dogg</span>
+    {tagline && <span class={`mt-1 text-micro font-semibold uppercase ${sub}`}>Pooper scoopers · turf care</span>}
+  </span>
+</Tag>

@@ -62,6 +62,18 @@
   ],
   "rewrites": [
     {
+      "source": "/account/:path*",
+      "destination": "/account"
+    },
+    {
+      "source": "/api/account/:path*",
+      "destination": "/api/account"
+    },
+    {
+      "source": "/api/booking/:path*",
+      "destination": "/api/booking"
+    },
+    {
       "source": "/api/admin/:path*",
       "destination": "/api/admin"
     },

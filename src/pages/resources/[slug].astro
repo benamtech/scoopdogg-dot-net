@@ -1,7 +1,5 @@
 ---
-import Base from '../../layouts/Base.astro';
-import Nav from '../../components/Nav';
-import Footer from '../../components/Footer';
+import Site from '../../layouts/Site.astro';
 import ArticlePage from '../../pages_react/ArticlePage';
 import { ARTICLES } from '../../lib/articles';
 import { SITE_URL } from '../../lib/constants';
@@ -19,8 +17,6 @@ const jsonLd = {
   mainEntityOfPage: `${SITE_URL}/resources/${a.slug}`,
 };
 ---
-<Base title={a.metaTitle} description={a.metaDescription} canonicalPath={`/resources/${a.slug}`} jsonLd={jsonLd}>
-  <Nav client:load />
-  <main><ArticlePage slug={a.slug} /></main>
-  <Footer />
-</Base>
+<Site title={a.metaTitle} description={a.metaDescription} canonicalPath={`/resources/${a.slug}`} jsonLd={jsonLd}>
+  <ArticlePage slug={a.slug} />
+</Site>

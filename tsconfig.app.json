@@ -13,6 +13,8 @@
     "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
+    // src/lib/demo.ts imports content/demo.json, which the build writes as step one.
+    "resolveJsonModule": true,
 
     /* Linting */
     "strict": true,

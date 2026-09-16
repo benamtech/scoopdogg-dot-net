@@ -1,0 +1,48 @@
+---
+/**
+ * The monthly packages of one service, straight from the rows, priced by the shared
+ * resolver. The monthly price is the headline; the per-visit equivalent sits under it so a
+ * visitor comparing against "$15 a week" elsewhere can see it is the same money (R5 §7).
+ */
+import { packagesForService, offers, formatCents } from '../../lib/catalog';
+import { offersFor } from '../../shared/pricing';
+import { catalog } from '../../lib/catalog';
+
+export interface Props { service: string; compact?: boolean }
+const { service, compact = false } = Astro.props;
+const list = packagesForService(service);
+const offer = offersFor(catalog, service, [service]).sort((a, b) => b.value - a.value)[0];
+const perVisit = (cents: number, visits: number) => formatCents(Math.round(cents / visits / 100) * 100);
+const freq = { weekly: 'every week', biweekly: 'every other week', twice_weekly: 'twice a week', monthly: 'once a month' } as const;
+---
+{list.length > 0 && (
+  <div class={`grid grid-cols-2 gap-3 sm:gap-4 ${list.length >= 4 ? 'lg:grid-cols-4' : list.length === 3 ? 'lg:grid-cols-3' : ''}`}>
+    {list.map((p) => {
+      const first = offer ? p.monthly_price_cents - Math.round((p.monthly_price_cents * offer.value) / 100) : null;
+      return (
+        <a
+          href={`/book?package=${p.slug}`}
+          class={`group relative flex flex-col rounded-lg border bg-paper p-4 transition sm:p-6 duration-base ease-brand hover:-translate-y-0.5 hover:shadow-md ${p.featured ? 'border-forest-500 shadow-md ring-1 ring-forest-500' : 'border-line shadow-sm'}`}
+          data-package={p.slug}
+        >
+          {p.featured && <span class="absolute -top-3 left-4 rounded-sm sm:left-6 bg-forest-700 px-2.5 py-1 text-micro font-semibold uppercase text-white">Most booked</span>}
+          <p class="text-base font-semibold text-forest-800">{p.short_label}</p>
+          <p class="mt-3 flex items-baseline gap-1">
+            <span class="font-serif text-h3 text-forest-900 sm:text-h2" data-price-cents={p.monthly_price_cents}>{formatCents(p.monthly_price_cents)}</span>
+            <span class="text-sm text-ink-500 sm:text-base">/mo</span>
+          </p>
+          <p class="mt-1 text-sm text-ink-500">About {perVisit(p.monthly_price_cents, p.visits_per_month)} a visit<span class="hidden sm:inline">, {freq[p.frequency]}</span></p>
+          {first !== null && !compact && (
+            <p class="mt-3 rounded-md bg-amber-100 px-2.5 py-1.5 text-sm text-amber-700 sm:mt-4 sm:px-3 sm:py-2">
+              <span class="font-semibold">1st month {formatCents(first, { forceDecimals: first % 100 !== 0 })}</span><span class="hidden sm:inline"> — half off</span>
+            </p>
+          )}
+          <span class="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-forest-700 group-hover:text-forest-900 sm:mt-5 sm:text-base">
+            Choose
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" aria-hidden="true" class="transition duration-fast group-hover:translate-x-0.5"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+          </span>
+        </a>
+      );
+    })}
+  </div>
+)}

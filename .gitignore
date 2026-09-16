@@ -36,3 +36,17 @@ output/admin-screens/
 # worth committing; these are the node_modules of it, and the symlinks break on clone.
 .agents/
 .claude/
+
+# AMTECH planning. NEVER commit: this repo is PUBLIC.
+# These are our documents, not the client's deliverable. Backed up by
+# amtech-biz-brain/bin/snapshot.py via INCLUDE_CLIENT_PATHS, not by git.
+client-portal-and-ai-employee-plans/
+
+# gate scratch build (gates/_compile.mjs)
+.gate-build
+
+# migration rehearsal receipts (scripts/rehearse-migration.mjs)
+output/rehearsals/
+
+# local artifacts: lighthouse reports, demo receipts, gate failure screenshots
+output/

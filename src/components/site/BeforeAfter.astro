@@ -1,0 +1,43 @@
+---
+/**
+ * A real before/after pair with a drag handle. Works without JavaScript as two images side
+ * by side; the script upgrades it to a slider. Only photos Ben confirmed are real are used.
+ */
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+
+export interface Props {
+  before: ImageMetadata;
+  after: ImageMetadata;
+  caption: string;
+  alt: string;
+  sizes?: string;
+  eager?: boolean;
+}
+const { before, after, caption, alt, sizes = '(min-width: 1024px) 380px, (min-width: 640px) 45vw, 92vw', eager = false } = Astro.props;
+---
+<figure class="group" data-before-after>
+  <div class="relative aspect-[3/4] overflow-hidden rounded-lg bg-sand shadow-md" style="--pos: 50%">
+    <Image src={after} alt={`After: ${alt}`} widths={[380, 480]} sizes={sizes} class="absolute inset-0 h-full w-full object-cover" loading={eager ? 'eager' : 'lazy'} />
+    <div class="absolute inset-0 [clip-path:inset(0_calc(100%-var(--pos))_0_0)]" data-before-layer>
+      <Image src={before} alt={`Before: ${alt}`} widths={[380, 480]} sizes={sizes} class="h-full w-full object-cover" loading={eager ? 'eager' : 'lazy'} />
+    </div>
+    <span class="absolute left-3 top-3 rounded-sm bg-forest-900/80 px-2 py-1 text-micro font-semibold uppercase text-white">Before</span>
+    <span class="absolute right-3 top-3 rounded-sm bg-amber-500 px-2 py-1 text-micro font-semibold uppercase text-forest-900">After</span>
+    <div class="pointer-events-none absolute inset-y-0 left-[var(--pos)] w-0.5 -translate-x-1/2 bg-paper shadow-md" aria-hidden="true">
+      <span class="absolute left-1/2 top-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-paper text-forest-800 shadow-md">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round"><path d="M9 6l-6 6 6 6M15 6l6 6-6 6" /></svg>
+      </span>
+    </div>
+    <input type="range" min="0" max="100" value="50" aria-label={`Compare before and after: ${alt}`} class="absolute inset-0 h-full w-full cursor-ew-resize opacity-0" data-before-after-range />
+  </div>
+  <figcaption class="mt-3 text-base font-medium text-forest-800">{caption}</figcaption>
+</figure>
+
+<script>
+  for (const el of document.querySelectorAll<HTMLElement>('[data-before-after]')) {
+    const box = el.querySelector<HTMLElement>('[style*="--pos"]');
+    const range = el.querySelector<HTMLInputElement>('[data-before-after-range]');
+    range?.addEventListener('input', () => box?.style.setProperty('--pos', `${range.value}%`));
+  }
+</script>

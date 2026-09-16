@@ -1,7 +1,5 @@
 ---
-import Base from '../layouts/Base.astro';
-import Nav from '../components/Nav';
-import Footer from '../components/Footer';
+import Site from '../layouts/Site.astro';
 import { SITE_URL } from '../lib/constants';
 import Page from '../pages_react/ContactPage';
 const jsonLd = {
@@ -14,8 +12,6 @@ const jsonLd = {
   },
 };
 ---
-<Base jsonLd={jsonLd} title={'Contact Scoop Dogg | Ventura County Dog Poop Cleanup'} description={'Call (805) 869-8070 or send a message. Free quote in 60 seconds, most new customers confirmed within 24 hours.'} canonicalPath="/contact">
-  <Nav client:load />
-  <main><Page  /></main>
-  <Footer />
-</Base>
+<Site jsonLd={jsonLd} title={'Contact Scoop Dogg | Ventura County Dog Poop Cleanup'} description={'Call (805) 869-8070 or send a message. Free quote in 60 seconds, most new customers confirmed within 24 hours.'} canonicalPath="/contact">
+  <Page />
+</Site>

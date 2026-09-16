@@ -1,33 +1,126 @@
 ---
-import Base from '../../layouts/Base.astro';
-import Nav from '../../components/Nav';
-import Footer from '../../components/Footer';
-import ServicePage from '../../pages_react/ServicePage';
-import { SERVICES } from '../../lib/services';
+/**
+ * One template for every service, rendered from the services, tiers and packages rows.
+ * A recurring service shows its monthly packages; a one-time service shows its published tiers,
+ * with "from" prices always reading "From" (e-from-never-final).
+ */
+import Site from '../../layouts/Site.astro';
+import PageHero from '../../components/site/PageHero.astro';
+import PackageCards from '../../components/site/PackageCards.astro';
+import Faq from '../../components/site/Faq.astro';
+import ReviewQuotes from '../../components/site/ReviewQuotes.astro';
+import CloseCta from '../../components/site/CloseCta.astro';
+import { services, serviceBySlug, tiersFor, packagesForService, formatTierPrice, headlinePrice, trust } from '../../lib/catalog';
 import { SITE_URL } from '../../lib/constants';
 
 export function getStaticPaths() {
-  return SERVICES.map((s) => ({ params: { service: s.slug }, props: { s } }));
+  return services.map((s) => ({ params: { service: s.slug } }));
 }
-const { s } = Astro.props;
+const { service: slug } = Astro.params;
+const s = serviceBySlug(slug!)!;
+const tiers = tiersFor(s.slug);
+const pkgs = packagesForService(s.slug);
+const price = headlinePrice(s.slug);
+const related = (s.related_slugs ?? []).map((r) => serviceBySlug(r)).filter(Boolean).slice(0, 3) as typeof services;
+const bookHref = pkgs.length ? `/book?service=${s.slug}` : `/contact?service=${s.slug}`;
+// Ben, 2026-09-16: the copy must not limit Scoop Dogg to one county.
+const widen = (t: string) => t.replace(/ in Ventura County\b/g, ' in Ventura & Santa Barbara Counties').replace(/\bServing Ventura County\b/g, 'Serving Ventura & Santa Barbara Counties').replace(/ across Ventura County\b/g, ' across Ventura & Santa Barbara Counties');
+const title = widen(s.meta_title || `${s.name} | Scoop Dogg`);
+const description = widen(s.meta_description || s.intro || '');
+const heading = widen(s.h1 || s.name);
+const intro = s.intro ? widen(s.intro) : undefined;
 const jsonLd = [
   {
-    '@context': 'https://schema.org', '@type': 'Service',
-    name: s.name, description: s.metaDescription,
-    provider: { '@type': 'LocalBusiness', name: 'Scoop Dogg', '@id': `${SITE_URL}/#business` },
-    areaServed: { '@type': 'AdministrativeArea', name: 'Ventura County, CA' },
+    '@context': 'https://schema.org', '@type': 'Service', name: s.name, description,
+    provider: { '@type': 'LocalBusiness', '@id': `${SITE_URL}/#business`, name: 'Scoop Dogg' },
+    areaServed: [{ '@type': 'AdministrativeArea', name: 'Ventura County, CA' }, { '@type': 'AdministrativeArea', name: 'Santa Barbara County, CA' }],
+    offers: pkgs.length
+      ? pkgs.map((p) => ({ '@type': 'Offer', name: p.name, priceSpecification: { '@type': 'UnitPriceSpecification', price: (p.monthly_price_cents / 100).toFixed(2), priceCurrency: 'USD', unitText: 'MON' } }))
+      : tiers.filter((t) => t.price_cents && !t.price_is_from).map((t) => ({ '@type': 'Offer', name: t.label, price: (t.price_cents! / 100).toFixed(2), priceCurrency: 'USD' })),
   },
-  {
-    '@context': 'https://schema.org', '@type': 'FAQPage',
-    mainEntity: s.faqs.map((f) => ({
-      '@type': 'Question', name: f.q,
-      acceptedAnswer: { '@type': 'Answer', text: f.a },
-    })),
-  },
+  ...(s.faqs?.length ? [{ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: s.faqs.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) }] : []),
 ];
 ---
-<Base title={s.metaTitle} description={s.metaDescription} canonicalPath={`/services/${s.slug}`} jsonLd={jsonLd}>
-  <Nav client:load />
-  <main><ServicePage service={s.slug} /></main>
-  <Footer />
-</Base>
+<Site title={title} description={description} canonicalPath={`/services/${s.slug}`} jsonLd={jsonLd}>
+  <PageHero
+    eyebrow={pkgs.length ? 'Monthly plan' : 'One-time service'}
+    title={heading}
+    lede={intro}
+    crumbs={[{ href: '/services', label: 'Services' }]}
+    form={pkgs.length > 0}
+    formService={s.slug}
+    source={`service-${s.slug}`}
+  >
+    {!pkgs.length && (
+      <div class="mt-8 flex flex-wrap items-center gap-4">
+        <a href={bookHref} class="btn-primary btn-lg">Request this service</a>
+        {price && <p class="text-lg text-ink-700">{price.text}{price.per}</p>}
+      </div>
+    )}
+  </PageHero>
+
+  <section class="bg-paper py-section" aria-labelledby="price-title">
+    <div class="container-site grid gap-14 lg:grid-cols-12">
+      <div class="lg:col-span-7">
+        <h2 id="price-title" class="text-h2 text-forest-900">{pkgs.length ? 'Pick your plan' : 'Pricing'}</h2>
+        <div class="mt-8">
+          {pkgs.length > 0 ? <PackageCards service={s.slug} /> : (
+            <dl class="divide-y divide-line rounded-lg border border-line">
+              {tiers.map((t) => (
+                <div class="flex items-center justify-between gap-4 px-5 py-4">
+                  <dt class="text-base text-ink-700">{t.label}</dt>
+                  <dd class="text-lg font-semibold text-forest-900">{formatTierPrice(t, 'Custom quote')}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </div>
+        {s.pricing_note && <p class="mt-5 text-base text-ink-500">{s.pricing_note}</p>}
+      </div>
+      <div class="lg:col-span-5">
+        <div class="rounded-xl bg-forest-50 p-7">
+          <h2 class="text-xl font-semibold text-forest-900">What's included</h2>
+          <ul class="mt-5 space-y-3">
+            {(s.what_includes ?? []).map((w) => (
+              <li class="flex gap-3 text-base text-ink-700"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="mt-0.5 shrink-0 text-forest-500" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>{w}</li>
+            ))}
+          </ul>
+          {s.who_its_for && <p class="mt-6 border-t border-forest-200 pt-5 text-base text-ink-700"><strong class="font-semibold text-forest-900">Best for:</strong> {s.who_its_for}</p>}
+          {trust.guarantee && <p class="mt-4 text-sm text-forest-700">{trust.guarantee}</p>}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="bg-forest-900 py-section" aria-labelledby="svc-reviews">
+    <div class="container-site">
+      <h2 id="svc-reviews" class="text-h2 text-white">Neighbors love it</h2>
+      <div class="mt-10"><ReviewQuotes dark limit={3} /></div>
+    </div>
+  </section>
+
+  {s.faqs?.length > 0 && (
+    <section class="bg-cream py-section" aria-labelledby="svc-faq">
+      <div class="container-site">
+        <h2 id="svc-faq" class="text-center text-h2 text-forest-900">{s.name}: questions</h2>
+        <div class="mx-auto mt-10 max-w-narrow"><Faq items={s.faqs} /></div>
+      </div>
+    </section>
+  )}
+
+  {related.length > 0 && (
+    <section class="bg-paper py-section-sm" aria-labelledby="related">
+      <div class="container-site">
+        <h2 id="related" class="text-h3 text-forest-900">Often paired with</h2>
+        <ul class="mt-6 grid gap-3 sm:grid-cols-3">
+          {related.map((r) => {
+            const p = headlinePrice(r.slug);
+            return <li><a href={`/services/${r.slug}`} class="block rounded-lg border border-line bg-paper p-5 transition duration-base hover:border-forest-300 hover:shadow-sm"><span class="block text-lg font-semibold text-forest-900">{r.name}</span>{p && <span class="mt-1 block text-sm text-ink-500">{p.text}{p.per}</span>}</a></li>;
+          })}
+        </ul>
+      </div>
+    </section>
+  )}
+
+  <CloseCta source={`service-${s.slug}-close`} service={pkgs.length ? s.slug : undefined} />
+</Site>

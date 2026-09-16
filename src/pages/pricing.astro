@@ -1,0 +1,55 @@
+---
+/** Every price on the site, from the rows. Nothing on this page is typed by hand (S19). */
+import Site from '../layouts/Site.astro';
+import PageHero from '../components/site/PageHero.astro';
+import PackageCards from '../components/site/PackageCards.astro';
+import Faq from '../components/site/Faq.astro';
+import CloseCta from '../components/site/CloseCta.astro';
+import { services, packagesForService, tiersFor, formatTierPrice, trust } from '../lib/catalog';
+const plans = services.filter((s) => packagesForService(s.slug).length);
+const oneTime = services.filter((s) => !packagesForService(s.slug).length);
+const faqs = [
+  { q: 'When am I charged?', a: 'Your first month is charged when you book, at half price on weekly scooping. After that, your plan renews monthly on the same card until you pause or cancel.' },
+  { q: 'Why monthly instead of per visit?', a: 'One simple payment a month, no invoices to chase, and your price already averages in the months with five visits.' },
+  { q: 'Can I skip a week or pause?', a: 'Yes. Skip any visit or pause for vacation from your account. You are not charged while paused.' },
+  { q: 'Are there sign-up fees or contracts?', a: 'No sign-up fees and no contracts. Cancel anytime from your account.' },
+  { q: 'What if I have a big yard or lots of pets?', a: 'Larger or custom properties get a quick custom quote — request one and we will get back to you within a day.' },
+];
+---
+<Site title="Pricing | Monthly Dog Poop Cleanup Plans | Scoop Dogg" description="Simple monthly plans for weekly dog poop scooping, turf maintenance, yard care and litter boxes, plus one-time cleanups. First month half off." canonicalPath="/pricing" jsonLd={{ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faqs.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) }}>
+  <PageHero eyebrow="Pricing" title="Simple monthly plans. No surprises." lede="Every plan covers a visit every week. Your first month of weekly scooping is half off, and you can cancel anytime." form source="pricing-hero" />
+  {plans.map((s, i) => (
+    <section class={`${i % 2 === 0 ? 'bg-paper' : 'bg-cream'} py-section-sm`} aria-labelledby={`p-${s.slug}`}>
+      <div class="container-site">
+        <div class="flex flex-col justify-between gap-3 md:flex-row md:items-end">
+          <div><h2 id={`p-${s.slug}`} class="text-h2 text-forest-900">{s.name}</h2>{s.pricing_note && <p class="mt-2 text-base text-ink-500">{s.pricing_note}</p>}</div>
+          <a href={`/services/${s.slug}`} class="link shrink-0 text-base">What's included</a>
+        </div>
+        <div class="mt-8"><PackageCards service={s.slug} /></div>
+      </div>
+    </section>
+  ))}
+  <section class="bg-sand py-section" aria-labelledby="onetime">
+    <div class="container-site">
+      <h2 id="onetime" class="text-h2 text-forest-900">One-time services</h2>
+      <div class="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+        {oneTime.map((s) => (
+          <div class="rounded-lg border border-line bg-paper p-6">
+            <a href={`/services/${s.slug}`} class="text-xl font-semibold text-forest-900 hover:text-forest-600">{s.name}</a>
+            <dl class="mt-4 space-y-2">
+              {tiersFor(s.slug).map((t) => <div class="flex justify-between gap-4 text-base"><dt class="text-ink-700">{t.label}</dt><dd class="shrink-0 font-semibold text-forest-900">{formatTierPrice(t)}</dd></div>)}
+            </dl>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+  <section class="bg-paper py-section">
+    <div class="container-site">
+      <h2 class="text-center text-h2 text-forest-900">Billing questions</h2>
+      <div class="mx-auto mt-10 max-w-narrow"><Faq items={faqs} /></div>
+      {trust.guarantee && <p class="mx-auto mt-8 max-w-narrow text-center text-base text-forest-800">{trust.guarantee}</p>}
+    </div>
+  </section>
+  <CloseCta source="pricing-close" />
+</Site>

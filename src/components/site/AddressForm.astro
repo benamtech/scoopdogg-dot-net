@@ -1,0 +1,45 @@
+---
+/**
+ * The first step of booking, on any page. A plain GET form to /book, so it works before
+ * JavaScript loads and with JavaScript off (R5 §2: the market puts a zip or an address box
+ * on the first screen; LawnStarter's whole hero is this one field).
+ */
+export interface Props {
+  size?: 'lg' | 'md';
+  dark?: boolean;
+  service?: string;
+  city?: string;
+  label?: string;
+  cta?: string;
+  heroAnchor?: boolean;
+  source?: string;
+}
+const { size = 'lg', dark = false, service, city, label = 'Where is your yard?', cta = 'See my price', heroAnchor = false, source = 'address-form' } = Astro.props;
+const uid = `addr-${Math.random().toString(36).slice(2, 8)}`;
+---
+<form action="/book" method="get" class="w-full max-w-xl" data-address-form data-source={source} {...(heroAnchor ? { 'data-hero-cta': '' } : {})}>
+  <label for={uid} class={`mb-2 block text-sm font-semibold ${dark ? 'text-forest-100' : 'text-forest-800'}`}>{label}</label>
+  <div class={`flex flex-col gap-2 rounded-lg bg-paper p-2 shadow-md ring-1 ring-line sm:flex-row sm:items-center ${size === 'lg' ? 'sm:p-2.5' : ''}`}>
+    <div class="relative flex-1">
+      <svg class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-forest-400" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21Z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
+      <input
+        id={uid}
+        name="address"
+        type="text"
+        inputmode="text"
+        autocomplete="street-address"
+        placeholder="Street address, city"
+        required
+        minlength="4"
+        class={`w-full rounded-md border-0 bg-transparent py-3.5 pl-11 pr-3 text-ink-900 placeholder:text-ink-400 focus:outline-none focus:ring-0 ${size === 'lg' ? 'text-lg' : 'text-base'}`}
+      />
+    </div>
+    {service && <input type="hidden" name="service" value={service} />}
+    {city && <input type="hidden" name="city" value={city} />}
+    <input type="hidden" name="from" value={source} />
+    <button type="submit" class={`btn-primary ${size === 'lg' ? 'btn-lg' : ''} shrink-0`}>
+      {cta}
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+    </button>
+  </div>
+</form>

@@ -1,54 +1,92 @@
+/* Self-hosted brand fonts: no request to fonts.googleapis.com before first paint. */
+@import '@fontsource/dm-serif-display/latin-400.css';
+@import '@fontsource-variable/outfit/wght.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   html {
-    font-family: 'Outfit', system-ui, sans-serif;
-    background-color: #FAF8F5;
-    color: #1A1A1A;
-    scroll-behavior: smooth;
-    font-size: 18px;
-    line-height: 1.7;
+    font-family: theme('fontFamily.sans');
+    background-color: theme('colors.cream');
+    color: theme('colors.ink.900');
+    /* 16px, not 18px: the old 18px root inflated every rem on the site by 12.5%. */
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
   }
 
-  h1, h2, h3, h4 {
-    font-family: 'DM Serif Display', Georgia, serif;
-    line-height: 1.15;
+  h1, h2, h3 {
+    font-family: theme('fontFamily.serif');
+    font-weight: 400;
+    text-wrap: balance;
   }
 
-  p {
-    line-height: 1.75;
+  p { text-wrap: pretty; }
+
+  :focus-visible {
+    outline: 3px solid theme('colors.amber.500');
+    outline-offset: 2px;
+    border-radius: 4px;
   }
 
-  * {
-    -webkit-tap-highlight-color: transparent;
+  * { -webkit-tap-highlight-color: transparent; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html { scroll-behavior: smooth; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 1ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 1ms !important;
+    }
   }
 }
 
-@keyframes slide-out-left {
-  0% { opacity: 1; transform: translateX(0); }
-  100% { opacity: 0; transform: translateX(-40px); }
+@layer components {
+  .container-site { @apply mx-auto w-full max-w-site px-5 sm:px-8; }
+
+  .eyebrow { @apply text-micro font-semibold uppercase text-forest-500; }
+  .eyebrow-on-dark { @apply text-micro font-semibold uppercase text-amber-400; }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-6 py-3.5 text-base font-semibold
+      transition duration-fast ease-brand focus-visible:shadow-focus disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .btn-primary { @apply btn bg-amber-500 text-forest-900 shadow-xs hover:bg-amber-600 active:translate-y-px; }
+  .btn-secondary { @apply btn bg-forest-700 text-white hover:bg-forest-800 active:translate-y-px; }
+  .btn-ghost { @apply btn border border-line-strong bg-paper text-forest-800 hover:border-forest-400 hover:bg-forest-50; }
+  .btn-ghost-dark { @apply btn border border-white/25 bg-white/5 text-white hover:bg-white/10; }
+  .btn-lg { @apply px-7 py-4 text-lg; }
+  .btn-sm { @apply px-4 py-2.5 text-sm; }
+
+  .link { @apply font-medium text-forest-600 underline decoration-forest-300 underline-offset-4 hover:decoration-forest-600; }
+
+  .card { @apply rounded-lg border border-line bg-paper shadow-sm; }
+
+  .field-label { @apply mb-1.5 block text-sm font-medium text-ink-700; }
+  .field {
+    @apply block w-full rounded-md border border-line-strong bg-paper px-4 py-3.5 text-base text-ink-900
+      placeholder:text-ink-400 transition duration-fast focus:border-forest-500 focus:outline-none focus:ring-4 focus:ring-forest-100;
+  }
+
+  .prose-sd h2 { @apply mb-4 mt-12 font-serif text-h3 text-forest-800; }
+  .prose-sd h3 { @apply mb-3 mt-8 text-xl font-semibold text-forest-800; }
+  .prose-sd p { @apply mb-5 text-lg text-ink-700; }
+  .prose-sd ul { @apply mb-6 list-disc space-y-2 pl-6 text-lg text-ink-700; }
+  .prose-sd ol { @apply mb-6 list-decimal space-y-2 pl-6 text-lg text-ink-700; }
+  .prose-sd a { @apply link; }
+  .prose-sd strong { @apply font-semibold text-ink-900; }
+  .prose-sd table { @apply mb-6 w-full border-collapse text-left text-base; }
+  .prose-sd th { @apply border-b border-line-strong py-2 pr-4 font-semibold text-forest-800; }
+  .prose-sd td { @apply border-b border-line py-2 pr-4 text-ink-700; }
 }
 
-@keyframes draw-check {
-  0% { stroke-dashoffset: 100; }
-  100% { stroke-dashoffset: 0; }
-}
-
-@keyframes draw-circle {
-  0% { stroke-dashoffset: 200; }
-  100% { stroke-dashoffset: 0; }
-}
-
-.check-animate {
-  stroke-dasharray: 100;
-  stroke-dashoffset: 100;
-  animation: draw-check 0.6s ease 0.4s forwards;
-}
-
-.circle-animate {
-  stroke-dasharray: 200;
-  stroke-dashoffset: 200;
-  animation: draw-circle 0.5s ease forwards;
-}
+/* Admin screens still use these two helpers. */
+.check-animate { stroke-dasharray: 100; stroke-dashoffset: 100; animation: draw-check 0.6s ease 0.4s forwards; }
+.circle-animate { stroke-dasharray: 200; stroke-dashoffset: 200; animation: draw-circle 0.5s ease forwards; }
+@keyframes draw-check { to { stroke-dashoffset: 0; } }
+@keyframes draw-circle { to { stroke-dashoffset: 0; } }

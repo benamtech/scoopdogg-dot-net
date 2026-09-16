@@ -1,0 +1,51 @@
+---
+/**
+ * Every public page: head, header, content, footer, and the mobile price bar.
+ * The price bar appears once the page's first call to action has scrolled away, and never
+ * on /book (where it would point at itself).
+ */
+import Base from './Base.astro';
+import Header from '../components/site/Header.astro';
+import Footer from '../components/site/Footer.astro';
+
+export interface Props {
+  title: string;
+  description: string;
+  canonicalPath: string;
+  ogImage?: string;
+  jsonLd?: object | object[];
+  noindex?: boolean;
+  mobileCta?: boolean;
+}
+const { mobileCta = true, ...base } = Astro.props;
+---
+<Base {...base}>
+  <slot name="head" slot="head" />
+  <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-paper focus:px-4 focus:py-2 focus:shadow-md">Skip to content</a>
+  <Header current={base.canonicalPath} />
+  <main id="main">
+    <slot />
+  </main>
+  <Footer />
+  {mobileCta && (
+    <div class="pointer-events-none fixed inset-x-0 bottom-0 z-30 translate-y-full p-3 transition duration-base ease-brand sm:hidden" data-mobile-cta aria-hidden="true">
+      <div class="pointer-events-auto flex items-center gap-3 rounded-lg border border-line bg-paper/95 p-2 pl-4 shadow-lg backdrop-blur">
+        <p class="flex-1 text-sm leading-tight text-ink-700"><span class="font-semibold text-forest-800">First month half off.</span> No contract.</p>
+        <a href="/book" class="btn-primary btn-sm" tabindex="-1" data-cta="mobile-bar">See my price</a>
+      </div>
+    </div>
+  )}
+</Base>
+
+<script>
+  const bar = document.querySelector<HTMLElement>('[data-mobile-cta]');
+  const anchor = document.querySelector('[data-hero-cta]') ?? document.querySelector('main h1');
+  if (bar && anchor && 'IntersectionObserver' in window) {
+    new IntersectionObserver(([e]) => {
+      const show = !e.isIntersecting && e.boundingClientRect.top < 0;
+      bar.classList.toggle('translate-y-full', !show);
+      bar.setAttribute('aria-hidden', String(!show));
+      bar.querySelector('a')?.setAttribute('tabindex', show ? '0' : '-1');
+    }).observe(anchor);
+  }
+</script>

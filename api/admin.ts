@@ -9,8 +9,10 @@
  * `admin` sees the business.
  */
 import { db } from '../server/lib/db.js';
+import { demoMode, demoStatus } from '../server/lib/notify.js';
 import { sendJson, readJsonBody, safeError, type ApiRequest, type ApiResponse } from '../server/lib/http.js';
 import { startLogin, verifyLogin, getSession, endSession, rateLimit, type AdminSession } from '../server/lib/admin-auth.js';
+import { probeAccount, createConnectedAccount, onboardingLink, publishAllPrices, connection, type StripeMode } from '../server/lib/stripe.js';
 
 const routePath = (req: ApiRequest) =>
   (new URL(req.url || '/', 'https://local.test').searchParams.get('path') || '')
@@ -63,13 +65,103 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     // ---- everything below needs a session --------------------------------
     const session = await getSession(req);
     if (path === 'session') {
-      return sendJson(res, session ? 200 : 401, session ? { user: session } : { error: 'Not signed in.' });
+      if (!session) return sendJson(res, 401, { error: 'Not signed in.' });
+      // `demo_mode` rides the session response so EVERY admin screen can show the banner
+      // without each one remembering to ask. A mode you cannot see from the screen is a
+      // mode that ships.
+      const demo = await demoMode();
+      return sendJson(res, 200, { user: session, ...demoStatus(demo) });
     }
     if (!session) return sendJson(res, 401, { error: 'Not signed in.' });
+
+    // ---- demo mode -------------------------------------------------------
+    // Deliberately NOT behind requireSuper. It is the control that makes the system
+    // exercisable at all, and the owner is the person who will be shown it.
+    if (path === 'demo') {
+      if (req.method === 'POST') {
+        const body = await readJsonBody(req);
+        if (typeof body.mode !== 'boolean') {
+          return sendJson(res, 400, { error: 'Send { "mode": true } or { "mode": false }.' });
+        }
+        const before = await demoMode();
+        await db().query(
+          `insert into settings (key, value, updated_by) values ('demo.mode', $1::jsonb, $2)
+             on conflict (key) do update set value = excluded.value, updated_by = $2, updated_at = now()`,
+          [JSON.stringify(body.mode), session.email]);
+        const after = await demoMode();
+        // Mail and the booking journey read this setting on every request, so they change
+        // now. The public pages are statically built, so their banner and their noindex
+        // change on the next publish - saying so is the difference between a control that
+        // works and one that looks like it did nothing.
+        return sendJson(res, 200, {
+          ...demoStatus(after),
+          was: before.mode,
+          effective_now: ['mail', 'booking journey', 'admin'],
+          effective_on_publish: ['public pages'],
+        });
+      }
+      const demo = await demoMode();
+      return sendJson(res, 200, demoStatus(demo));
+    }
 
     if (path === 'logout') {
       await endSession(req, res);
       return sendJson(res, 200, { ok: true });
+    }
+
+    // ---- payments: Stripe onboarding, readiness and published prices ----------
+    // Josue (admin) can run all of this himself: onboarding is his to do, and the status is
+    // read from Stripe with its age rather than trusted from a stored boolean.
+    if (path === 'payments') {
+      const modes: StripeMode[] = ['live', 'test'];
+      const status: Record<string, unknown> = {};
+      for (const m of modes) {
+        const conn = await connection(m).catch(() => null);
+        let probe = null;
+        try { probe = conn?.account_id ? await probeAccount(m) : null; } catch (e) { safeError(`admin:payments:${m}`, e); }
+        status[m] = { account_id: conn?.account_id ?? null, display_name: conn?.display_name ?? null, ready: probe?.ready ?? false, card_payments: probe?.card_payments ?? conn?.card_payments_status ?? null, requirements: probe?.requirements ?? null, probed_at: probe?.probed_at ?? conn?.last_probed_at ?? null };
+      }
+      const { rows: packages } = await db().query(
+        `select p.slug, p.name, p.monthly_price_cents, p.source, p.derivation, p.version,
+                exists(select 1 from stripe_prices sp where sp.package_id = p.id and sp.version = p.version and sp.livemode = false) as published_test,
+                exists(select 1 from stripe_prices sp where sp.package_id = p.id and sp.version = p.version and sp.livemode = true) as published_live
+           from packages p where p.status = 'active' order by p.sort_order`);
+      return sendJson(res, 200, { status, packages });
+    }
+    if (path === 'payments/onboard' && req.method === 'POST') {
+      const body = await readJsonBody(req);
+      const mode: StripeMode = body.mode === 'live' ? 'live' : 'test';
+      await createConnectedAccount(mode, { displayName: 'Scoop Dogg', email: session.email, by: session.email });
+      const host = (req.headers['x-forwarded-host'] as string) || req.headers.host || 'scoopdogg.net';
+      const proto = host.startsWith('127.') || host.startsWith('localhost') ? 'http' : 'https';
+      return sendJson(res, 200, { url: await onboardingLink(mode, `${proto}://${host}`) });
+    }
+    if (path === 'payments/publish' && req.method === 'POST') {
+      const body = await readJsonBody(req);
+      const mode: StripeMode = body.mode === 'live' ? 'live' : 'test';
+      return sendJson(res, 200, { published: await publishAllPrices(mode) });
+    }
+
+    // ---- business: subscriptions and the pace to 200 --------------------------
+    if (path === 'business') {
+      const { rows: [m] } = await db().query(
+        `select count(*) filter (where state = 'active')::int as active,
+                count(*) filter (where state = 'paused')::int as paused,
+                count(*) filter (where state = 'active' and created_at > date_trunc('month', now()))::int as new_this_month,
+                count(*) filter (where state = 'cancelled' and cancelled_at > date_trunc('month', now()))::int as cancelled_this_month,
+                coalesce(sum(monthly_price_cents) filter (where state = 'active'), 0)::int as mrr_cents,
+                count(*) filter (where payment_state = 'past_due')::int as past_due
+           from subscriptions where customer_id not in (select id from customers where name like 'DEMO—%')`);
+      const { rows: recent } = await db().query(
+        `select s.id, s.state, s.starts_on::text as starts_on, s.monthly_price_cents, s.payment_state, s.created_at, c.name, c.email, c.phone,
+                p.address, p.city, pk.name as package_name
+           from subscriptions s join customers c on c.id = s.customer_id join properties p on p.id = s.property_id
+           left join packages pk on pk.id = s.package_id
+          where s.source = 'online' order by s.created_at desc limit 25`);
+      const target = 200;
+      const targetDate = '2027-05-16';
+      const monthsLeft = Math.max(1, (new Date(targetDate).getTime() - Date.now()) / (30.44 * 86_400_000));
+      return sendJson(res, 200, { ...m, target, target_date: targetDate, needed_per_month: Math.ceil((target - m.active) / monthsLeft), recent });
     }
 
     if (path === 'summary') {

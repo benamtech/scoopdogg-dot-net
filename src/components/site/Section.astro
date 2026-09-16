@@ -1,0 +1,24 @@
+---
+/** A band of the page. The tone decides the background; spacing comes from the tokens. */
+export interface Props {
+  tone?: 'cream' | 'paper' | 'sand' | 'forest' | 'forest-deep';
+  size?: 'md' | 'sm' | 'none';
+  id?: string;
+  class?: string;
+  labelledby?: string;
+}
+const { tone = 'cream', size = 'md', id, class: extra = '', labelledby } = Astro.props;
+const bg = {
+  cream: 'bg-cream',
+  paper: 'bg-paper',
+  sand: 'bg-sand',
+  forest: 'bg-forest-800 text-forest-100',
+  'forest-deep': 'bg-forest-900 text-forest-100',
+}[tone];
+const pad = { md: 'py-section', sm: 'py-section-sm', none: '' }[size];
+---
+<section id={id} aria-labelledby={labelledby} class={`${bg} ${pad} ${extra}`} data-tone={tone}>
+  <div class="container-site">
+    <slot />
+  </div>
+</section>

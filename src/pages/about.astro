@@ -1,22 +1,45 @@
 ---
-import Base from '../layouts/Base.astro';
-import Nav from '../components/Nav';
-import Footer from '../components/Footer';
-import { SITE_URL } from '../lib/constants';
-import Page from '../pages_react/AboutPage';
-const jsonLd = {
-  '@context': 'https://schema.org', '@type': 'AboutPage',
-  name: 'About Scoop Dogg',
-  mainEntity: {
-    '@type': 'LocalBusiness', '@id': `${SITE_URL}/#business`, name: 'Scoop Dogg',
-    telephone: '+18058698070', email: 'josue@scoopdogg.net', url: SITE_URL,
-    founder: { '@type': 'Person', name: 'Josue' },
-    address: { '@type': 'PostalAddress', addressLocality: 'Ventura', addressRegion: 'CA', addressCountry: 'US' },
-  },
-};
+import { Image } from 'astro:assets';
+import Site from '../layouts/Site.astro';
+import PageHero from '../components/site/PageHero.astro';
+import CloseCta from '../components/site/CloseCta.astro';
+import { trust, regionSentence, business } from '../lib/catalog';
+import josue from '../assets/photos/4824.jpg';
+const values = [
+  { t: 'Same day, every week', d: 'You never wonder whether we are coming. Your day is your day.' },
+  { t: 'The whole yard, every time', d: 'Behind the planters, along the fence line, under the deck. Every corner.' },
+  { t: 'No strings', d: 'No contracts and no sign-up fees. Skip, pause or cancel from your account.' },
+];
 ---
-<Base jsonLd={jsonLd} title={'About Scoop Dogg | Locally Owned Dog Waste Removal in Ventura County'} description={'Founded and operated by Josue, a Ventura County resident. Not a franchise. Background-checked, insured, and no contracts.'} canonicalPath="/about">
-  <Nav client:load />
-  <main><Page  /></main>
-  <Footer />
-</Base>
+<Site title="About Scoop Dogg | Locally Owned Pooper Scoopers" description={`Scoop Dogg is a locally owned dog waste removal company serving ${regionSentence()}.`} canonicalPath="/about">
+  <PageHero eyebrow="About us" title="A clean yard, done personally" lede={`Scoop Dogg is a locally owned pooper scooper and turf care company serving ${regionSentence()}.`} />
+  <section class="bg-paper py-section">
+    <div class="container-site grid items-center gap-14 lg:grid-cols-12">
+      <div class="lg:col-span-5"><Image src={josue} alt="Josue, owner of Scoop Dogg" widths={[400, 800]} sizes="(min-width: 1024px) 420px, 90vw" class="aspect-[4/5] w-full max-w-md rounded-xl object-cover shadow-lg" loading="eager" /></div>
+      <div class="lg:col-span-6 lg:col-start-7">
+        <h2 class="text-h2 text-forest-900">Meet Josue</h2>
+        <div class="mt-6 space-y-5 text-lg text-ink-700">
+          <p>I'm Josue. I started Scoop Dogg because I got tired of seeing dog owners stressed about something that should be simple. You love your dog. You shouldn't have to dread your own backyard.</p>
+          <p>I know my clients' dogs by name, I know which gates stick, and I know which yards have the sneaky spots. This isn't a side hustle — it's my business, and I take it personally.</p>
+          <p class="font-serif text-xl text-forest-800">Every visit, every yard, done right.</p>
+        </div>
+        <ul class="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-base font-medium text-forest-800">
+          {trust.insured && <li>✓ Fully insured</li>}
+          {trust.backgroundChecked && <li>✓ Background-checked</li>}
+          <li>✓ Locally owned</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+  <section class="bg-forest-900 py-section">
+    <div class="container-site">
+      <h2 class="text-h2 text-white">What we stand for</h2>
+      <div class="mt-10 grid gap-6 md:grid-cols-3">
+        {values.map((v) => <div class="rounded-lg bg-forest-800 p-7 ring-1 ring-white/10"><h3 class="text-xl font-semibold text-white">{v.t}</h3><p class="mt-3 text-base text-forest-200">{v.d}</p></div>)}
+      </div>
+      {trust.guarantee && <p class="mt-10 text-lg text-forest-100">{trust.guarantee}</p>}
+      <p class="mt-6 text-base text-forest-300">Questions? Call <a href={business.phoneHref} class="text-white underline underline-offset-4">{business.phone}</a>.</p>
+    </div>
+  </section>
+  <CloseCta source="about-close" />
+</Site>

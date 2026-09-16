@@ -31,8 +31,15 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
 export const adminApi = {
   startLogin:  (email: string) => call<{ ok: true; message: string }>('login/start', { method: 'POST', body: JSON.stringify({ email }) }),
   verifyLogin: (email: string, code: string) => call<{ ok: true; user: AdminUser }>('login/verify', { method: 'POST', body: JSON.stringify({ email, code }) }),
-  session:     () => call<{ user: AdminUser }>('session'),
+  session:     () => call<{ user: AdminUser; demo_mode: boolean; demo_address: string | null }>('session'),
   logout:      () => call<{ ok: true }>('logout', { method: 'POST' }),
+
+  // Demo mode. `effective_on_publish` is why the response is worth reading: mail and the
+  // booking journey change on the setting, the static public pages change on a publish.
+  demo:        () => call<{ demo_mode: boolean; demo_address: string | null }>('demo'),
+  setDemo:     (mode: boolean) => call<{
+    demo_mode: boolean; was: boolean; effective_now: string[]; effective_on_publish: string[];
+  }>('demo', { method: 'POST', body: JSON.stringify({ mode }) }),
 
   summary:     () => call<{
     leads_by_status: Record<string, number>; total_leads: number;

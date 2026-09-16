@@ -1,0 +1,10 @@
+---
+export interface Props { rating?: number; size?: number; class?: string }
+const { rating = 5, size = 18, class: extra = '' } = Astro.props;
+const full = Math.round(rating);
+---
+<span class={`inline-flex items-center gap-0.5 text-amber-500 ${extra}`} role="img" aria-label={`${rating.toFixed(1)} out of 5 stars`}>
+  {Array.from({ length: 5 }).map((_, i) => (
+    <svg width={size} height={size} viewBox="0 0 20 20" aria-hidden="true" class={i < full ? '' : 'opacity-30'}><path fill="currentColor" d="M10 1.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L10 14.9l-5.2 2.7 1-5.8L1.5 7.7l5.9-.9L10 1.5z" /></svg>
+  ))}
+</span>

@@ -1,0 +1,39 @@
+---
+/** The top of an inner page: breadcrumb, eyebrow, H1, lede, and an optional address form. */
+import AddressForm from './AddressForm.astro';
+export interface Props {
+  eyebrow?: string;
+  title: string;
+  lede?: string;
+  crumbs?: { href: string; label: string }[];
+  form?: boolean;
+  formService?: string;
+  formCity?: string;
+  source?: string;
+}
+const { eyebrow, title, lede, crumbs = [], form = false, formService, formCity, source = 'page-hero' } = Astro.props;
+---
+<section class="relative overflow-hidden border-b border-line bg-cream">
+  <div class="pointer-events-none absolute -right-40 -top-56 h-[520px] w-[520px] rounded-full bg-[radial-gradient(closest-side,theme(colors.forest.100),transparent)]" aria-hidden="true"></div>
+  <div class="container-site relative grid gap-10 py-12 lg:grid-cols-12 lg:items-end lg:py-16">
+    <div class={form ? 'lg:col-span-7' : 'lg:col-span-9'}>
+      {crumbs.length > 0 && (
+        <nav aria-label="Breadcrumb" class="mb-5 text-sm text-ink-500">
+          <ol class="flex flex-wrap items-center gap-1.5">
+            <li><a href="/" class="hover:text-forest-700">Home</a></li>
+            {crumbs.map((c) => <li class="flex items-center gap-1.5"><span aria-hidden="true">/</span><a href={c.href} class="hover:text-forest-700">{c.label}</a></li>)}
+          </ol>
+        </nav>
+      )}
+      {eyebrow && <p class="eyebrow mb-4">{eyebrow}</p>}
+      <h1 class="text-h1 text-forest-900">{title}</h1>
+      {lede && <p class="mt-5 max-w-prose text-lg text-ink-700">{lede}</p>}
+      <slot />
+    </div>
+    {form && (
+      <div class="lg:col-span-5">
+        <AddressForm size="md" service={formService} city={formCity} source={source} heroAnchor />
+      </div>
+    )}
+  </div>
+</section>

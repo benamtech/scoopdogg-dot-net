@@ -1,23 +1,42 @@
 ---
-import Base from '../layouts/Base.astro';
-import Nav from '../components/Nav';
-import Footer from '../components/Footer';
-import { SITE_URL } from '../lib/constants';
-import { SERVICES } from '../lib/services';
-import Page from '../pages_react/ServicesPage';
-const jsonLd = {
-  '@context': 'https://schema.org', '@type': 'CollectionPage',
-  name: 'Scoop Dogg Services',
-  mainEntity: {
-    '@type': 'ItemList',
-    itemListElement: SERVICES.map((s, i) => ({
-      '@type': 'ListItem', position: i + 1, name: s.name, url: `${SITE_URL}/services/${s.slug}`,
-    })),
-  },
-};
+import Site from '../layouts/Site.astro';
+import PageHero from '../components/site/PageHero.astro';
+import CloseCta from '../components/site/CloseCta.astro';
+import { services, headlinePrice, packagesForService } from '../lib/catalog';
+const recurring = services.filter((s) => packagesForService(s.slug).length > 0);
+const oneTime = services.filter((s) => packagesForService(s.slug).length === 0);
+const Card = (s: (typeof services)[number]) => ({ s, p: headlinePrice(s.slug) });
 ---
-<Base jsonLd={jsonLd} title={'Our Services | Dog Waste Removal & Yard Care in Ventura County'} description={'Weekly pooper scooper service from $15, one-time cleanups, turf deodorizing, yard maintenance, litter box service and more across Ventura County.'} canonicalPath="/services">
-  <Nav client:load />
-  <main><Page  /></main>
-  <Footer />
-</Base>
+<Site title="Services | Dog Poop Cleanup, Turf Care & More | Scoop Dogg" description="Weekly dog poop scooping, turf maintenance, yard care, litter box service and one-time cleanups across Ventura and Santa Barbara counties." canonicalPath="/services">
+  <PageHero eyebrow="Services" title="Everything your yard and your pets need" lede="Monthly plans that run themselves, and one-time jobs when you need a reset." />
+  <section class="bg-paper py-section" aria-labelledby="plans">
+    <div class="container-site">
+      <h2 id="plans" class="text-h2 text-forest-900">Monthly plans</h2>
+      <p class="mt-3 text-lg text-ink-500">Same day every week. First month half off on weekly scooping.</p>
+      <ul class="mt-10 grid gap-4 md:grid-cols-2">
+        {recurring.map(Card).map(({ s, p }) => (
+          <li><a href={`/services/${s.slug}`} class="group flex h-full flex-col rounded-lg border border-line bg-paper p-7 transition duration-base hover:-translate-y-0.5 hover:border-forest-300 hover:shadow-md">
+            <span class="flex items-start justify-between gap-4"><span class="text-h3 text-forest-900">{s.name}</span>{p && <span class="shrink-0 text-right text-sm text-ink-500">from<span class="block text-xl font-semibold text-forest-900">{p.text}{p.per}</span></span>}</span>
+            <span class="mt-3 line-clamp-3 text-base text-ink-700">{s.intro}</span>
+            <span class="mt-5 text-base font-semibold text-forest-700 group-hover:text-forest-900">See plans →</span>
+          </a></li>
+        ))}
+      </ul>
+    </div>
+  </section>
+  <section class="bg-cream py-section" aria-labelledby="onetime">
+    <div class="container-site">
+      <h2 id="onetime" class="text-h2 text-forest-900">One-time services</h2>
+      <ul class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {oneTime.map(Card).map(({ s, p }) => (
+          <li><a href={`/services/${s.slug}`} class="group flex h-full flex-col rounded-lg border border-line bg-paper p-6 transition duration-base hover:border-forest-300 hover:shadow-sm">
+            <span class="text-xl font-semibold text-forest-900">{s.name}</span>
+            {p && <span class="mt-1 text-base text-ink-500">{p.text}{p.per}</span>}
+            <span class="mt-3 line-clamp-2 text-base text-ink-700">{s.intro}</span>
+          </a></li>
+        ))}
+      </ul>
+    </div>
+  </section>
+  <CloseCta source="services-close" />
+</Site>

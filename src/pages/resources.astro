@@ -1,7 +1,5 @@
 ---
-import Base from '../layouts/Base.astro';
-import Nav from '../components/Nav';
-import Footer from '../components/Footer';
+import Site from '../layouts/Site.astro';
 import { SITE_URL } from '../lib/constants';
 import { ARTICLES } from '../lib/articles';
 import Page from '../pages_react/ResourcesPage';
@@ -16,8 +14,6 @@ const jsonLd = {
   },
 };
 ---
-<Base jsonLd={jsonLd} title={'Resources | Dog Waste, Turf and Yard Guides for Ventura County'} description={'Local guides on dog waste disposal rules, artificial turf cleaning, drought-tolerant yards and city-by-city ordinances.'} canonicalPath="/resources">
-  <Nav client:load />
-  <main><Page  /></main>
-  <Footer />
-</Base>
+<Site jsonLd={jsonLd} title={'Resources | Dog Waste, Turf and Yard Guides for Ventura County'} description={'Local guides on dog waste disposal rules, artificial turf cleaning, drought-tolerant yards and city-by-city ordinances.'} canonicalPath="/resources">
+  <Page />
+</Site>

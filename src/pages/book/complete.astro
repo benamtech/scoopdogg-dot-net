@@ -1,0 +1,13 @@
+---
+import Base from '../../layouts/Base.astro';
+import Logo from '../../components/site/Logo.astro';
+import BookingComplete from '../../components/booking/BookingComplete';
+---
+<Base title="You're booked | Scoop Dogg" description="Your Scoop Dogg booking." canonicalPath="/book/complete" noindex>
+  <header class="border-b border-line bg-cream">
+    <div class="container-site flex h-[72px] items-center"><Logo size="md" /></div>
+  </header>
+  <main id="main" class="min-h-[calc(100vh-72px)] bg-cream py-section-sm">
+    <div class="container-site max-w-narrow"><BookingComplete client:load /></div>
+  </main>
+</Base>

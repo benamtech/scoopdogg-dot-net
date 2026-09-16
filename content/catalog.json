@@ -1,0 +1,2171 @@
+{
+  "pulled_at": "2026-09-16T16:09:35.343Z",
+  "source": "database",
+  "services": [
+    {
+      "slug": "weekly-pooper-scooper-service",
+      "name": "Weekly Pooper Scooper Service",
+      "short_name": "Weekly Scooping",
+      "kind": "recurring",
+      "price_basis": "dogs",
+      "basis_label": "How many dogs?",
+      "pricing_note": "No sign-up fees. Cancel or pause anytime.",
+      "sort_order": 10,
+      "meta_title": "Weekly Pooper Scooper Service in Ventura County | Scoop Dogg",
+      "meta_description": "Scheduled weekly dog poop cleaning starting at $15/visit. We scoop, bag, and haul off all waste. Cancel anytime. Serving 15 cities in Ventura County.",
+      "h1": "Weekly Pooper Scooper Service in Ventura County",
+      "intro": "Our most popular service. We show up on the same day every week, walk your entire yard, scoop every pile, bag it, and haul it off your property. You never need to be home. Skip a week, pause for vacation, or cancel anytime. Most customers start at $15/week for one dog and never look back.",
+      "what_includes": [
+        "Full property walk — every corner, behind planters, under decks",
+        "All waste scooped, double-bagged, and removed from your property",
+        "Gate secured after every visit",
+        "Same-day text confirmation when complete",
+        "Consistent weekly schedule (same day every week)"
+      ],
+      "who_its_for": "Homeowners who want a clean yard without thinking about it. Especially popular with busy families, multi-dog households, seniors, and anyone who has tried (and failed) to keep up with scooping on their own.",
+      "faqs": [
+        {
+          "a": "No. Just make sure we have gate access. Leave codes or instructions when you book and we handle everything, then secure the gate behind us.",
+          "q": "Do I need to be home during service?"
+        },
+        {
+          "a": "We double-bag all waste and remove it from your property entirely. It does not go in your trash cans.",
+          "q": "What happens to the waste?"
+        },
+        {
+          "a": "Absolutely. Just let us know in advance. No fees for skipping or pausing — we resume whenever you are ready.",
+          "q": "Can I skip a week or pause service?"
+        },
+        {
+          "a": "Most new customers are confirmed within 24 hours and start within a few days, depending on route availability in your area.",
+          "q": "How quickly can I start?"
+        },
+        {
+          "a": "Never. We earn your business every visit. Cancel anytime with no questions asked.",
+          "q": "Is there a contract or commitment?"
+        }
+      ],
+      "related_slugs": [
+        "artificial-turf-deodorizing",
+        "one-time-dog-poop-cleanup",
+        "yard-deep-clean"
+      ]
+    },
+    {
+      "slug": "one-time-dog-poop-cleanup",
+      "name": "One-Time Dog Poop Cleanup",
+      "short_name": "One-Time Cleanup",
+      "kind": "one_time",
+      "price_basis": "choice",
+      "basis_label": "Which best describes it?",
+      "pricing_note": "Final pricing confirmed after booking based on yard size and buildup level.",
+      "sort_order": 20,
+      "meta_title": "One-Time Dog Poop Cleanup in Ventura County | Scoop Dogg",
+      "meta_description": "Full yard poop cleanup for overgrown or neglected yards. Perfect for moving, hosting, or getting back to zero. Starting at $99. Serving Ventura County.",
+      "h1": "One-Time Dog Poop Cleanup in Ventura County",
+      "intro": "Sometimes yards get away from you. Maybe you just moved in, maybe it has been a few months, or maybe you are hosting this weekend and need a reset. Our one-time cleanup tackles the full backlog — we walk the entire property, scoop every pile no matter how old, and haul it all away. One visit, clean slate.",
+      "what_includes": [
+        "Complete property walk and full waste removal",
+        "All waste scooped regardless of age or accumulation",
+        "Double-bagged and hauled off your property",
+        "Gate secured after service",
+        "Optional transition to weekly service at standard pricing"
+      ],
+      "who_its_for": "New homeowners inheriting a messy yard, landlords preparing a rental, anyone hosting an event, or dog owners who have fallen behind and want a fresh start before committing to weekly.",
+      "faqs": [
+        {
+          "a": "Most yards take 30-60 minutes depending on size and accumulation. Heavily built-up yards may take longer.",
+          "q": "How long does a one-time cleanup take?"
+        },
+        {
+          "a": "Yes — many customers start with a one-time cleanup and then transition to weekly. No additional setup fee.",
+          "q": "Can I switch to weekly service after?"
+        },
+        {
+          "a": "Yes. We have seen it all — months of buildup, multiple large dogs, overgrown areas. We will get it done.",
+          "q": "Do you handle really bad yards?"
+        },
+        {
+          "a": "Book online and describe what you are dealing with. We will give you an honest quote before we start. No surprises.",
+          "q": "What if I am not sure how bad it is?"
+        },
+        {
+          "a": "Yes. Everything is double-bagged and hauled away. Nothing goes in your bins.",
+          "q": "Is the waste removed from my property?"
+        }
+      ],
+      "related_slugs": [
+        "weekly-pooper-scooper-service",
+        "yard-deep-clean",
+        "artificial-turf-deodorizing"
+      ]
+    },
+    {
+      "slug": "artificial-turf-deodorizing",
+      "name": "Artificial Turf Deodorizing",
+      "short_name": "Turf Deodorizing",
+      "kind": "one_time",
+      "price_basis": "sqft",
+      "basis_label": "Roughly how big is the area, in square feet?",
+      "pricing_note": "Add to weekly service or book standalone. Often paired with a Turf Deep Clean for maximum results.",
+      "sort_order": 30,
+      "meta_title": "Artificial Turf Deodorizing in Ventura County | Scoop Dogg",
+      "meta_description": "Enzyme-based turf deodorizing that eliminates pet urine odor from artificial grass, gravel, and concrete. Pet-safe, 100% natural. Starting at $20. Ventura County.",
+      "h1": "Artificial Turf Deodorizing in Ventura County",
+      "intro": "Artificial turf looks great — until your dogs use it as a bathroom. Urine seeps into the infill and backing, creating persistent odor that water alone cannot fix. Our enzyme-based deodorizing treatment breaks down the bacteria causing the smell at a molecular level. It works on turf, gravel, concrete, patios, and natural grass. 100% pet-safe — dogs can use the yard immediately after application.",
+      "what_includes": [
+        "Surface debris removal and rinse",
+        "Professional enzyme deodorizer application",
+        "Bacteria and odor elimination at the source",
+        "Works on artificial turf, gravel, concrete, and natural grass",
+        "Safe for pets immediately after treatment"
+      ],
+      "who_its_for": "Homeowners with artificial turf or hardscape areas where dog urine has created persistent odor. Especially common in newer Ventura County homes where turf replaced water-hungry lawns.",
+      "faqs": [
+        {
+          "a": "Yes, 100%. The enzymes are natural and non-toxic. Your dogs can use the yard immediately after application.",
+          "q": "Is the deodorizer safe for dogs?"
+        },
+        {
+          "a": "Results are immediate and typically last 2-4 weeks depending on how frequently your dogs use the area. Most clients add it to their weekly service.",
+          "q": "How long does the treatment last?"
+        },
+        {
+          "a": "Yes. The enzyme treatment works on artificial turf, gravel, concrete, pavers, and natural grass.",
+          "q": "Does it work on real grass too?"
+        },
+        {
+          "a": "Absolutely. Many of our weekly clients add deodorizing as a regular add-on, especially during warmer months when odor is worse.",
+          "q": "Can I combine this with weekly scooping?"
+        },
+        {
+          "a": "In most cases, yes. For heavily saturated turf that has never been treated, we may recommend a Turf Deep Clean first to reset the surface before ongoing enzyme maintenance.",
+          "q": "Will it remove all the smell?"
+        }
+      ],
+      "related_slugs": [
+        "yard-deep-clean",
+        "weekly-pooper-scooper-service",
+        "one-time-dog-poop-cleanup"
+      ]
+    },
+    {
+      "slug": "yard-deep-clean",
+      "name": "Yard Deep Clean",
+      "short_name": "Deep Clean",
+      "kind": "one_time",
+      "price_basis": "sqft",
+      "basis_label": "Roughly how big is the area, in square feet?",
+      "pricing_note": "Often combined with ongoing weekly service + enzyme deodorizing for long-term results.",
+      "sort_order": 40,
+      "meta_title": "Yard & Turf Deep Clean in Ventura County | Scoop Dogg",
+      "meta_description": "Full turf and yard deep clean: brush, vacuum, pressure wash, and heavy deodorizer. Ideal for seasonal resets and new homeowners. Starting at $99. Ventura County.",
+      "h1": "Yard & Turf Deep Clean in Ventura County",
+      "intro": "A full reset for your outdoor surface. We deep-brush the turf to loosen embedded debris, vacuum the infill, pressure wash the surface, and apply a heavy-duty deodorizer and sanitizer. This is not a quick spray — it is a thorough restoration that leaves your turf looking and smelling like the day it was installed. Recommended 2-3 times per year or when you are inheriting a yard from a previous owner.",
+      "what_includes": [
+        "Deep brush to loosen embedded waste and debris",
+        "Infill vacuum and debris extraction",
+        "Pressure wash of entire surface",
+        "Heavy-duty enzyme deodorizer and sanitizer application",
+        "Final rinse and inspection"
+      ],
+      "who_its_for": "New homeowners inheriting turf from previous owners, anyone doing a seasonal yard reset, or properties where regular enzyme treatments alone are not solving persistent odor.",
+      "faqs": [
+        {
+          "a": "We recommend 2-3 times per year for most properties. Homes with multiple dogs or heavy use may benefit from quarterly service.",
+          "q": "How often should I get a deep clean?"
+        },
+        {
+          "a": "No. A deep clean includes physical cleaning (brush, vacuum, pressure wash) plus deodorizing. Regular deodorizing is enzyme treatment only.",
+          "q": "Is this the same as regular deodorizing?"
+        },
+        {
+          "a": "Most standard properties take 1-2 hours. Larger or heavily soiled areas may take longer.",
+          "q": "How long does a deep clean take?"
+        },
+        {
+          "a": "We recommend waiting 1-2 hours for the surface to dry after pressure washing. The deodorizer is pet-safe immediately.",
+          "q": "Can I walk on the turf right after?"
+        },
+        {
+          "a": "Yes. While this service is designed for turf and hardscape, we can address natural grass areas and general yard debris as part of a custom quote.",
+          "q": "Do you also handle natural grass and yard debris?"
+        }
+      ],
+      "related_slugs": [
+        "artificial-turf-deodorizing",
+        "weekly-pooper-scooper-service",
+        "one-time-dog-poop-cleanup"
+      ]
+    },
+    {
+      "slug": "weekly-turf-maintenance",
+      "name": "Weekly Turf Maintenance",
+      "short_name": "Turf Maintenance",
+      "kind": "recurring",
+      "price_basis": "sqft",
+      "basis_label": "Roughly how big is the area, in square feet?",
+      "pricing_note": "Best results when paired with a deep clean 2-3 times per year. First month half off when combined with weekly poop scooping.",
+      "sort_order": 50,
+      "meta_title": "Weekly Turf Maintenance Service in Ventura County | Scoop Dogg",
+      "meta_description": "Ongoing artificial turf sweeping and deodorizing in Ventura County. We use the SwipeSmith turf sweeper for leaf, debris, and pet hair removal plus enzyme treatment. Starting at $35/visit.",
+      "h1": "Weekly Turf Maintenance in Ventura County",
+      "intro": "After a deep clean, your turf needs regular upkeep to stay fresh. We come back weekly with the SwipeSmith artificial turf sweeper to pick up leaves, twigs, pet hair, and debris that collect between visits. Each visit includes an enzyme deodorizer application to keep odor at zero. This is the ongoing maintenance that keeps your turf looking and smelling like it did on installation day.",
+      "what_includes": [
+        "SwipeSmith turf sweeper pass over entire surface",
+        "Leaf, twig, and pet hair removal",
+        "Enzyme deodorizer application",
+        "Infill redistribution as needed",
+        "Visual inspection for wear or drainage issues"
+      ],
+      "who_its_for": "Homeowners with artificial turf who want consistent weekly care. Whether you have dogs using the turf or just want it looking pristine, this service keeps debris from building up and odor from taking hold.",
+      "faqs": [
+        {
+          "a": "It is a specialized grooming mower designed for artificial turf. It brushes fibers upright, picks up embedded debris, and redistributes infill — all without damaging the turf surface.",
+          "q": "What is the SwipeSmith turf sweeper?"
+        },
+        {
+          "a": "We recommend starting with a deep clean if your turf has not been professionally cleaned before. After that, weekly maintenance keeps it in peak condition between deep cleans.",
+          "q": "Do I need a deep clean first?"
+        },
+        {
+          "a": "No. Turf collects leaves, pollen, dust, and debris regardless of pets. Weekly maintenance benefits anyone with artificial turf who wants it looking its best.",
+          "q": "Is this just for pet owners?"
+        },
+        {
+          "a": "Enzyme deodorizing is a standalone odor treatment. Weekly turf maintenance includes the sweeper pass, debris removal, AND enzyme treatment — it is a complete turf care visit.",
+          "q": "How is this different from the enzyme deodorizing service?"
+        }
+      ],
+      "related_slugs": [
+        "yard-deep-clean",
+        "artificial-turf-deodorizing",
+        "weekly-pooper-scooper-service"
+      ]
+    },
+    {
+      "slug": "weekly-yard-maintenance",
+      "name": "Weekly Yard Maintenance",
+      "short_name": "Yard Maintenance",
+      "kind": "recurring",
+      "price_basis": "choice",
+      "basis_label": "Which best describes it?",
+      "pricing_note": "Pricing based on property size and services needed. We provide a custom quote after seeing your property.",
+      "sort_order": 60,
+      "meta_title": "Weekly Yard Maintenance & Landscaping in Ventura County | Scoop Dogg",
+      "meta_description": "Weekly yard maintenance in Ventura County — mowing, trimming, edging, and cleanup. Keep your property looking sharp every week. Custom quotes based on property size.",
+      "h1": "Weekly Yard Maintenance in Ventura County",
+      "intro": "Ongoing yard maintenance tailored to what your property actually needs. Mowing, edging, hedge trimming, leaf cleanup, or a combination — we keep things looking sharp between deep cleans so your outdoor space is always guest-ready. Same reliable team, same day every week.",
+      "what_includes": [
+        "Lawn mowing and edging",
+        "Hedge and shrub trimming",
+        "Leaf and debris cleanup",
+        "Walkway and patio sweeping",
+        "Customizable service based on your property"
+      ],
+      "who_its_for": "Homeowners who want a consistently clean and maintained yard without managing multiple contractors. Great as a follow-up to a yard deep clean or overgrowth reset.",
+      "faqs": [
+        {
+          "a": "It depends on your property. Most clients get mowing, edging, and basic trimming. We can add leaf cleanup, shrub shaping, and other tasks based on what you need.",
+          "q": "What does weekly maintenance include?"
+        },
+        {
+          "a": "Absolutely. Many clients pair weekly yard maintenance with weekly poop scooping — same visit, same team.",
+          "q": "Can I combine this with poop scooping?"
+        },
+        {
+          "a": "Yes. Our Yard Deep Clean service handles one-time restoration and overgrowth. Weekly maintenance is for ongoing upkeep after the heavy lifting is done.",
+          "q": "Do you do one-time landscaping jobs too?"
+        },
+        {
+          "a": "Book through our form and describe your property. We will follow up same day with a custom quote based on yard size and the services you need.",
+          "q": "How do I get a quote?"
+        }
+      ],
+      "related_slugs": [
+        "yard-deep-clean",
+        "weekly-pooper-scooper-service",
+        "pressure-washing"
+      ]
+    },
+    {
+      "slug": "kitty-litter-exchange",
+      "name": "Kitty Litter Exchange",
+      "short_name": "Litter Exchange",
+      "kind": "one_time",
+      "price_basis": "boxes",
+      "basis_label": "How many litter boxes?",
+      "pricing_note": "Litter not included unless requested. Add-on to existing service or book standalone.",
+      "sort_order": 70,
+      "meta_title": "Kitty Litter Exchange Service in Ventura County | Scoop Dogg",
+      "meta_description": "Fresh litter box service for cat owners in Ventura County. We remove used litter, refresh the box, and keep indoor pet areas cleaner. Book today.",
+      "h1": "Kitty Litter Exchange in Ventura County",
+      "intro": "Fresh litter box service for cat owners who want the dirty work handled. We remove used litter, refresh the box, and help keep indoor pet areas cleaner. No more putting it off, no more smell building up — just a clean box on a schedule that works for you.",
+      "what_includes": [
+        "Used litter removed and bagged for disposal",
+        "Box wiped down and refreshed with clean litter",
+        "Surrounding area tidied if needed",
+        "Flexible scheduling — weekly or as-needed",
+        "Safe, odor-controlled handling"
+      ],
+      "who_its_for": "Cat owners who want to stay on top of litter box hygiene without the hassle. Great for busy households, people with mobility limitations, multi-cat homes, and anyone who just hates doing it.",
+      "faqs": [
+        {
+          "a": "We can use litter you already have on hand or supply it for an additional fee. Just let us know when you book.",
+          "q": "Do you bring the fresh litter?"
+        },
+        {
+          "a": "No. As long as we have safe indoor access, we can handle the exchange without you there.",
+          "q": "Do I need to be home?"
+        },
+        {
+          "a": "Most cat owners benefit from a full litter exchange once a week. High-use boxes or multi-cat homes may need more frequent attention.",
+          "q": "How often should litter boxes be exchanged?"
+        }
+      ],
+      "related_slugs": [
+        "cat-tree-cleaning",
+        "weekly-pooper-scooper-service"
+      ]
+    },
+    {
+      "slug": "dog-run-cleanups",
+      "name": "Dog Run Cleanups",
+      "short_name": "Dog Run Cleanup",
+      "kind": "one_time",
+      "price_basis": "sqft",
+      "basis_label": "Roughly how big is the area, in square feet?",
+      "pricing_note": "Enzyme deodorizing available as an add-on. Pricing based on size and accumulation level.",
+      "sort_order": 80,
+      "meta_title": "Dog Run Cleanup Service in Ventura County | Scoop Dogg",
+      "meta_description": "Cleanup for side yards, gravel runs, turf strips, and fenced dog areas in Ventura County. Waste removal and odor control for high-use pet zones.",
+      "h1": "Dog Run Cleanup in Ventura County",
+      "intro": "Cleanup for side yards, gravel runs, artificial turf strips, fenced dog areas, and high-use potty zones where waste and odor build up fast. These spots get ignored because they are out of sight — but they are usually the worst-smelling part of the property. We get in there, scoop everything out, and leave it clean.",
+      "what_includes": [
+        "Full waste removal from the run or enclosed area",
+        "All surfaces checked — gravel, turf, concrete, dirt",
+        "Double-bagged waste hauled off property",
+        "Odor assessment and optional enzyme treatment",
+        "Gate secured and area reset after service"
+      ],
+      "who_its_for": "Homeowners with dedicated dog runs, side-yard potty areas, or any enclosed space where dogs spend time and waste accumulates. Especially common in homes with gravel or turf runs.",
+      "faqs": [
+        {
+          "a": "Yes. Dog runs are tighter, more concentrated areas that need focused attention. We treat them as a separate service because the cleanup intensity is different from a standard yard walk.",
+          "q": "Is this different from your regular yard scooping?"
+        },
+        {
+          "a": "Yes. Gravel and decomposed granite are some of the most common dog run surfaces we work in. Waste hides easily in gravel so we are thorough.",
+          "q": "Do you handle gravel runs?"
+        },
+        {
+          "a": "Absolutely. Most dog run cleanups benefit from an enzyme deodorizer application after waste removal, especially if the run is artificial turf or concrete.",
+          "q": "Can I add enzyme treatment to the same visit?"
+        }
+      ],
+      "related_slugs": [
+        "weekly-pooper-scooper-service",
+        "artificial-turf-deodorizing",
+        "pressure-washing"
+      ]
+    },
+    {
+      "slug": "cat-tree-cleaning",
+      "name": "Cat Tree Cleaning",
+      "short_name": "Cat Tree Cleaning",
+      "kind": "one_time",
+      "price_basis": "levels",
+      "basis_label": "How many levels?",
+      "pricing_note": "Pricing based on size and condition. Cleaning products are pet-safe.",
+      "sort_order": 90,
+      "meta_title": "Cat Tree Cleaning Service in Ventura County | Scoop Dogg",
+      "meta_description": "Professional cat tree and pet furniture cleaning in Ventura County. We remove hair, odor, litter dust, and everyday pet mess from cat trees and scratching posts.",
+      "h1": "Cat Tree Cleaning in Ventura County",
+      "intro": "Cleaning for cat trees, scratching posts, and pet furniture that collects hair, odor, litter dust, and everyday pet mess. Cat trees get grimy fast and most people never get around to cleaning them. We handle it without you having to drag the thing outside yourself.",
+      "what_includes": [
+        "Hair removal from all levels and platforms",
+        "Wipe-down of all surfaces and posts",
+        "Odor treatment with pet-safe cleaner",
+        "Litter dust and debris removal",
+        "Inspection for wear or damage (noted, not repaired)"
+      ],
+      "who_its_for": "Cat owners whose trees have been overdue for a proper cleaning. Especially useful after a cat illness, when adding a new cat to the household, or for multi-cat homes where the tree sees constant use.",
+      "faqs": [
+        {
+          "a": "We clean it in place for most standard trees. For trees that need disassembly to reach all areas, we will let you know beforehand.",
+          "q": "Do you disassemble the cat tree to clean it?"
+        },
+        {
+          "a": "Pet-safe, enzyme-based cleaners that neutralize odor without harsh chemicals. Nothing that would harm your cats after the clean.",
+          "q": "What cleaning products do you use?"
+        },
+        {
+          "a": "A few times a year is reasonable for most households. Multi-cat homes or cats recovering from illness may benefit from more frequent cleaning.",
+          "q": "How often should cat trees be professionally cleaned?"
+        }
+      ],
+      "related_slugs": [
+        "kitty-litter-exchange",
+        "weekly-pooper-scooper-service"
+      ]
+    },
+    {
+      "slug": "pressure-washing",
+      "name": "Pressure Washing",
+      "short_name": "Pressure Washing",
+      "kind": "one_time",
+      "price_basis": "sqft",
+      "basis_label": "Roughly how big is the area, in square feet?",
+      "pricing_note": "Solid waste removal is included before washing. Enzyme deodorizing available as an add-on.",
+      "sort_order": 100,
+      "meta_title": "Pet Area Pressure Washing in Ventura County | Scoop Dogg",
+      "meta_description": "Pet area pressure washing for patios, hardscape, dog runs, and outdoor surfaces in Ventura County. We clean hard surfaces after solid pet waste has been removed.",
+      "h1": "Pet Area Pressure Washing in Ventura County",
+      "intro": "Pet-area pressure washing for patios, hardscape, dog runs, and outdoor surfaces after solid waste has been removed. Dried residue, staining, and ground-in odor on concrete and pavers does not come out with a garden hose. High-pressure washing restores the surface and removes what regular cleaning leaves behind. We always remove solid waste first and wash responsibly — nothing goes toward gutters or storm drains.",
+      "what_includes": [
+        "Solid waste removed before any washing begins",
+        "High-pressure wash of concrete, pavers, tile, and hardscape",
+        "Responsible water direction — away from gutters and storm drains",
+        "Post-wash enzyme deodorizer application (optional)",
+        "Surface inspection and rinse"
+      ],
+      "who_its_for": "Homeowners with concrete patios, pavers, or hardscape in pet-use areas that have developed staining or persistent odor. Often combined with a dog run cleanup or yard deep clean.",
+      "faqs": [
+        {
+          "a": "Yes, always. Solid waste is scooped and removed before any pressure washing begins. We never wash pet waste toward gutters, drains, or neighboring properties.",
+          "q": "Do you remove the pet waste before washing?"
+        },
+        {
+          "a": "Concrete, pavers, brick, tile, and most hardscape. We do not pressure wash artificial turf — turf gets the enzyme deep clean treatment instead.",
+          "q": "What surfaces can you pressure wash?"
+        },
+        {
+          "a": "Yes. Pressure washing is commonly added on to dog run cleanups, one-time yard cleanups, or yard deep cleans. Just mention it when you book.",
+          "q": "Can I add pressure washing to my regular cleanup visit?"
+        }
+      ],
+      "related_slugs": [
+        "dog-run-cleanups",
+        "yard-deep-clean",
+        "artificial-turf-deodorizing"
+      ]
+    },
+    {
+      "slug": "kitty-litter-robot-cleaning",
+      "name": "Kitty Litter Robot Cleaning",
+      "short_name": "Litter Robot Cleaning",
+      "kind": "one_time",
+      "price_basis": "units",
+      "basis_label": "How many units?",
+      "pricing_note": "Includes carbon filter refresh. Compatible with Litter-Robot 3, 4, and similar automatic units.",
+      "sort_order": 110,
+      "meta_title": "Kitty Litter Robot Cleaning Service in Ventura County | Scoop Dogg",
+      "meta_description": "Professional Litter-Robot cleaning service in Ventura County. We deep clean automatic self-cleaning litter boxes, remove buildup, eliminate odors, and keep your smart litter box working perfectly.",
+      "h1": "Kitty Litter Robot Cleaning in Ventura County",
+      "intro": "The Litter-Robot is an incredible invention — an automatic, self-cleaning litter box that uses a rotating globe and sensors to separate waste from clean litter after your cat leaves. But even the smartest litter box needs regular deep cleaning. Waste residue builds up in the globe, the waste drawer gets grimy, and odor can linger even when the unit is \"clean.\" We handle the full teardown, deep clean, and reassembly so your Litter-Robot stays fresh and functional.",
+      "what_includes": [
+        "Full globe interior wipe-down and scrub",
+        "Waste drawer cleaned and deodorized",
+        "Carbon filter replacement or refresh",
+        "Exterior housing wiped and sanitized",
+        "Sensor areas cleaned for optimal performance",
+        "Reassembly and function check"
+      ],
+      "who_its_for": "Cat owners with Litter-Robot or similar automatic self-cleaning litter boxes who want the device properly maintained without the hassle of taking it apart themselves. Great for multi-cat households where the unit sees heavy use, or anyone who wants to extend the life of their investment.",
+      "faqs": [
+        {
+          "a": "The Litter-Robot is an automatic, self-cleaning litter box that uses a rotating globe and weight/laser sensors to separate waste clumps from clean litter after your cat leaves. Waste drops into a drawer below, eliminating the need for daily manual scooping.",
+          "q": "What is a Litter-Robot?"
+        },
+        {
+          "a": "Even though it self-cleans, residue builds up inside the globe and waste drawer over time. This can cause odor, affect the sensors, and reduce the unit's effectiveness. A deep clean restores performance and eliminates smells.",
+          "q": "Why does my Litter-Robot need cleaning?"
+        },
+        {
+          "a": "No, as long as we have safe indoor access. We will unplug the unit, perform the full cleaning, and have it back up and running when we are done.",
+          "q": "Do I need to be home for the service?"
+        },
+        {
+          "a": "We recommend a deep clean every 2-3 months for single-cat homes, or monthly for multi-cat households. Heavy use and certain litter types may require more frequent attention.",
+          "q": "How often should I get my Litter-Robot cleaned?"
+        },
+        {
+          "a": "Traditional clay-based clumping litter and select natural clumping litters work best. We can advise on litter choices during your service visit.",
+          "q": "What litter types work best with Litter-Robots?"
+        }
+      ],
+      "related_slugs": [
+        "kitty-litter-exchange",
+        "cat-tree-cleaning"
+      ]
+    }
+  ],
+  "tiers": [
+    {
+      "id": "0cc64607-a1f3-4488-a59d-68d6e3bf7661",
+      "service_slug": "artificial-turf-deodorizing",
+      "label": "Small area (under 200 sq ft)",
+      "min_qty": null,
+      "max_qty": 200,
+      "price_cents": 2000,
+      "price_suffix": "",
+      "requires_quote": false,
+      "price_is_from": false,
+      "sort_order": 10
+    },
+    {
+      "id": "72a67a19-7a7a-4468-bb1c-8f8925d21975",
+      "service_slug": "artificial-turf-deodorizing",
+      "label": "Medium area (200-500 sq ft)",
+      "min_qty": 200,
+      "max_qty": 500,
+      "price_cents": 3500,
+      "price_suffix": "",
+      "requires_quote": false,
+      "price_is_from": false,
+      "sort_order": 20
+    },
+    {
+      "id": "758c470e-9185-4066-8892-b3318a369d08",
+      "service_slug": "artificial-turf-deodorizing",
+      "label": "Large area (500+ sq ft)",
+      "min_qty": 500,
+      "max_qty": null,
+      "price_cents": 5000,
+      "price_suffix": "",
+      "requires_quote": false,
+      "price_is_from": true,
+      "sort_order": 30
+    },
+    {
+      "id": "ff673ade-b551-4045-af7b-ed8c9bec99d5",
+      "service_slug": "cat-tree-cleaning",
+      "label": "Small tree (1-2 levels)",
+      "min_qty": 1,
+      "max_qty": 2,
+      "price_cents": 2500,
+      "price_suffix": "",
+      "requires_quote": false,
+      "price_is_from": false,
+      "sort_order": 10
+    },
+    {
+      "id": "a84ef296-352f-4344-b7a1-2ec0bb61d90f",
+      "service_slug": "cat-tree-cleaning",
+      "label": "Large tree (3+ levels)",
+      "min_qty": 3,
+      "max_qty": null,
+      "price_cents": 4500,
+      "price_suffix": "",
+      "requires_quote": false,
+      "price_is_from": false,
+      "sort_order": 20
+    },
+    {
+      "id": "387240a1-cc4b-41ab-b617-2a74622873cd",
+      "service_slug": "cat-tree-cleaning",
+      "label": "Multiple trees",
+      "min_qty": null,
+      "max_qty": null,
+      "price_cents": null,
+      "price_suffix": "",
+      "requires_quote": true,
+      "price_is_from": false,
+      "sort_order": 30
+    },
+    {
+      "id": "94eb01e3-2900-46f2-81e8-769499966eab",
+      "service_slug": "dog-run-cleanups",
+      "label": "Small run (under 100 sq ft)",
+      "min_qty": null,
+      "max_qty": 100,
+      "price_cents": 4900,
+      "price_suffix": "",
+      "requires_quote": false,
+      "price_is_from": false,
+      "sort_order": 10
+    },
+    {
+      "id": "bcd866c7-a93d-4287-ac07-9c0f398130b6",
+      "service_slug": "dog-run-cleanups",
+      "label": "Medium run (100-300 sq ft)",
+      "min_qty": 100,
+      "max_qty": 300,
+      "price_cents": 7900,
+      "price_suffix": "",
+      "requires_quote": false,
+      "price_is_from": false,
+      "sort_order": 20
+    },
+    {
+      "id": "f039e332-1dc9-4e52-809d-62e7673de1d5",
+      "service_slug": "dog-run-cleanups",
+      "label": "Large or custom area",
+      "min_qty": null,
+      "max_qty": null,
+      "price_cents": null,
+      "price_suffix": "",
+      "requires_quote": true,
+      "price_is_from": false,
+      "sort_order": 30
+    },
+    {
+      "id": "fcd966f0-6fd9-4949-92ae-64f8d1f9b29d",
+      "service_slug": "kitty-litter-exchange",
+      "label": "1 litter box",
+      "min_qty": 1,
+      "max_qty": 1,
+      "price_cents": 1500,
+      "price_suffix": "/visit",
+      "requires_quote": false,
+      "price_is_from": false,
+      "sort_order": 10
+    },
+    {
+      "id": "1acfdcce-9846-4d3d-b0d2-fd70b945e922",
+      "service_slug": "kitty-litter-exchange",
+      "label": "2 litter boxes",
+      "min_qty": 2,
+      "max_qty": 2,
+      "price_cents": 2200,
+      "price_suffix": "/visit",
+      "requires_quote": false,
+      "price_is_from": false,
+      "sort_order": 20
+    },
+    {
+      "id": "c50ab406-254a-40a8-8de3-f10f5c5933c2",
+      "service_slug": "kitty-litter-exchange",
+      "label": "3+ litter boxes",
+      "min_qty": 3,
+      "max_qty": null,
+      "price_cents": null,
+      "price_suffix": "",
+      "requires_quote": true,
+      "price_is_from": false,
+      "sort_order": 30
+    },
+    {
+      "id": "a8f35df5-e23b-4c37-8302-95f6fe0e7ed2",
+      "service_slug": "kitty-litter-robot-cleaning",
+      "label": "1 Litter-Robot",
+      "min_qty": 1,
+      "max_qty": 1,
+      "price_cents": 4500,
+      "price_suffix": "",
+      "requires_quote": false,
+      "price_is_from": false,
+      "sort_order": 10
+    },
+    {
+      "id": "feda176a-6cef-445b-b35c-24e9dfd963a6",
+      "service_slug": "kitty-litter-robot-cleaning",
+      "label": "2 Litter-Robots",
+      "min_qty": 2,
+      "max_qty": 2,
+      "price_cents": 7500,
+      "price_suffix": "",
+      "requires_quote": false,
+      "price_is_from": false,
+      "sort_order": 20
+    },
+    {
+      "id": "e32d9186-125d-4a9e-9f93-f5a143deeb5f",
+      "service_slug": "kitty-litter-robot-cleaning",
+      "label": "3+ Litter-Robots",
+      "min_qty": 3,
+      "max_qty": null,
+      "price_cents": null,
+      "price_suffix": "",
+      "requires_quote": true,
+      "price_is_from": false,
+      "sort_order": 30
+    },
+    {
+      "id": "01bac231-024e-4ce5-bad8-7f5613bc4f1b",
+      "service_slug": "one-time-dog-poop-cleanup",
+      "label": "Standard yard (up to 2 weeks buildup)",
+      "min_qty": null,
+      "max_qty": null,
+      "price_cents": 9900,
+      "price_suffix": "",
+      "requires_quote": false,
+      "price_is_from": false,
+      "sort_order": 10
+    },
+    {
+      "id": "e81f6974-1f3d-4ebf-85fc-66b674a0ef81",
+      "service_slug": "one-time-dog-poop-cleanup",
+      "label": "Heavy buildup (3-6 weeks)",
+      "min_qty": null,
+      "max_qty": null,
+      "price_cents": 14900,
+      "price_suffix": "",
+      "requires_quote": false,
+      "price_is_from": false,
+      "sort_order": 20
+    },
+    {
+      "id": "d953cbff-85b4-43ee-b48c-d77adf323859",
+      "service_slug": "one-time-dog-poop-cleanup",
+      "label": "Severe (6+ weeks or multiple dogs)",
+      "min_qty": null,
+      "max_qty": null,
+      "price_cents": null,
+      "price_suffix": "",
+      "requires_quote": true,
+      "price_is_from": false,
+      "sort_order": 30
+    },
+    {
+      "id": "18d466d5-6f03-4a7a-9a1a-787348b2a71c",
+      "service_slug": "pressure-washing",
+      "label": "Small patio or run (under 200 sq ft)",
+      "min_qty": null,
+      "max_qty": 200,
+      "price_cents": 5900,
+      "price_suffix": "",
+      "requires_quote": false,
+      "price_is_from": false,
+      "sort_order": 10
+    },
+    {
+      "id": "904dfec9-41fd-4cc7-b084-dc46c7985c98",
+      "service_slug": "pressure-washing",
+      "label": "Medium area (200-500 sq ft)",
+      "min_qty": 200,
+      "max_qty": 500,
+      "price_cents": 9900,
+      "price_suffix": "",
+      "requires_quote": false,
+      "price_is_from": false,
+      "sort_order": 20
+    },
+    {
+      "id": "db60c61f-e0fc-4fba-b599-9799ec7c0b27",
+      "service_slug": "pressure-washing",
+      "label": "Large area (500+ sq ft)",
+      "min_qty": 500,
+      "max_qty": null,
+      "price_cents": null,
+      "price_suffix": "",
+      "requires_quote": true,
+      "price_is_from": false,
+      "sort_order": 30
+    },
+    {
+      "id": "c20d2bba-0759-487a-88ed-c6296947af79",
+      "service_slug": "weekly-pooper-scooper-service",
+      "label": "1 dog",
+      "min_qty": 1,
+      "max_qty": 1,
+      "price_cents": 1500,
+      "price_suffix": "/week",
+      "requires_quote": false,
+      "price_is_from": false,
+      "sort_order": 10
+    },
+    {
+      "id": "c1f8b8ce-757c-4eec-9ab4-e1f84eccf3c4",
+      "service_slug": "weekly-pooper-scooper-service",
+      "label": "2 dogs",
+      "min_qty": 2,
+      "max_qty": 2,
+      "price_cents": 2000,
+      "price_suffix": "/week",
+      "requires_quote": false,
+      "price_is_from": false,
+      "sort_order": 20
+    },
+    {
+      "id": "a2530a29-7bf1-4089-8ef8-5953a5430af5",
+      "service_slug": "weekly-pooper-scooper-service",
+      "label": "3 dogs",
+      "min_qty": 3,
+      "max_qty": 3,
+      "price_cents": 2300,
+      "price_suffix": "/week",
+      "requires_quote": false,
+      "price_is_from": false,
+      "sort_order": 30
+    },
+    {
+      "id": "fd0ea69a-aaae-4210-8c4d-66742bb07495",
+      "service_slug": "weekly-pooper-scooper-service",
+      "label": "4+ dogs",
+      "min_qty": 4,
+      "max_qty": null,
+      "price_cents": 2500,
+      "price_suffix": "/week",
+      "requires_quote": false,
+      "price_is_from": false,
+      "sort_order": 40
+    },
+    {
+      "id": "271f9843-7cdb-4754-aa39-8cb6056956ef",
+      "service_slug": "weekly-turf-maintenance",
+      "label": "Small area (under 300 sq ft)",
+      "min_qty": null,
+      "max_qty": 300,
+      "price_cents": 3500,
+      "price_suffix": "/visit",
+      "requires_quote": false,
+      "price_is_from": false,
+      "sort_order": 10
+    },
+    {
+      "id": "20382e00-fb8c-43f1-8cb9-7b526e06c9b1",
+      "service_slug": "weekly-turf-maintenance",
+      "label": "Medium area (300-600 sq ft)",
+      "min_qty": 300,
+      "max_qty": 600,
+      "price_cents": 5000,
+      "price_suffix": "/visit",
+      "requires_quote": false,
+      "price_is_from": false,
+      "sort_order": 20
+    },
+    {
+      "id": "2d643c45-8f00-493b-af41-fd2d79206259",
+      "service_slug": "weekly-turf-maintenance",
+      "label": "Large area (600+ sq ft)",
+      "min_qty": 600,
+      "max_qty": null,
+      "price_cents": null,
+      "price_suffix": "",
+      "requires_quote": true,
+      "price_is_from": false,
+      "sort_order": 30
+    },
+    {
+      "id": "e0fca44e-edcd-4090-876d-0f831eff5092",
+      "service_slug": "weekly-yard-maintenance",
+      "label": "Small yard (basic mow & edge)",
+      "min_qty": null,
+      "max_qty": null,
+      "price_cents": 4000,
+      "price_suffix": "/visit",
+      "requires_quote": false,
+      "price_is_from": true,
+      "sort_order": 10
+    },
+    {
+      "id": "3c987fac-5de3-4767-b33f-dd48b3d95f33",
+      "service_slug": "weekly-yard-maintenance",
+      "label": "Medium yard (mow, edge, trim)",
+      "min_qty": null,
+      "max_qty": null,
+      "price_cents": 6500,
+      "price_suffix": "/visit",
+      "requires_quote": false,
+      "price_is_from": true,
+      "sort_order": 20
+    },
+    {
+      "id": "05897338-0015-4047-ad37-201365d77fb0",
+      "service_slug": "weekly-yard-maintenance",
+      "label": "Large or custom property",
+      "min_qty": null,
+      "max_qty": null,
+      "price_cents": null,
+      "price_suffix": "",
+      "requires_quote": true,
+      "price_is_from": false,
+      "sort_order": 30
+    },
+    {
+      "id": "be225a4c-d403-483b-9737-370eb4f22aaa",
+      "service_slug": "yard-deep-clean",
+      "label": "Standard turf area (under 500 sq ft)",
+      "min_qty": null,
+      "max_qty": 500,
+      "price_cents": 9900,
+      "price_suffix": "",
+      "requires_quote": false,
+      "price_is_from": false,
+      "sort_order": 10
+    },
+    {
+      "id": "0691e980-0241-446d-9dfd-b2758ad74a9f",
+      "service_slug": "yard-deep-clean",
+      "label": "Large turf area (500-1000 sq ft)",
+      "min_qty": 500,
+      "max_qty": 1000,
+      "price_cents": 14900,
+      "price_suffix": "",
+      "requires_quote": false,
+      "price_is_from": false,
+      "sort_order": 20
+    },
+    {
+      "id": "c92a7e68-477d-47b2-96b3-14afdf04818b",
+      "service_slug": "yard-deep-clean",
+      "label": "Extra large (1000+ sq ft)",
+      "min_qty": 1000,
+      "max_qty": null,
+      "price_cents": null,
+      "price_suffix": "",
+      "requires_quote": true,
+      "price_is_from": false,
+      "sort_order": 30
+    }
+  ],
+  "packages": [
+    {
+      "id": "859c3f6f-6b91-415f-9a5c-0a9c6cc28aee",
+      "slug": "scoop-weekly-1-dog",
+      "service_slug": "weekly-pooper-scooper-service",
+      "tier_id": "c20d2bba-0759-487a-88ed-c6296947af79",
+      "name": "Weekly poop scooping · 1 dog",
+      "short_label": "1 dog",
+      "frequency": "weekly",
+      "visits_per_month": 4.33,
+      "monthly_price_cents": 6500,
+      "derivation": "$15/week published x 52 visits / 12 months (4.33) = $65.00 -> $65/month",
+      "source": "derived_from_published",
+      "version": 1,
+      "featured": false,
+      "sort_order": 10
+    },
+    {
+      "id": "ba125267-f3f8-44b1-9881-2f9afede3521",
+      "slug": "scoop-weekly-2-dogs",
+      "service_slug": "weekly-pooper-scooper-service",
+      "tier_id": "c1f8b8ce-757c-4eec-9ab4-e1f84eccf3c4",
+      "name": "Weekly poop scooping · 2 dogs",
+      "short_label": "2 dogs",
+      "frequency": "weekly",
+      "visits_per_month": 4.33,
+      "monthly_price_cents": 8700,
+      "derivation": "$20/week published x 52 visits / 12 months (4.33) = $86.67 -> $87/month",
+      "source": "derived_from_published",
+      "version": 1,
+      "featured": true,
+      "sort_order": 20
+    },
+    {
+      "id": "91f9539b-d6b5-41df-ba94-ca270bf475e7",
+      "slug": "scoop-weekly-3-dogs",
+      "service_slug": "weekly-pooper-scooper-service",
+      "tier_id": "a2530a29-7bf1-4089-8ef8-5953a5430af5",
+      "name": "Weekly poop scooping · 3 dogs",
+      "short_label": "3 dogs",
+      "frequency": "weekly",
+      "visits_per_month": 4.33,
+      "monthly_price_cents": 10000,
+      "derivation": "$23/week published x 52 visits / 12 months (4.33) = $99.67 -> $100/month",
+      "source": "derived_from_published",
+      "version": 1,
+      "featured": false,
+      "sort_order": 30
+    },
+    {
+      "id": "e233e925-c63a-4147-87bd-82de472c306d",
+      "slug": "scoop-weekly-4-plus-dogs",
+      "service_slug": "weekly-pooper-scooper-service",
+      "tier_id": "fd0ea69a-aaae-4210-8c4d-66742bb07495",
+      "name": "Weekly poop scooping · 4+ dogs",
+      "short_label": "4+ dogs",
+      "frequency": "weekly",
+      "visits_per_month": 4.33,
+      "monthly_price_cents": 10800,
+      "derivation": "$25/week published x 52 visits / 12 months (4.33) = $108.33 -> $108/month",
+      "source": "derived_from_published",
+      "version": 1,
+      "featured": false,
+      "sort_order": 40
+    },
+    {
+      "id": "d1a6b075-fb2f-4dba-8eac-c798a160489c",
+      "slug": "turf-weekly-small-area",
+      "service_slug": "weekly-turf-maintenance",
+      "tier_id": "271f9843-7cdb-4754-aa39-8cb6056956ef",
+      "name": "Weekly turf maintenance · Small area",
+      "short_label": "Small area",
+      "frequency": "weekly",
+      "visits_per_month": 4.33,
+      "monthly_price_cents": 15200,
+      "derivation": "$35/visit published x 52 visits / 12 months (4.33) = $151.67 -> $152/month",
+      "source": "derived_from_published",
+      "version": 1,
+      "featured": false,
+      "sort_order": 110
+    },
+    {
+      "id": "dd7fea96-82d3-4722-b664-e76d49ef3e18",
+      "slug": "turf-weekly-medium-area",
+      "service_slug": "weekly-turf-maintenance",
+      "tier_id": "20382e00-fb8c-43f1-8cb9-7b526e06c9b1",
+      "name": "Weekly turf maintenance · Medium area",
+      "short_label": "Medium area",
+      "frequency": "weekly",
+      "visits_per_month": 4.33,
+      "monthly_price_cents": 21700,
+      "derivation": "$50/visit published x 52 visits / 12 months (4.33) = $216.67 -> $217/month",
+      "source": "derived_from_published",
+      "version": 1,
+      "featured": false,
+      "sort_order": 120
+    },
+    {
+      "id": "2bf2a0b8-44ce-42ba-b354-fde0aa9fc70b",
+      "slug": "yard-weekly-small-yard",
+      "service_slug": "weekly-yard-maintenance",
+      "tier_id": "e0fca44e-edcd-4090-876d-0f831eff5092",
+      "name": "Weekly yard maintenance · Small yard",
+      "short_label": "Small yard",
+      "frequency": "weekly",
+      "visits_per_month": 4.33,
+      "monthly_price_cents": 17300,
+      "derivation": "From $40/visit published x 52 visits / 12 months (4.33) = $173.33 -> $173/month. The published price is a FLOOR (\"from\"), so this monthly number is a decision, not arithmetic.",
+      "source": "derived_from_published",
+      "version": 1,
+      "featured": false,
+      "sort_order": 210
+    },
+    {
+      "id": "da566322-5660-4119-ac8d-4d0ff889a2a0",
+      "slug": "yard-weekly-medium-yard",
+      "service_slug": "weekly-yard-maintenance",
+      "tier_id": "3c987fac-5de3-4767-b33f-dd48b3d95f33",
+      "name": "Weekly yard maintenance · Medium yard",
+      "short_label": "Medium yard",
+      "frequency": "weekly",
+      "visits_per_month": 4.33,
+      "monthly_price_cents": 28200,
+      "derivation": "From $65/visit published x 52 visits / 12 months (4.33) = $281.67 -> $282/month. The published price is a FLOOR (\"from\"), so this monthly number is a decision, not arithmetic.",
+      "source": "derived_from_published",
+      "version": 1,
+      "featured": false,
+      "sort_order": 220
+    },
+    {
+      "id": "4b9c2ef5-3df0-401f-934c-19aee54a605d",
+      "slug": "litter-weekly-1-litter-box",
+      "service_slug": "kitty-litter-exchange",
+      "tier_id": "fcd966f0-6fd9-4949-92ae-64f8d1f9b29d",
+      "name": "Weekly litter box service · 1 litter box",
+      "short_label": "1 litter box",
+      "frequency": "weekly",
+      "visits_per_month": 4.33,
+      "monthly_price_cents": 6500,
+      "derivation": "$15/visit published x 52 visits / 12 months (4.33) = $65.00 -> $65/month",
+      "source": "derived_from_published",
+      "version": 1,
+      "featured": false,
+      "sort_order": 310
+    },
+    {
+      "id": "96cf0ba4-a388-48d3-977c-43e7b7fe28a4",
+      "slug": "litter-weekly-2-litter-boxes",
+      "service_slug": "kitty-litter-exchange",
+      "tier_id": "1acfdcce-9846-4d3d-b0d2-fd70b945e922",
+      "name": "Weekly litter box service · 2 litter boxes",
+      "short_label": "2 litter boxes",
+      "frequency": "weekly",
+      "visits_per_month": 4.33,
+      "monthly_price_cents": 9500,
+      "derivation": "$22/visit published x 52 visits / 12 months (4.33) = $95.33 -> $95/month",
+      "source": "derived_from_published",
+      "version": 1,
+      "featured": false,
+      "sort_order": 320
+    }
+  ],
+  "offers": [
+    {
+      "id": "da6c8da8-a02e-4294-928b-399b97673f08",
+      "name": "First month half off",
+      "description": "Published on the site: \"First month is half off.\" Applies to the first monthly payment of a scooping package.",
+      "kind": "percent_off",
+      "value": 50,
+      "applies_to_slugs": [
+        "weekly-pooper-scooper-service"
+      ],
+      "requires_slugs": [],
+      "status": "active"
+    },
+    {
+      "id": "1b8b7bfc-c624-42c9-9e4a-5a0a95010605",
+      "name": "Turf maintenance: first month half off with scooping",
+      "description": "Published on the site: \"First month half off when combined with weekly poop scooping.\"",
+      "kind": "percent_off",
+      "value": 50,
+      "applies_to_slugs": [
+        "weekly-turf-maintenance"
+      ],
+      "requires_slugs": [
+        "weekly-pooper-scooper-service"
+      ],
+      "status": "active"
+    }
+  ],
+  "areas": [
+    {
+      "slug": "ventura",
+      "name": "Ventura",
+      "county": "Ventura",
+      "state": "CA",
+      "tier": 1,
+      "bookable": true,
+      "market": "ventura-county",
+      "market_label": "Ventura County",
+      "neighborhoods": [
+        "Midtown",
+        "Ventura Harbor Village",
+        "Eastside",
+        "Westside",
+        "Ondulando",
+        "Pierpont Beach",
+        "Montalvo"
+      ],
+      "nearby_slugs": [
+        "oxnard",
+        "camarillo",
+        "ojai",
+        "carpinteria"
+      ],
+      "service_weekdays": [],
+      "meta_title": "Dog Poop Cleaning in Ventura, CA | Scoop Dogg",
+      "meta_description": "Professional poop scooping in Ventura, CA. Serving Midtown, Ventura Harbor, and surrounding neighborhoods. Weekly & one-time service.",
+      "intro": "Ventura is a vibrant coastal city where dogs and their owners love exploring the area near Ventura Harbor, walking the promenade by Ventura Pier, or hanging out around Pacific View Mall. Scoop Dogg keeps yards in Midtown and throughout Ventura clean so you can spend more time enjoying this beautiful community — not cleaning up after your pets.",
+      "local_context": "Ventura's coastal climate keeps yards damp year-round, which means waste breaks down more slowly and odors linger longer than you'd expect. Whether you're near the beach where salt air keeps things humid, or up in the hills off Foothill Road where larger lots mean more ground to cover, Scoop Dogg adapts to your property. Most of our Ventura clients are on a weekly Tuesday or Thursday route, and we typically confirm your start date within 24 hours of booking.",
+      "faqs": [
+        {
+          "a": "Weekly yard cleanup is $15/week for 1 dog, $20/week for 2 dogs, $23/week for 3 dogs, and $25/week for 4 or more dogs. A Turf Deep Clean is a flat $99. Turf Rescue deodorizing starts at $20. We confirm all pricing before your first visit.",
+          "q": "How much does pooper scooper service cost in Ventura?"
+        },
+        {
+          "a": "We run dedicated Ventura routes on Tuesdays and Thursdays. Your specific day is confirmed when you book, and we stick to the same day every week.",
+          "q": "What days do you service Ventura?"
+        },
+        {
+          "a": "No — you never need to be home. Just make sure we have gate access. Leave any codes or instructions in the notes when you book and we handle everything, then secure the gate behind us.",
+          "q": "Do I need to be home when you come?"
+        },
+        {
+          "a": "Yes. We cover all of Ventura including Harbor Village, Pierpont Beach, Midtown, Eastside, Westside, Ondulando, and Montalvo.",
+          "q": "Do you service the Ventura Harbor and beach neighborhoods?"
+        },
+        {
+          "a": "Book online in 60 seconds using the form on this page, or call us at (805) 869-8070. We confirm your schedule the same day and can typically start within a few days.",
+          "q": "How do I get started with service in Ventura?"
+        }
+      ],
+      "sort_order": 10
+    },
+    {
+      "slug": "ojai",
+      "name": "Ojai",
+      "county": "Ventura",
+      "state": "CA",
+      "tier": 2,
+      "bookable": true,
+      "market": "ventura-county",
+      "market_label": "Ventura County",
+      "neighborhoods": [
+        "Downtown Ojai",
+        "Meiners Oaks",
+        "Ojai Valley Estates",
+        "East Ojai",
+        "Upper Ojai",
+        "Signal Street area"
+      ],
+      "nearby_slugs": [
+        "oak-view",
+        "ventura",
+        "santa-paula"
+      ],
+      "service_weekdays": [],
+      "meta_title": "Dog Poop Cleaning in Ojai, CA | Scoop Dogg",
+      "meta_description": "Professional poop scooping in Ojai, CA. Serving Downtown Ojai, Ojai Valley, and Meiners Oaks. Weekly & one-time service.",
+      "intro": "Ojai's serene Ojai Valley and the charming streets of Downtown Ojai make it one of Ventura County's most beloved communities. With acres of trails and open spaces nearby, dogs in Ojai get plenty of exercise — which means yards need regular attention. Scoop Dogg handles the mess in Meiners Oaks and throughout the valley so you can enjoy Ojai's peaceful lifestyle.",
+      "local_context": "Ojai's inland valley location means warm, dry summers and occasional heavy rains in winter — conditions that create their own yard maintenance challenges. Many properties here have mature landscaping, fruit trees, and sloped terrain that make DIY cleanup a real chore. Most of our Ojai clients are on a Monday or Wednesday route, and because lots in the valley tend to run larger, we give each property the time it needs. We confirm your start date within 24 hours of booking.",
+      "faqs": [
+        {
+          "a": "Weekly service is $15/week for 1 dog, $20/week for 2 dogs, $23/week for 3 dogs, and $25/week for 4 or more dogs. A Turf Deep Clean is a flat $99. Turf Rescue deodorizing starts at $20. Pricing is confirmed based on your yard size and number of dogs.",
+          "q": "How much does pooper scooper service cost in Ojai?"
+        },
+        {
+          "a": "We run Ojai routes on Mondays and Wednesdays. Your day is locked in when you book and stays the same every week.",
+          "q": "What days do you service Ojai?"
+        },
+        {
+          "a": "Not at all. Leave gate access in your booking notes and we take care of everything. We always secure the gate when we leave.",
+          "q": "Do I need to be home when you come?"
+        },
+        {
+          "a": "Not at all. We navigate all yard types including landscaped gardens, wooded areas, and sloped terrain common in the Ojai Valley.",
+          "q": "My yard has a lot of trees and landscaping — is that a problem?"
+        },
+        {
+          "a": "Book online in 60 seconds using the form on this page, or call (805) 869-8070. We confirm same day and can typically start within a few days.",
+          "q": "How do I get started with service in Ojai?"
+        }
+      ],
+      "sort_order": 20
+    },
+    {
+      "slug": "oak-view",
+      "name": "Oak View",
+      "county": "Ventura",
+      "state": "CA",
+      "tier": 3,
+      "bookable": true,
+      "market": "ventura-county",
+      "market_label": "Ventura County",
+      "neighborhoods": [
+        "Oak View",
+        "Casitas Springs area",
+        "Highway 33 corridor",
+        "Foothill Road area"
+      ],
+      "nearby_slugs": [
+        "ojai",
+        "ventura",
+        "santa-paula"
+      ],
+      "service_weekdays": [],
+      "meta_title": "Dog Poop Cleaning in Oak View, CA | Scoop Dogg",
+      "meta_description": "Professional poop scooping in Oak View, CA. Small community near Ojai. Weekly & one-time service.",
+      "intro": "Oak View is a tight-knit community tucked just outside of Ojai, known for its rural feel and dog-friendly properties. Many homes here have generous yards and multiple pets, making regular waste removal especially important. Scoop Dogg provides dependable, friendly service to Oak View households so your outdoor space stays fresh year-round.",
+      "local_context": "Oak View's rural character means most properties have large yards — and with more space comes more ground to cover. Many homeowners here have multiple dogs and rarely have time to keep up with cleanup on bigger lots. We serve Oak View on our Monday and Wednesday inland routes, pairing it efficiently with nearby Ojai. Because the community is small and tight-knit, we treat every property like a neighbor's — and we confirm your start date within 24 hours of booking.",
+      "faqs": [
+        {
+          "a": "Weekly service is $15/week for 1 dog, $20/week for 2 dogs, $23/week for 3 dogs, and $25/week for 4 or more dogs. A Turf Deep Clean is a flat $99. Turf Rescue deodorizing starts at $20. We confirm exact pricing based on yard size and dog count.",
+          "q": "How much does pooper scooper service cost in Oak View?"
+        },
+        {
+          "a": "Oak View is on our Monday and Wednesday inland route. Your specific day is confirmed at booking.",
+          "q": "What days do you service Oak View?"
+        },
+        {
+          "a": "No. Just leave gate access details in your booking notes and we handle everything, securing the gate when we leave.",
+          "q": "Do I need to be home when you come?"
+        },
+        {
+          "a": "We size our service to your yard. Large property? No problem — just select \"large\" when booking and we take care of everything.",
+          "q": "What if I have a large rural property?"
+        },
+        {
+          "a": "Use the booking form on this page or call (805) 869-8070. We confirm same day and typically start within a few days.",
+          "q": "How do I get started in Oak View?"
+        }
+      ],
+      "sort_order": 30
+    },
+    {
+      "slug": "oxnard",
+      "name": "Oxnard",
+      "county": "Ventura",
+      "state": "CA",
+      "tier": 1,
+      "bookable": true,
+      "market": "ventura-county",
+      "market_label": "Ventura County",
+      "neighborhoods": [
+        "Riverpark",
+        "Channel Islands Harbor",
+        "Colonia",
+        "Silver Strand",
+        "El Rio",
+        "Oxnard Shores",
+        "Hollywood Beach"
+      ],
+      "nearby_slugs": [
+        "ventura",
+        "camarillo",
+        "santa-paula"
+      ],
+      "service_weekdays": [],
+      "meta_title": "Dog Poop Cleaning in Oxnard, CA | Scoop Dogg",
+      "meta_description": "Professional poop scooping in Oxnard, CA. Serving The Collection, Channel Islands Harbor, Riverpark, and all neighborhoods.",
+      "intro": "Oxnard is Ventura County's largest city, home to beautiful neighborhoods near Channel Islands Harbor, the family-friendly Riverpark community, and the popular Collection at RiverPark shopping district. With so many dog owners across Oxnard's diverse neighborhoods, Scoop Dogg offers reliable, scheduled service to keep every yard in top shape.",
+      "local_context": "Oxnard spans a lot of ground, from the coastal neighborhoods near Hollywood Beach and Silver Strand to the newer master-planned streets of Riverpark. Coastal yards tend to stay damp and are more prone to odor buildup, while inland Oxnard properties often feature artificial turf that needs enzyme treatment to stay fresh. We run Oxnard routes on Tuesdays and Fridays, and with so many clients in the city we can usually get new customers started within 48 hours of booking.",
+      "faqs": [
+        {
+          "a": "Weekly service is $15/week for 1 dog, $20/week for 2 dogs, $23/week for 3 dogs, and $25/week for 4 or more dogs. A Turf Deep Clean is a flat $99. Turf Rescue deodorizing starts at $20. Final pricing depends on yard size and dog count.",
+          "q": "How much does pooper scooper service cost in Oxnard?"
+        },
+        {
+          "a": "We run Oxnard routes on Tuesdays and Fridays. Your day is locked in at booking and stays consistent every week.",
+          "q": "What days do you service Oxnard?"
+        },
+        {
+          "a": "No. Leave any gate codes or access info in the notes field when booking. We handle everything and secure the gate when we leave.",
+          "q": "Do I need to be home when you come?"
+        },
+        {
+          "a": "Yes — we service all Oxnard neighborhoods including Channel Islands Harbor, Riverpark, Hollywood Beach, Oxnard Shores, Silver Strand, and more.",
+          "q": "Do you cover all of Oxnard including the harbor and beach areas?"
+        },
+        {
+          "a": "Book online in 60 seconds using the form on this page, or call (805) 869-8070. We confirm same day and can start within a couple days.",
+          "q": "How do I get started in Oxnard?"
+        }
+      ],
+      "sort_order": 40
+    },
+    {
+      "slug": "camarillo",
+      "name": "Camarillo",
+      "county": "Ventura",
+      "state": "CA",
+      "tier": 1,
+      "bookable": true,
+      "market": "ventura-county",
+      "market_label": "Ventura County",
+      "neighborhoods": [
+        "Spanish Hills",
+        "Leisure Village",
+        "Mission Oaks",
+        "Camarillo Heights",
+        "Las Posas Estates",
+        "Springville"
+      ],
+      "nearby_slugs": [
+        "oxnard",
+        "ventura",
+        "thousand-oaks",
+        "moorpark"
+      ],
+      "service_weekdays": [],
+      "meta_title": "Dog Poop Cleaning in Camarillo, CA | Scoop Dogg",
+      "meta_description": "Professional poop scooping in Camarillo, CA. Serving Constitution Park, Leisure Village, Spanish Hills, and all neighborhoods.",
+      "intro": "Camarillo is one of Ventura County's most beloved cities, with pristine neighborhoods near Constitution Park, the well-known Leisure Village retirement community, and upscale Spanish Hills. Dog owners throughout Camarillo trust Scoop Dogg to keep their yards spotless so they can enjoy the area's excellent parks and community spaces.",
+      "local_context": "Camarillo's well-kept neighborhoods and HOA-managed communities mean curb appeal matters — and that extends to backyards. Many homes in Spanish Hills and Las Posas Estates have larger lots with mature landscaping, while Mission Oaks and Springville feature smaller yards that still need consistent weekly attention. We run Camarillo routes on Wednesdays and Fridays, and with a large client base in the city we can usually confirm your start date within 24 hours of booking.",
+      "faqs": [
+        {
+          "a": "Weekly service is $15/week for 1 dog, $20/week for 2 dogs, $23/week for 3 dogs, and $25/week for 4 or more dogs. A Turf Deep Clean is a flat $99. Turf Rescue deodorizing starts at $20. Pricing is based on yard size and number of dogs.",
+          "q": "How much does pooper scooper service cost in Camarillo?"
+        },
+        {
+          "a": "We run Camarillo routes on Wednesdays and Fridays. Your day is confirmed when you book and stays the same every week.",
+          "q": "What days do you service Camarillo?"
+        },
+        {
+          "a": "No. Leave gate access details in your booking notes. We handle everything and always secure the gate when we leave.",
+          "q": "Do I need to be home when you come?"
+        },
+        {
+          "a": "Yes — Leisure Village is one of our regular service areas. We work with many residents in HOA and 55+ communities throughout Ventura County.",
+          "q": "Do you service Leisure Village and other 55+ communities in Camarillo?"
+        },
+        {
+          "a": "Book online using the form on this page or call (805) 869-8070. We confirm same day and can typically start within a few days.",
+          "q": "How do I get started in Camarillo?"
+        }
+      ],
+      "sort_order": 50
+    },
+    {
+      "slug": "santa-paula",
+      "name": "Santa Paula",
+      "county": "Ventura",
+      "state": "CA",
+      "tier": 2,
+      "bookable": true,
+      "market": "ventura-county",
+      "market_label": "Ventura County",
+      "neighborhoods": [
+        "Downtown Santa Paula",
+        "Eastside",
+        "Westside",
+        "Foothill area",
+        "Citrus Way corridor"
+      ],
+      "nearby_slugs": [
+        "ojai",
+        "oak-view",
+        "ventura",
+        "oxnard"
+      ],
+      "service_weekdays": [],
+      "meta_title": "Dog Poop Cleaning in Santa Paula, CA | Scoop Dogg",
+      "meta_description": "Professional poop scooping in Santa Paula, CA. Serving Downtown Santa Paula and surrounding areas.",
+      "intro": "Santa Paula is a charming agricultural city with deep roots in Ventura County's citrus heritage. Nestled in the Santa Clara River Valley, this friendly community has a strong sense of neighborhood pride — and Scoop Dogg helps keep it that way, one yard at a time. From Downtown Santa Paula to the surrounding residential areas, we're proud to serve this hardworking community.",
+      "local_context": "Santa Paula sits in the Santa Clara River Valley where warm inland temperatures and agricultural surroundings mean yards dry out quickly in summer. Many properties here have older, more character-filled lots — fruit trees, uneven terrain, and established landscaping that takes extra care to navigate. We service Santa Paula on our Monday and Thursday inland routes, and new customers can typically get started within a few days of booking.",
+      "faqs": [
+        {
+          "a": "Weekly service is $15/week for 1 dog, $20/week for 2 dogs, $23/week for 3 dogs, and $25/week for 4 or more dogs. A Turf Deep Clean is a flat $99. Turf Rescue deodorizing starts at $20. We confirm final pricing based on your yard and dog count.",
+          "q": "How much does pooper scooper service cost in Santa Paula?"
+        },
+        {
+          "a": "Santa Paula is on our Monday and Thursday inland route. Your day is confirmed when you book.",
+          "q": "What days do you service Santa Paula?"
+        },
+        {
+          "a": "No. Just leave gate access details in your booking notes. We take care of everything and secure the gate when we leave.",
+          "q": "Do I need to be home when you come?"
+        },
+        {
+          "a": "Absolutely. We navigate all yard types and love the character of Santa Paula's older properties — fruit trees, slopes, and all.",
+          "q": "Do you service yards with citrus trees or uneven terrain?"
+        },
+        {
+          "a": "Book online using the form on this page or call (805) 869-8070. We confirm same day and can usually start within a couple days.",
+          "q": "How do I get started in Santa Paula?"
+        }
+      ],
+      "sort_order": 60
+    },
+    {
+      "slug": "thousand-oaks",
+      "name": "Thousand Oaks",
+      "county": "Ventura",
+      "state": "CA",
+      "tier": 1,
+      "bookable": true,
+      "market": "conejo-valley",
+      "market_label": "the Conejo Valley",
+      "neighborhoods": [
+        "Conejo Valley",
+        "Lang Ranch",
+        "Wildwood",
+        "Dos Vientos (east side)",
+        "Oakbrook",
+        "Lynn Ranch",
+        "Sunset Hills"
+      ],
+      "nearby_slugs": [
+        "newbury-park",
+        "camarillo",
+        "moorpark",
+        "simi-valley"
+      ],
+      "service_weekdays": [],
+      "meta_title": "Dog Poop Cleaning in Thousand Oaks, CA | Scoop Dogg",
+      "meta_description": "Professional poop scooping in Thousand Oaks, CA. Serving Conejo Valley, The Oaks Mall area, Wildwood Park, and all neighborhoods.",
+      "intro": "Thousand Oaks is consistently ranked among the safest and most desirable cities in California, with stunning Conejo Valley scenery, Wildwood Park trails, and thriving neighborhoods near The Oaks Mall. Dog ownership is a way of life here, and Scoop Dogg provides the reliable, professional service that Thousand Oaks residents expect.",
+      "local_context": "Thousand Oaks has one of the highest concentrations of dog owners in Ventura County, and many neighborhoods — particularly Lang Ranch, Oakbrook, and Lynn Ranch — feature larger lots with significant yard space. Artificial turf is increasingly common in newer builds, and enzyme deodorizing is a popular add-on for those clients. We run Thousand Oaks routes on Tuesdays and Thursdays, and because of our volume here, we can usually confirm new customers within 24 hours and start within the week.",
+      "faqs": [
+        {
+          "a": "Weekly service is $15/week for 1 dog, $20/week for 2 dogs, $23/week for 3 dogs, and $25/week for 4 or more dogs. A Turf Deep Clean is a flat $99. Turf Rescue deodorizing starts at $20. We confirm pricing based on yard size and number of dogs.",
+          "q": "How much does pooper scooper service cost in Thousand Oaks?"
+        },
+        {
+          "a": "We run Thousand Oaks routes on Tuesdays and Thursdays. Your day is confirmed at booking and stays consistent.",
+          "q": "What days do you service Thousand Oaks?"
+        },
+        {
+          "a": "No. Provide gate access in your booking notes and we handle everything, securing the gate when we leave.",
+          "q": "Do I need to be home when you come?"
+        },
+        {
+          "a": "Yes — we work with gated communities regularly. Provide gate codes or HOA access info in the notes section when booking.",
+          "q": "Do you work in gated communities in Thousand Oaks?"
+        },
+        {
+          "a": "Book online in 60 seconds using the form on this page, or call (805) 869-8070. We confirm same day.",
+          "q": "How do I get started in Thousand Oaks?"
+        }
+      ],
+      "sort_order": 70
+    },
+    {
+      "slug": "newbury-park",
+      "name": "Newbury Park",
+      "county": "Ventura",
+      "state": "CA",
+      "tier": 2,
+      "bookable": true,
+      "market": "conejo-valley",
+      "market_label": "the Conejo Valley",
+      "neighborhoods": [
+        "Dos Vientos",
+        "Borchard area",
+        "Old Conejo Road corridor",
+        "Camino Dos Rios",
+        "Wendy Drive area"
+      ],
+      "nearby_slugs": [
+        "thousand-oaks",
+        "camarillo",
+        "moorpark"
+      ],
+      "service_weekdays": [],
+      "meta_title": "Dog Poop Cleaning in Newbury Park, CA | Scoop Dogg",
+      "meta_description": "Professional poop scooping in Newbury Park, CA. Serving Dos Vientos, Borchard Community Center area, and all neighborhoods.",
+      "intro": "Newbury Park sits at the western edge of Thousand Oaks, with gorgeous master-planned neighborhoods like Dos Vientos and active community spaces near Borchard Community Center. Families with dogs love this area's wide streets and open parks — and Scoop Dogg makes sure their backyards are just as enjoyable as the parks they visit.",
+      "local_context": "Newbury Park's master-planned neighborhoods — especially Dos Vientos — feature well-maintained yards and HOA standards that make outdoor cleanliness important for everyone. Many families here have multiple dogs and active kids sharing the same backyard. We service Newbury Park on our Tuesday and Thursday Conejo Valley routes, grouping it efficiently with Thousand Oaks. New customers typically get their start date confirmed within 24 hours.",
+      "faqs": [
+        {
+          "a": "Weekly service is $15/week for 1 dog, $20/week for 2 dogs, $23/week for 3 dogs, and $25/week for 4 or more dogs. A Turf Deep Clean is a flat $99. Turf Rescue deodorizing starts at $20. Pricing confirmed based on yard size and dogs.",
+          "q": "How much does pooper scooper service cost in Newbury Park?"
+        },
+        {
+          "a": "We service Newbury Park on Tuesdays and Thursdays as part of our Conejo Valley routes. Your specific day is confirmed when you book.",
+          "q": "What days do you service Newbury Park?"
+        },
+        {
+          "a": "No. Leave gate access details in your booking notes and we take care of everything, securing the gate when we leave.",
+          "q": "Do I need to be home when you come?"
+        },
+        {
+          "a": "Yes — Dos Vientos is one of our regular service areas. Many families in the community are on our weekly plan.",
+          "q": "Do you service Dos Vientos in Newbury Park?"
+        },
+        {
+          "a": "Book online using the form on this page or call (805) 869-8070. We confirm same day and can usually start within a few days.",
+          "q": "How do I get started in Newbury Park?"
+        }
+      ],
+      "sort_order": 80
+    },
+    {
+      "slug": "moorpark",
+      "name": "Moorpark",
+      "county": "Ventura",
+      "state": "CA",
+      "tier": 2,
+      "bookable": true,
+      "market": "ventura-county",
+      "market_label": "Ventura County",
+      "neighborhoods": [
+        "Country Club Estates",
+        "Moorpark College area",
+        "Campus Park",
+        "Mountain Meadows",
+        "High Street area"
+      ],
+      "nearby_slugs": [
+        "camarillo",
+        "thousand-oaks",
+        "simi-valley",
+        "newbury-park"
+      ],
+      "service_weekdays": [],
+      "meta_title": "Dog Poop Cleaning in Moorpark, CA | Scoop Dogg",
+      "meta_description": "Professional poop scooping in Moorpark, CA. Serving Moorpark College area, Country Club Estates, and all neighborhoods.",
+      "intro": "Moorpark is a growing community known for Moorpark College, its friendly small-town feel, and well-kept residential neighborhoods like Country Club Estates. As more families settle in Moorpark and bring their dogs, keeping yards clean has become more important than ever. Scoop Dogg is proud to serve this community with reliable weekly and on-demand service.",
+      "local_context": "Moorpark is growing fast, and newer developments like Mountain Meadows bring larger lots and more multi-dog households to the area. Many homes here also have artificial turf installed as part of drought-conscious landscaping — which looks great but needs enzyme treatment to stay odor-free. We service Moorpark on our Wednesday and Friday routes, and new customers are typically confirmed and scheduled within 24 hours of booking.",
+      "faqs": [
+        {
+          "a": "Weekly service is $15/week for 1 dog, $20/week for 2 dogs, $23/week for 3 dogs, and $25/week for 4 or more dogs. A Turf Deep Clean is a flat $99. Turf Rescue deodorizing starts at $20. Final pricing based on yard size and dogs.",
+          "q": "How much does pooper scooper service cost in Moorpark?"
+        },
+        {
+          "a": "We run Moorpark routes on Wednesdays and Fridays. Your day is confirmed when you book.",
+          "q": "What days do you service Moorpark?"
+        },
+        {
+          "a": "No. Leave gate access in your booking notes. We handle everything and always secure the gate.",
+          "q": "Do I need to be home when you come?"
+        },
+        {
+          "a": "Yes — we service all established and newer neighborhoods in Moorpark, including recently built communities and master-planned areas.",
+          "q": "Do you service new developments in Moorpark?"
+        },
+        {
+          "a": "Book online using the form on this page or call (805) 869-8070. We confirm same day and can usually start within a couple days.",
+          "q": "How do I get started in Moorpark?"
+        }
+      ],
+      "sort_order": 90
+    },
+    {
+      "slug": "simi-valley",
+      "name": "Simi Valley",
+      "county": "Ventura",
+      "state": "CA",
+      "tier": 1,
+      "bookable": true,
+      "market": "ventura-county",
+      "market_label": "Ventura County",
+      "neighborhoods": [
+        "Rancho Simi",
+        "Wood Ranch",
+        "Bridle Path",
+        "Big Sky",
+        "Madera Road corridor",
+        "Country Club area"
+      ],
+      "nearby_slugs": [
+        "moorpark",
+        "thousand-oaks",
+        "newbury-park"
+      ],
+      "service_weekdays": [],
+      "meta_title": "Dog Poop Cleaning in Simi Valley, CA | Scoop Dogg",
+      "meta_description": "Professional poop scooping in Simi Valley, CA. Serving Rancho Simi, Madera Road area, Reagan Library area, and all neighborhoods.",
+      "intro": "Simi Valley is a proud, family-oriented city with wide-open spaces, the historic Reagan Presidential Library, and thriving residential neighborhoods like Rancho Simi along Madera Road. With a large dog-owning population and spacious backyards, Simi Valley homeowners count on Scoop Dogg to keep things clean and odor-free all year long.",
+      "local_context": "Simi Valley is one of the warmest areas in our service territory — summer heat accelerates odor and bacteria growth in yards with artificial turf, which is common in many newer Simi builds. Wood Ranch and Big Sky properties tend to have larger lots and multiple dogs, which is why many families here opt for weekly service. We run Simi Valley routes on Mondays and Thursdays, and new customers typically receive a confirmation within 24 hours of booking.",
+      "faqs": [
+        {
+          "a": "Weekly service is $15/week for 1 dog, $20/week for 2 dogs, $23/week for 3 dogs, and $25/week for 4 or more dogs. A Turf Deep Clean is a flat $99. Turf Rescue deodorizing starts at $20. Pricing confirmed based on yard size and dog count.",
+          "q": "How much does pooper scooper service cost in Simi Valley?"
+        },
+        {
+          "a": "We run Simi Valley routes on Mondays and Thursdays. Your day is confirmed when you book.",
+          "q": "What days do you service Simi Valley?"
+        },
+        {
+          "a": "No. Leave gate codes or access info in your booking notes and we handle everything, securing the gate behind us.",
+          "q": "Do I need to be home when you come?"
+        },
+        {
+          "a": "Yes — we service all of Simi Valley including Wood Ranch, Big Sky, Bridle Path, Rancho Simi, and the Madera Road corridor.",
+          "q": "Do you cover Wood Ranch and the east side of Simi Valley?"
+        },
+        {
+          "a": "Book online using the form on this page or call (805) 869-8070. We confirm same day and can usually start within a few days.",
+          "q": "How do I get started in Simi Valley?"
+        }
+      ],
+      "sort_order": 100
+    },
+    {
+      "slug": "santa-barbara",
+      "name": "Santa Barbara",
+      "county": null,
+      "state": "CA",
+      "tier": 1,
+      "bookable": true,
+      "market": "south-coast",
+      "market_label": "the South Coast",
+      "neighborhoods": [
+        "The Mesa",
+        "State Street area",
+        "Eastside",
+        "Westside",
+        "Mission Canyon",
+        "Hope Ranch adjacent",
+        "Goleta"
+      ],
+      "nearby_slugs": [
+        "carpinteria",
+        "ventura"
+      ],
+      "service_weekdays": [],
+      "meta_title": "Dog Poop Cleaning in Santa Barbara, CA | Scoop Dogg",
+      "meta_description": "Professional poop scooping in Santa Barbara, CA. Serving State Street, The Mesa, Goleta area, and all neighborhoods.",
+      "intro": "Santa Barbara is one of California's most iconic destinations, with stunning Spanish colonial architecture along State Street, the laid-back energy of The Mesa neighborhood, and proximity to the beaches and trails that dog owners in the area cherish. Scoop Dogg brings professional, no-hassle pet waste removal to Santa Barbara so you and your pup can fully enjoy everything this beautiful city has to offer.",
+      "local_context": "Santa Barbara's mild year-round climate is perfect for outdoor living — which means dogs spend more time outside, and yards need more consistent attention. The Mesa and Mission Canyon neighborhoods feature older properties with established landscaping, while Goleta has a mix of newer homes with turf. We run Santa Barbara on a Tuesday and Friday coastal route, and because it's a longer drive from our home base, we group clients efficiently to keep pricing competitive. Expect confirmation within 24 hours of booking.",
+      "faqs": [
+        {
+          "a": "Weekly service is $15/week for 1 dog, $20/week for 2 dogs, $23/week for 3 dogs, and $25/week for 4 or more dogs. A Turf Deep Clean is a flat $99. Turf Rescue deodorizing starts at $20. Pricing confirmed after booking based on yard and dogs.",
+          "q": "How much does pooper scooper service cost in Santa Barbara?"
+        },
+        {
+          "a": "We run the Santa Barbara coastal route on Tuesdays and Fridays. Your day is confirmed when you book.",
+          "q": "What days do you service Santa Barbara?"
+        },
+        {
+          "a": "No. Provide gate access in your booking notes and we handle everything, securing the gate behind us.",
+          "q": "Do I need to be home when you come?"
+        },
+        {
+          "a": "Yes — The Mesa is one of our Santa Barbara service areas. We also cover Goleta, Eastside, Westside, Mission Canyon, and more.",
+          "q": "Do you service the Mesa and Goleta neighborhoods?"
+        },
+        {
+          "a": "Book online using the form on this page or call (805) 869-8070. We confirm same day and will let you know your route day.",
+          "q": "How do I get started in Santa Barbara?"
+        }
+      ],
+      "sort_order": 110
+    },
+    {
+      "slug": "westlake-village",
+      "name": "Westlake Village",
+      "county": "Ventura",
+      "state": "CA",
+      "tier": 2,
+      "bookable": true,
+      "market": "conejo-valley",
+      "market_label": "the Conejo Valley",
+      "neighborhoods": [
+        "North Ranch",
+        "Westlake Lake area",
+        "Lakeview Canyon",
+        "Bridgeport",
+        "Westlake Island"
+      ],
+      "nearby_slugs": [
+        "thousand-oaks",
+        "newbury-park",
+        "moorpark"
+      ],
+      "service_weekdays": [],
+      "meta_title": "Dog Poop Cleaning in Westlake Village, CA | Scoop Dogg",
+      "meta_description": "Professional poop scooping in Westlake Village, CA. Serving North Ranch, Westlake Lake, and all neighborhoods. Weekly & one-time service.",
+      "intro": "Westlake Village is one of Southern California's most picturesque master-planned communities, with beautiful lakeside living, upscale neighborhoods in North Ranch, and tree-lined streets that dog owners love to walk. Scoop Dogg keeps yards in Westlake Village spotless so you can fully enjoy the outdoor lifestyle this stunning community offers.",
+      "local_context": "Westlake Village's manicured neighborhoods and HOA-managed communities set high expectations for outdoor appearance — and that includes backyards. Many properties near the lake and in North Ranch feature larger lots with mature landscaping that requires careful navigation. We service Westlake on our Tuesday and Thursday Conejo Valley routes, grouping it efficiently with nearby Thousand Oaks and Newbury Park. New customers are confirmed within 24 hours of booking.",
+      "faqs": [
+        {
+          "a": "Weekly service is $15/week for 1 dog, $20/week for 2 dogs, $23/week for 3 dogs, and $25/week for 4 or more dogs. A Turf Deep Clean is a flat $99. Turf Rescue deodorizing starts at $20. Pricing confirmed based on yard size and dogs.",
+          "q": "How much does pooper scooper service cost in Westlake Village?"
+        },
+        {
+          "a": "We service Westlake Village on Tuesdays and Thursdays as part of our Conejo Valley routes. Your specific day is confirmed when you book.",
+          "q": "What days do you service Westlake Village?"
+        },
+        {
+          "a": "No. Leave gate access details in your booking notes and we take care of everything, securing the gate when we leave.",
+          "q": "Do I need to be home when you come?"
+        },
+        {
+          "a": "Yes — we work with gated and HOA communities regularly. Just provide gate codes or access info in the notes section when booking.",
+          "q": "Do you service gated communities in Westlake Village?"
+        },
+        {
+          "a": "Book online using the form on this page or call (805) 869-8070. We confirm same day and can usually start within a few days.",
+          "q": "How do I get started in Westlake Village?"
+        }
+      ],
+      "sort_order": 120
+    },
+    {
+      "slug": "malibu",
+      "name": "Malibu",
+      "county": null,
+      "state": "CA",
+      "tier": 3,
+      "bookable": true,
+      "market": "malibu-coast",
+      "market_label": "Malibu",
+      "neighborhoods": [
+        "Point Dume",
+        "Malibu Colony",
+        "Carbon Beach",
+        "Zuma Beach area",
+        "Malibu Canyon",
+        "Serra Retreat",
+        "Big Rock"
+      ],
+      "nearby_slugs": [
+        "westlake-village",
+        "thousand-oaks"
+      ],
+      "service_weekdays": [],
+      "meta_title": "Dog Poop Cleaning in Malibu, CA | Scoop Dogg",
+      "meta_description": "Professional poop scooping in Malibu, CA. Serving Point Dume, Malibu Colony, Carbon Beach, and all neighborhoods. Weekly & one-time service.",
+      "intro": "Malibu is iconic — 21 miles of Pacific coastline, world-class surf breaks, and some of the most beautiful residential properties in California. Dog owners here enjoy a lifestyle that blends beach living with canyon serenity, and Scoop Dogg keeps their yards as pristine as their surroundings. Whether you're near the shore or tucked into the hills, we've got your property covered.",
+      "local_context": "Malibu's coastal environment means salt air, marine layer moisture, and sandy or rocky terrain that presents unique challenges for yard maintenance. Canyon properties can have steep, uneven ground while beachside lots deal with moisture-related odor buildup year-round. We service Malibu on a dedicated coastal route and group clients geographically to keep service efficient. Because properties here can be spread out, we recommend booking in advance to secure your preferred day.",
+      "faqs": [
+        {
+          "a": "Weekly service is $15/week for 1 dog, $20/week for 2 dogs, $23/week for 3 dogs, and $25/week for 4 or more dogs. A Turf Deep Clean is a flat $99. Turf Rescue deodorizing starts at $20. Final pricing confirmed based on your yard and dogs.",
+          "q": "How much does pooper scooper service cost in Malibu?"
+        },
+        {
+          "a": "We run a dedicated Malibu route and confirm your service day when you book. Days vary based on your specific location along the coast.",
+          "q": "What days do you service Malibu?"
+        },
+        {
+          "a": "No. Provide gate access or entry instructions in your booking notes and we handle everything, securing the gate when we leave.",
+          "q": "Do I need to be home when you come?"
+        },
+        {
+          "a": "Yes — we service all types of Malibu properties including canyon homes with steep terrain, gated estates, and beachside lots.",
+          "q": "Do you service canyon properties and beach homes in Malibu?"
+        },
+        {
+          "a": "Book online using the form on this page or call (805) 869-8070. We confirm same day and will let you know your route day.",
+          "q": "How do I get started in Malibu?"
+        }
+      ],
+      "sort_order": 130
+    },
+    {
+      "slug": "fillmore",
+      "name": "Fillmore",
+      "county": "Ventura",
+      "state": "CA",
+      "tier": 3,
+      "bookable": true,
+      "market": "ventura-county",
+      "market_label": "Ventura County",
+      "neighborhoods": [
+        "Downtown Fillmore",
+        "Sespe area",
+        "Mountain View area",
+        "Old Telegraph Road corridor",
+        "Bardsdale"
+      ],
+      "nearby_slugs": [
+        "santa-paula",
+        "ojai",
+        "ventura"
+      ],
+      "service_weekdays": [],
+      "meta_title": "Dog Poop Cleaning in Fillmore, CA | Scoop Dogg",
+      "meta_description": "Professional poop scooping in Fillmore, CA. Serving Downtown Fillmore and surrounding residential areas. Weekly & one-time service.",
+      "intro": "Fillmore is a proud agricultural community in the heart of Ventura County's Santa Clara River Valley, known for its small-town character, working ranches, and the iconic Fillmore & Western Railway. Dog owners here tend to have larger properties, multiple pets, and busy schedules — which is exactly why Scoop Dogg's reliable, no-fuss service is such a good fit for Fillmore families.",
+      "local_context": "Fillmore's warm inland climate and agricultural surroundings mean yards dry out fast in summer, but spring rains can create muddy conditions that complicate cleanup. Many properties here are larger than typical suburban lots, with fruit trees, irrigation channels, or working land that requires careful navigation. We service Fillmore on our Monday and Thursday inland routes alongside Santa Paula and Ojai, and new customers are typically confirmed within 24 hours of booking.",
+      "faqs": [
+        {
+          "a": "Weekly service is $15/week for 1 dog, $20/week for 2 dogs, $23/week for 3 dogs, and $25/week for 4 or more dogs. A Turf Deep Clean is a flat $99. Turf Rescue deodorizing starts at $20. We confirm pricing based on your yard and dog count.",
+          "q": "How much does pooper scooper service cost in Fillmore?"
+        },
+        {
+          "a": "Fillmore is on our Monday and Thursday inland route alongside Santa Paula. Your day is confirmed when you book.",
+          "q": "What days do you service Fillmore?"
+        },
+        {
+          "a": "No. Leave gate access details in your booking notes. We handle everything and always secure the gate when we leave.",
+          "q": "Do I need to be home when you come?"
+        },
+        {
+          "a": "Yes — we are experienced with larger lots, agricultural properties, and rural terrain. Just let us know about your property when you book.",
+          "q": "Do you service larger rural properties in Fillmore?"
+        },
+        {
+          "a": "Book online using the form on this page or call (805) 869-8070. We confirm same day and can usually start within a few days.",
+          "q": "How do I get started in Fillmore?"
+        }
+      ],
+      "sort_order": 140
+    },
+    {
+      "slug": "agoura-hills",
+      "name": "Agoura Hills",
+      "county": "Ventura",
+      "state": "CA",
+      "tier": 2,
+      "bookable": true,
+      "market": "conejo-valley",
+      "market_label": "the Conejo Valley",
+      "neighborhoods": [
+        "Morrison Ranch",
+        "Lake Lindero",
+        "Old Agoura",
+        "Agoura Hills South",
+        "Freedom Park area"
+      ],
+      "nearby_slugs": [
+        "westlake-village",
+        "thousand-oaks",
+        "malibu"
+      ],
+      "service_weekdays": [],
+      "meta_title": "Dog Poop Cleaning in Agoura Hills, CA | Scoop Dogg",
+      "meta_description": "Professional poop scooping in Agoura Hills, CA. Serving Morrison Ranch, Lake Lindero, and all neighborhoods. Weekly & one-time service.",
+      "intro": "Agoura Hills is a scenic community nestled in the eastern Santa Monica Mountains, known for its equestrian heritage, the upscale Morrison Ranch neighborhood, and beautiful views throughout the Lake Lindero area. Dog owners here appreciate the perfect balance of suburban convenience and natural beauty — and Scoop Dogg keeps their yards spotless so they can fully enjoy both.",
+      "local_context": "Agoura Hills combines hillside properties with master-planned communities, creating diverse yard maintenance needs. Morrison Ranch and Lake Lindero feature larger lots with manicured landscaping, while Old Agoura offers a more rural feel with horse properties and bigger yards. Many homes here have artificial turf as part of drought-conscious landscaping, which requires regular enzyme deodorizing. We service Agoura Hills on our Tuesday and Thursday Conejo Valley routes alongside Westlake Village and Thousand Oaks, with new customers confirmed within 24 hours of booking.",
+      "faqs": [
+        {
+          "a": "Weekly service is $15/week for 1 dog, $20/week for 2 dogs, $23/week for 3 dogs, and $25/week for 4 or more dogs. A Turf Deep Clean is a flat $99. Turf Rescue deodorizing starts at $20. Pricing confirmed based on yard size and number of dogs.",
+          "q": "How much does pooper scooper service cost in Agoura Hills?"
+        },
+        {
+          "a": "We service Agoura Hills on Tuesdays and Thursdays as part of our Conejo Valley routes. Your specific day is confirmed when you book.",
+          "q": "What days do you service Agoura Hills?"
+        },
+        {
+          "a": "No. Leave gate access details in your booking notes and we take care of everything, securing the gate when we leave.",
+          "q": "Do I need to be home when you come?"
+        },
+        {
+          "a": "Yes — both Morrison Ranch and Lake Lindero are regular service areas for us. Many families in these neighborhoods are on our weekly plan.",
+          "q": "Do you service Morrison Ranch and Lake Lindero?"
+        },
+        {
+          "a": "Book online using the form on this page or call (805) 869-8070. We confirm same day and can usually start within a few days.",
+          "q": "How do I get started in Agoura Hills?"
+        }
+      ],
+      "sort_order": 150
+    },
+    {
+      "slug": "carpinteria",
+      "name": "Carpinteria",
+      "county": null,
+      "state": "CA",
+      "tier": 1,
+      "bookable": true,
+      "market": "south-coast",
+      "market_label": "the South Coast",
+      "neighborhoods": [
+        "Downtown Carpinteria",
+        "Carpinteria State Beach area",
+        "Rincon Point neighborhood",
+        "El Carro",
+        "Summerland adjacent"
+      ],
+      "nearby_slugs": [
+        "santa-barbara",
+        "ventura"
+      ],
+      "service_weekdays": [],
+      "meta_title": "Dog Poop Cleaning in Carpinteria, CA | Scoop Dogg",
+      "meta_description": "Professional poop scooping in Carpinteria, CA. Serving Carpinteria State Beach area and all neighborhoods.",
+      "intro": "Carpinteria is a beloved beach town just south of Santa Barbara, famous for Carpinteria State Beach, the avocado festival, and its warm, welcoming community spirit. Dog owners here love the outdoor lifestyle — and Scoop Dogg makes sure their home bases stay just as clean as the beautiful beaches they visit. We're proud to serve Carpinteria's tight-knit neighborhoods.",
+      "local_context": "Carpinteria's coastal microclimate keeps yards moist year-round, and the sandy soil near the beach can make cleanup more challenging than a typical inland property. Many homeowners here are part-time residents or weekend visitors who need occasional deep cleans rather than weekly service — though plenty of full-time locals are on our regular route. We service Carpinteria on our Tuesday coastal run alongside Santa Barbara, and confirm new customers within 24 hours of booking.",
+      "faqs": [
+        {
+          "a": "Weekly service is $15/week for 1 dog, $20/week for 2 dogs, $23/week for 3 dogs, and $25/week for 4 or more dogs. A Turf Deep Clean is a flat $99. Turf Rescue deodorizing starts at $20. Final pricing depends on yard size and dogs.",
+          "q": "How much does pooper scooper service cost in Carpinteria?"
+        },
+        {
+          "a": "Carpinteria is on our Tuesday coastal route alongside Santa Barbara. Your specific day is confirmed when you book.",
+          "q": "What days do you service Carpinteria?"
+        },
+        {
+          "a": "No. Leave gate access details in your booking notes and we handle everything, securing the gate when we leave.",
+          "q": "Do I need to be home when you come?"
+        },
+        {
+          "a": "Yes — our team is experienced with all yard types including sandy soil and beach-adjacent properties common on the Carpinteria coastline.",
+          "q": "Can sandy yards or beach-adjacent properties be serviced?"
+        },
+        {
+          "a": "Book online using the form on this page or call (805) 869-8070. We confirm same day and can usually start within a few days.",
+          "q": "How do I get started in Carpinteria?"
+        }
+      ],
+      "sort_order": 160
+    }
+  ],
+  "reviews": [
+    {
+      "id": "wendy-ramirez",
+      "author_name": "Wendy Ramirez",
+      "author_badge": null,
+      "quote": "Josue is excellent! I can't say enough good things about his service. He's extremely reliable and always shows up when scheduled. What really stands out is how efficient and precise he is. He works fast but never cuts corners. My yard is completely clean every time.",
+      "rating": null,
+      "source": "google",
+      "source_url": "https://share.google/1YfuyjdPDmrwElnzD",
+      "reviewed_on": "3 months ago",
+      "featured": true,
+      "sort_order": 10
+    },
+    {
+      "id": "amber-morua",
+      "author_name": "Amber Morua",
+      "author_badge": "Local Guide",
+      "quote": "So glad I found Scoop Dogg service! They're reliable, super friendly, and always do a great job keeping my yard clean. The pricing is affordable, and their customer service is awesome; easy to reach and great to work with. It's such a relief not having to worry about cleanup anymore. I'd definitely recommend them to any dog owner.",
+      "rating": null,
+      "source": "google",
+      "source_url": "https://share.google/1R9nn6n3NymASlzm9",
+      "reviewed_on": "4 months ago",
+      "featured": true,
+      "sort_order": 20
+    },
+    {
+      "id": "cheyenne-crafton",
+      "author_name": "Cheyenne Crafton",
+      "author_badge": null,
+      "quote": "I had a fantastic experience with Scoop Dogg! Josue truly knows his craft when it comes to landscape and turf maintenance. He was professional, reliable, and attentive to detail from start to finish. My yard has never looked better! I highly recommend Scoop Dogg to anyone looking for top-quality landscaping services. Will definitely be using their services again!",
+      "rating": null,
+      "source": "google",
+      "source_url": "https://share.google/nGmM4jYxOxJtTAVQT",
+      "reviewed_on": "8 months ago",
+      "featured": true,
+      "sort_order": 30
+    },
+    {
+      "id": "jacquelyn-gargano",
+      "author_name": "Jacquelyn Gargano",
+      "author_badge": null,
+      "quote": "Josue does a fantastic job! Reliable and always leaves my yard looking fresh. Good communication as well. Can't recommend enough!",
+      "rating": null,
+      "source": "google",
+      "source_url": "https://share.google/06UiBMRr0Bwl8Jxnv",
+      "reviewed_on": "4 months ago",
+      "featured": true,
+      "sort_order": 40
+    },
+    {
+      "id": "ilse-fuentes",
+      "author_name": "Ilse Fuentes",
+      "author_badge": null,
+      "quote": "Josue was amazing! He did a great job making my backyard clean and enjoyable again. He really went above and beyond, great communication, and knew exactly what to do! 10/10",
+      "rating": null,
+      "source": "google",
+      "source_url": "https://share.google/Qnc99qTgN9sE6sQFi",
+      "reviewed_on": "5 months ago",
+      "featured": true,
+      "sort_order": 50
+    },
+    {
+      "id": "alex-torres",
+      "author_name": "Alex Torres",
+      "author_badge": "Local Guide",
+      "quote": "Josué is simply the best. He is dependable, kind, and takes great pride in his work. Every visit is thorough and done with care, and he always goes the extra mile to make sure everything looks perfect. I count on him weekly, and he has gladly helped with tasks beyond his usual duties whenever asked. Even our dogs light up when he arrives, which speaks volumes about his character. I recommend Scoop Dogg without hesitation.",
+      "rating": null,
+      "source": "google",
+      "source_url": "https://share.google/rFb5SkpEq3aY41Zfw",
+      "reviewed_on": "8 months ago",
+      "featured": true,
+      "sort_order": 60
+    },
+    {
+      "id": "zenia-padron",
+      "author_name": "Zenia Padron",
+      "author_badge": null,
+      "quote": "Josue does great — he's been sanitizing my patio for a couple of months. Have no complaints, I highly recommend him, great service.",
+      "rating": null,
+      "source": "google",
+      "source_url": "https://share.google/yJbQE5zlDXxPE9dLk",
+      "reviewed_on": "5 months ago",
+      "featured": true,
+      "sort_order": 70
+    },
+    {
+      "id": "vic-star",
+      "author_name": "Vic Star",
+      "author_badge": "Local Guide",
+      "quote": "Having two large dogs it's very necessary to keep my turf clean and I couldn't do it all by myself. This is why I recommend Jose and his services to be necessary for any dog owners who have turf in their backyard in Ventura County. We have been using them for over six months and were referred over by a neighbor — now have 10 people going to him. Thank you for all the work.",
+      "rating": null,
+      "source": "google",
+      "source_url": "https://share.google/JSgDyiw3JPk5uXNCr",
+      "reviewed_on": "8 months ago",
+      "featured": true,
+      "sort_order": 80
+    },
+    {
+      "id": "l-o",
+      "author_name": "L O",
+      "author_badge": null,
+      "quote": "I recently had the pleasure of using Scoop Dogg's services, and I couldn't be more impressed! Josue, the manager, did an exceptional job cleaning my yard of dog waste. Not only was he fast and efficient, but he also displayed a level of kindness and professionalism that truly stood out. Josue went above and beyond to ensure every corner of my yard was spotless, leaving it cleaner than it's ever been. If you're looking for a reliable and top-notch dog waste removal service, I highly recommend Scoop Dogg and Josue. They are simply the best!!",
+      "rating": null,
+      "source": "google",
+      "source_url": "https://share.google/nVvJesagExINaF0T2",
+      "reviewed_on": "a year ago",
+      "featured": true,
+      "sort_order": 90
+    },
+    {
+      "id": "capital-maintenance",
+      "author_name": "Capital Maintenance",
+      "author_badge": null,
+      "quote": "Amazing service! Our Astro turf was clean and sanitized and I felt safe with my kids running on it barefoot. We had family come over the afternoon after the service and they thought the Astro turf was brand new and installed recently (we have had it for 3 years now)! I will be using this service every few months!",
+      "rating": null,
+      "source": "google",
+      "source_url": "https://share.google/mQso7CT50xoJ3skhe",
+      "reviewed_on": "8 months ago",
+      "featured": true,
+      "sort_order": 100
+    },
+    {
+      "id": "annie-gandy",
+      "author_name": "Annie Gandy",
+      "author_badge": null,
+      "quote": "On time, reviewed with me and did a thorough job!!!! I'm very pleased!",
+      "rating": null,
+      "source": "google",
+      "source_url": "https://share.google/F8nJ7RmhpRRI1AhXk",
+      "reviewed_on": "5 days ago",
+      "featured": true,
+      "sort_order": 110
+    },
+    {
+      "id": "nancy-robles",
+      "author_name": "Nancy Robles",
+      "author_badge": null,
+      "quote": "Josue does amazing — has been doing my backyard for more than 6 months and does amazing at it, highly recommend!",
+      "rating": null,
+      "source": "google",
+      "source_url": null,
+      "reviewed_on": "6 months ago",
+      "featured": false,
+      "sort_order": 120
+    },
+    {
+      "id": "carrie",
+      "author_name": "Carrie",
+      "author_badge": "Local Guide",
+      "quote": "Scoop Dogg is AMAZING!!! Josue always goes above and beyond for us! I cannot say enough great things! I appreciate his service greatly!!!",
+      "rating": null,
+      "source": "google",
+      "source_url": null,
+      "reviewed_on": "8 months ago",
+      "featured": false,
+      "sort_order": 130
+    },
+    {
+      "id": "alec-edgerton",
+      "author_name": "Alec Edgerton",
+      "author_badge": null,
+      "quote": "He does a great job cleaning the yard and deodorizing the property. Always is great at communicating and has good prices.",
+      "rating": null,
+      "source": "google",
+      "source_url": null,
+      "reviewed_on": "5 months ago",
+      "featured": false,
+      "sort_order": 140
+    },
+    {
+      "id": "kas-s",
+      "author_name": "Kas S",
+      "author_badge": null,
+      "quote": "Excellent service and extremely kind. Josue gets the job done!! Highly recommended.",
+      "rating": null,
+      "source": "google",
+      "source_url": null,
+      "reviewed_on": "5 months ago",
+      "featured": false,
+      "sort_order": 150
+    },
+    {
+      "id": "marcos-isaac",
+      "author_name": "Marcos Isaac",
+      "author_badge": "Local Guide",
+      "quote": "Amazing service! Glad I found them cause man oh man was my yard a mess! I have 3 huskies and they go at least 4 times a day — what a blessing!",
+      "rating": null,
+      "source": "google",
+      "source_url": null,
+      "reviewed_on": "a year ago",
+      "featured": false,
+      "sort_order": 160
+    },
+    {
+      "id": "james-devitt",
+      "author_name": "James Devitt",
+      "author_badge": "Local Guide",
+      "quote": "Very reliable — always lets you know when he is coming so no surprises. Good price too.",
+      "rating": null,
+      "source": "google",
+      "source_url": null,
+      "reviewed_on": "8 months ago",
+      "featured": false,
+      "sort_order": 170
+    },
+    {
+      "id": "louis-vargas",
+      "author_name": "Louis Vargas",
+      "author_badge": null,
+      "quote": "Very great job. Would recommend contacting Scoop Dogg!",
+      "rating": null,
+      "source": "google",
+      "source_url": null,
+      "reviewed_on": "8 months ago",
+      "featured": false,
+      "sort_order": 180
+    }
+  ],
+  "settings": {
+    "business.name": "Scoop Dogg",
+    "business.timezone": "America/Los_Angeles",
+    "business.phone": "(805) 869-8070",
+    "business.email": "josue@scoopdogg.net",
+    "business.region_label": "Ventura County and nearby",
+    "business.brand_region": "the 805",
+    "service_area.outside_area_behaviour": "capture_lead_and_notify",
+    "pricing.currency": "USD",
+    "pricing.quote_required_message": "We'll confirm your price after a quick look at your yard.",
+    "schedule.service_days": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "schedule.day_start": "07:00",
+    "schedule.day_end": "17:00",
+    "schedule.visit_window_hours": 4,
+    "schedule.new_customer_start_days": 3,
+    "visit.require_completion_photo": true,
+    "visit.skip_charge_policy": "no_charge",
+    "subscription.cancel_notice_hours": 0,
+    "subscription.pause_max_weeks": 12,
+    "schedule.day_capacity": 20,
+    "booking.start_window_days": 14,
+    "booking.initial_cleanup_policy": "offer_optional",
+    "booking.card_required": true,
+    "billing.monthly_factor": "52/12",
+    "billing.package_prices_confirmed": false
+  }
+}

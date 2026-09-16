@@ -1,22 +1,50 @@
 ---
 import Base from '../layouts/Base.astro';
-import Nav from '../components/Nav';
-import Footer from '../components/Footer';
-import { SITE_URL } from '../lib/constants';
-import Page from '../pages_react/BookPage';
-const jsonLd = {
-  '@context': 'https://schema.org', '@type': 'WebPage',
-  name: 'Book Scoop Dogg',
-  potentialAction: {
-    '@type': 'ReserveAction',
-    target: { '@type': 'EntryPoint', urlTemplate: `${SITE_URL}/book`, actionPlatform: 'https://schema.org/DesktopWebPlatform' },
-    result: { '@type': 'Reservation', name: 'Dog waste removal booking' },
-  },
-  about: { '@type': 'LocalBusiness', '@id': `${SITE_URL}/#business`, name: 'Scoop Dogg' },
+import Logo from '../components/site/Logo.astro';
+import BookingFlow from '../components/booking/BookingFlow';
+import { catalog, areas, services, business, markets, trust } from '../lib/catalog';
+import { DEMO_MODE } from '../lib/demo';
+
+// The booking gets a focused shell: the logo, a phone number and nothing else to click away to.
+const marketLabels = Object.fromEntries(markets().map((m) => [m.market, m.label.replace(/^the /, 'The ')]));
+const slim = {
+  services: catalog.services,
+  tiers: catalog.tiers,
+  packages: catalog.packages,
+  offers: catalog.offers,
 };
 ---
-<Base jsonLd={jsonLd} title={'Book Dog Poop Cleanup | Free Quote in 60 Seconds | Scoop Dogg'} description={'Book weekly or one-time dog waste removal across Ventura County. No contracts, no sign-up fees, cancel anytime.'} canonicalPath="/book">
-  <Nav client:load />
-  <main><Page client:load /></main>
-  <Footer />
+<Base title="See your price and book | Scoop Dogg" description="See your monthly price for weekly dog poop cleanup and book online in about a minute. First month half off, no contract." canonicalPath="/book">
+  <header class="border-b border-line bg-cream">
+    <div class="container-site flex h-[72px] items-center justify-between">
+      <Logo size="md" />
+      <div class="flex items-center gap-4 text-base">
+        <a href={business.phoneHref} class="hidden font-medium text-forest-800 sm:inline">{business.phone}</a>
+        <a href="/account" class="font-medium text-forest-700 hover:text-forest-900">Sign in</a>
+      </div>
+    </div>
+  </header>
+  <main id="main" class="min-h-[calc(100vh-72px)] bg-cream pb-28 pt-10 lg:pb-section-sm lg:pt-14">
+    <div class="container-site">
+      <BookingFlow
+        client:load
+        catalog={slim}
+        areas={areas.filter((a) => a.bookable).map((a) => ({ slug: a.slug, name: a.name, market: a.market, bookable: a.bookable }))}
+        marketLabels={marketLabels}
+        services={services.map((s) => ({ slug: s.slug, name: s.name, what_includes: s.what_includes ?? [] }))}
+        phone={business.phone}
+        phoneHref={business.phoneHref}
+        demo={DEMO_MODE}
+        guarantee={trust.guarantee}
+      />
+    </div>
+    <section class="container-site mt-section-sm border-t border-line pt-12" aria-labelledby="why-book">
+      <h2 id="why-book" class="text-h3 text-forest-900">Why book online with Scoop Dogg</h2>
+      <div class="mt-8 grid gap-8 text-base text-ink-700 md:grid-cols-3">
+        <div><h3 class="text-lg font-semibold text-forest-900">Your price, up front</h3><p class="mt-2">Monthly plans priced by how many dogs you have, shown before we ask for anything else. Your first month of weekly scooping is half off.</p></div>
+        <div><h3 class="text-lg font-semibold text-forest-900">Same day every week</h3><p class="mt-2">We serve each city on set days, so the day you pick is your day every week. You never need to be home.</p></div>
+        <div><h3 class="text-lg font-semibold text-forest-900">In control, always</h3><p class="mt-2">Skip a week, pause for vacation, update your card or cancel from your account. No contract and no sign-up fees. Payments are processed securely by Stripe.</p></div>
+      </div>
+    </section>
+  </main>
 </Base>

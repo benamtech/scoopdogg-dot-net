@@ -1,0 +1,33 @@
+---
+/**
+ * Real Google reviews, quoted. The count is the number of rows we hold; a star rating is
+ * shown only when `reviews.google_rating` is set with a source (S20). The old site said
+ * 19 in one place and 27 in another.
+ */
+import { reviews, reviewSummary } from '../../lib/catalog';
+export interface Props { limit?: number; dark?: boolean; ids?: string[] }
+const { limit = 3, dark = false, ids } = Astro.props;
+const list = (ids ? ids.map((id) => reviews.find((r) => r.id === id)).filter(Boolean) : reviews.filter((r) => r.featured)).slice(0, limit) as typeof reviews;
+const initials = (n: string) => n.split(' ').map((p) => p[0]).slice(0, 2).join('');
+---
+<div class={`grid gap-4 ${limit >= 3 ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
+  {list.map((r) => (
+    <figure class={`flex flex-col rounded-lg p-6 ${dark ? 'bg-forest-800 ring-1 ring-white/10' : 'border border-line bg-paper shadow-sm'}`}>
+      <svg width="28" height="22" viewBox="0 0 28 22" aria-hidden="true" class={dark ? 'text-amber-400' : 'text-amber-500'}><path fill="currentColor" d="M0 22V13.2C0 5.9 3.9 1.5 11.2 0l1.3 2.6C8.3 4 6.4 6.6 6.2 10.2H11V22H0Zm16 0V13.2C16 5.9 19.9 1.5 27.2 0l1.3 2.6c-4.2 1.4-6.1 4-6.3 7.6H27V22H16Z" /></svg>
+      <blockquote class={`mt-4 flex-1 text-base ${dark ? 'text-forest-100' : 'text-ink-700'}`}>{r.quote}</blockquote>
+      <figcaption class="mt-6 flex items-center gap-3">
+        <span class={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold ${dark ? 'bg-forest-700 text-white' : 'bg-forest-100 text-forest-800'}`}>{initials(r.author_name)}</span>
+        <span class="flex flex-col">
+          <span class={`text-base font-semibold ${dark ? 'text-white' : 'text-forest-900'}`}>{r.author_name}</span>
+          <span class={`text-sm ${dark ? 'text-forest-300' : 'text-ink-500'}`}>Google review{r.reviewed_on ? ` · ${r.reviewed_on}` : ''}</span>
+        </span>
+      </figcaption>
+    </figure>
+  ))}
+</div>
+<p class={`mt-6 text-base ${dark ? 'text-forest-200' : 'text-ink-500'}`}>
+  {reviewSummary.rating ? `${reviewSummary.rating.toFixed(1)} on Google · ` : ''}
+  <a href="/reviews" class={dark ? 'font-semibold text-white underline decoration-white/30 underline-offset-4 hover:decoration-white' : 'link'}>Read all {reviewSummary.count} reviews</a>
+  <span aria-hidden="true"> · </span>
+  <a href={reviewSummary.profileUrl} rel="noopener" class={dark ? 'text-forest-200 underline decoration-white/20 underline-offset-4 hover:text-white' : 'link'}>See them on Google</a>
+</p>

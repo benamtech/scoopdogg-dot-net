@@ -1,50 +1,319 @@
 ---
-import Base from '../layouts/Base.astro';
-import Nav from '../components/Nav';
-import Footer from '../components/Footer';
-import Hero from '../components/home/Hero';
-import Services from '../components/home/Services';
-import HowItWorks from '../components/home/HowItWorks';
-import AboutTrust from '../components/home/AboutTrust';
-import Testimonials from '../components/home/Testimonials';
-import HomeGallery from '../components/home/HomeGallery';
-import Areas from '../components/home/Areas';
-import HomeFAQ from '../components/home/HomeFAQ';
-import BookingSection from '../components/home/BookingSection';
-import { SITE_URL, PHONE, EMAIL } from '../lib/constants';
+/**
+ * The homepage. P13 §4 and Ben's review of the first pass (2026-09-16): differentiate the
+ * sections, deliberate on the design, less busy. Each band has one job and its own surface:
+ *
+ *   hero (cream) -> plans (paper) -> how it works (forest, the product) -> real yards (cream)
+ *   -> Josue (sand) -> one review (paper) -> services + areas (cream) -> FAQ (paper) -> close
+ *
+ * Every number comes from the rows (S19). Region copy is two counties, not one (Ben).
+ */
+import { Image } from 'astro:assets';
+import Site from '../layouts/Site.astro';
+import AddressForm from '../components/site/AddressForm.astro';
+import PackageCards from '../components/site/PackageCards.astro';
+import BeforeAfter from '../components/site/BeforeAfter.astro';
+import PortalPreview from '../components/site/PortalPreview.astro';
+import Faq from '../components/site/Faq.astro';
+import Stars from '../components/site/Stars.astro';
+import { SITE_URL } from '../lib/constants';
+import {
+  business, markets, regionSentence, serviceRegion, services, headlinePrice, reviewSummary, reviews,
+  packagesForService, formatCents, trust, setting,
+} from '../lib/catalog';
 
-const title = 'Dog Poop Cleaning Services in Ventura County, CA | Scoop Dogg';
-const description =
-  'Professional dog poop cleaning services in Ventura County. Weekly yard scoops, one-time cleanups, turf deodorizing. No contracts. Free quote in 60 seconds.';
+import josue from '../assets/photos/4824.jpg';
+import turfBefore from '../assets/photos/turf1-before.jpg';
+import turfAfter from '../assets/photos/turf2-after.jpg';
+import runBefore from '../assets/photos/grass-dog-run-before.jpg';
+import runAfter from '../assets/photos/grass-dog-run-after.jpg';
+import yardBefore from '../assets/photos/backyard-before.jpg';
+import yardAfter from '../assets/photos/backyard-after.jpg';
+import mascot from '../assets/art/dog-with-shovel.png';
 
-const jsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'LocalBusiness',
-  '@id': `${SITE_URL}/#business`,
-  name: 'Scoop Dogg',
-  description,
-  telephone: '+18058698070',
-  email: EMAIL,
-  url: SITE_URL,
-  image: `${SITE_URL}/horizontallogo.png`,
-  address: { '@type': 'PostalAddress', addressLocality: 'Ventura', addressRegion: 'CA', addressCountry: 'US' },
-  priceRange: '$$',
-};
+const scoop = packagesForService('weekly-pooper-scooper-service');
+const from = scoop.length ? Math.min(...scoop.map((p) => p.monthly_price_cents)) : null;
+const startDays = setting<number>('schedule.new_customer_start_days', 3);
+const region = regionSentence();
+
+const title = 'Weekly Dog Poop Cleanup in Ventura & Santa Barbara Counties | Scoop Dogg';
+const description = `Weekly dog poop pickup across ${region}, on the same day every week${from ? ` — from ${formatCents(from)} a month` : ''}. See your price in a minute. First month half off, no contract.`;
+
+const featured = reviews.find((r) => r.featured) ?? reviews[0];
+const moreReviews = reviews.filter((r) => r.featured && r.id !== featured?.id).slice(0, 2);
+
+const others = services
+  .filter((s) => s.slug !== 'weekly-pooper-scooper-service')
+  .map((s) => ({ s, price: headlinePrice(s.slug) }));
+
+const faqs = [
+  { q: 'How does monthly billing work?', a: `You pay for your first month when you book — half off — and your plan renews each month after that. Your account shows the next payment date, and you can skip, pause or cancel before it.` },
+  { q: 'Is there a contract?', a: 'No. Cancel anytime from your account, no questions asked.' },
+  { q: 'Do I need to be home?', a: 'No. Most customers are at work when we stop by. As long as we can get into the yard, we take care of everything and close the gate behind us.' },
+  { q: 'How soon can you start?', a: `Usually within ${startDays} days. You pick your start day from the days we serve your city, and that becomes your day every week.` },
+  { q: 'My yard has not been cleaned in a while. Is that a problem?', a: 'Not at all. Tell us when you book, and we can add a one-time deep clean before your weekly visits start.' },
+  { q: 'Which areas do you serve?', a: `${region}. If your address is not on a route yet, leave it with us and we will let you know when it is.` },
+];
+
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'LocalBusiness',
+    '@id': `${SITE_URL}/#business`,
+    name: 'Scoop Dogg',
+    description,
+    telephone: '+18058698070',
+    email: business.email,
+    url: SITE_URL,
+    image: `${SITE_URL}/brand/mark-512.png`,
+    logo: `${SITE_URL}/brand/mark-512.png`,
+    address: { '@type': 'PostalAddress', addressLocality: 'Ventura', addressRegion: 'CA', addressCountry: 'US' },
+    areaServed: [
+      { '@type': 'AdministrativeArea', name: 'Ventura County, CA' },
+      { '@type': 'AdministrativeArea', name: 'Santa Barbara County, CA' },
+      ...markets().flatMap((m) => m.areas.map((a) => ({ '@type': 'City', name: `${a.name}, CA` }))),
+    ],
+    ...(scoop.length ? {
+      makesOffer: scoop.map((p) => ({
+        '@type': 'Offer',
+        name: p.name,
+        priceSpecification: { '@type': 'UnitPriceSpecification', price: (p.monthly_price_cents / 100).toFixed(2), priceCurrency: 'USD', unitText: 'MON' },
+      })),
+    } : {}),
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),
+  },
+];
+
+const check = 'M5 12l5 5 9-10';
 ---
-<Base title={title} description={description} canonicalPath="/" jsonLd={jsonLd}>
-  <!-- Nav and the booking form need JavaScript. Everything between them is static
-       HTML with no client directive, so the page reads completely with JS off. -->
-  <Nav client:load />
-  <main>
-    <Hero />
-    <Services />
-    <HowItWorks />
-    <AboutTrust />
-    <Testimonials />
-    <HomeGallery />
-    <Areas />
-    <HomeFAQ />
-    <BookingSection client:load />
-  </main>
-  <Footer />
-</Base>
+<Site title={title} description={description} canonicalPath="/" jsonLd={jsonLd}>
+
+  <!-- 1. HERO — the first step of booking -->
+  <section class="relative overflow-hidden bg-cream">
+    <div class="pointer-events-none absolute -right-48 -top-48 h-[680px] w-[680px] rounded-full bg-[radial-gradient(closest-side,theme(colors.forest.100),transparent)]" aria-hidden="true"></div>
+    <div class="container-site relative grid items-center gap-14 pb-section-sm pt-10 lg:grid-cols-12 lg:gap-10 lg:pb-section lg:pt-16">
+      <div class="lg:col-span-7">
+        <p class="eyebrow mb-5">Pooper scoopers · {serviceRegion}</p>
+        <h1 class="text-hero text-forest-900">
+          Your yard, scooped.<br /><span class="text-forest-500">Every week.</span>
+        </h1>
+        <p class="mt-6 max-w-xl text-lg text-ink-700">
+          We clean up after your dog on the same day every week — bagged and hauled away{from && <>, from <strong class="font-semibold text-forest-900">{formatCents(from)} a month</strong></>}.
+          First month half off. No contract.
+        </p>
+        <div class="mt-8"><AddressForm heroAnchor source="home-hero" /></div>
+        <div class="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-ink-700">
+          {reviewSummary.rating && (
+            <a href="/reviews" class="inline-flex items-center gap-2 hover:text-forest-800">
+              <Stars rating={reviewSummary.rating} size={16} />
+              <span><strong class="font-semibold text-forest-900">{reviewSummary.rating.toFixed(1)}</strong> on Google</span>
+            </a>
+          )}
+          <span class="hidden h-4 w-px bg-line-strong sm:block" aria-hidden="true"></span>
+          <span class="inline-flex items-center gap-1.5"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-forest-500" aria-hidden="true"><path d={check} /></svg>Start within {startDays} days</span>
+          <span class="inline-flex items-center gap-1.5"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-forest-500" aria-hidden="true"><path d={check} /></svg>Cancel anytime</span>
+        </div>
+      </div>
+
+      <div class="relative lg:col-span-5">
+        <div class="relative mx-auto max-w-md lg:ml-auto">
+          <div class="grid grid-cols-2 gap-3">
+            <figure class="relative mt-8 overflow-hidden rounded-lg shadow-md">
+              <Image src={turfBefore} alt="A turf yard covered in dog waste before a Scoop Dogg visit" widths={[240, 480]} sizes="(min-width: 1024px) 220px, 45vw" class="aspect-[3/4] w-full object-cover" loading="lazy" />
+              <figcaption class="absolute left-2.5 top-2.5 rounded-sm bg-forest-900/85 px-2 py-1 text-micro font-semibold uppercase text-white">Before</figcaption>
+            </figure>
+            <figure class="relative overflow-hidden rounded-lg shadow-md">
+              <Image src={turfAfter} alt="The same turf yard, clean, after a Scoop Dogg visit" widths={[240, 480]} sizes="(min-width: 1024px) 220px, 45vw" class="aspect-[3/4] w-full object-cover" loading="lazy" />
+              <figcaption class="absolute left-2.5 top-2.5 rounded-sm bg-amber-500 px-2 py-1 text-micro font-semibold uppercase text-forest-900">After</figcaption>
+            </figure>
+          </div>
+          <div class="relative z-10 -mt-20 ml-auto w-[86%]">
+            <PortalPreview />
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. PLANS -->
+  <section class="bg-paper py-section" aria-labelledby="plans-title">
+    <div class="container-site">
+      <div class="mx-auto max-w-narrow text-center">
+        <h2 id="plans-title" class="text-h2 text-forest-900">Simple monthly plans</h2>
+        <p class="mt-4 text-lg text-ink-500">Weekly scooping, priced by how many dogs you have. Every visit covers the whole yard.</p>
+      </div>
+      <div class="mx-auto mt-12 max-w-5xl"><PackageCards service="weekly-pooper-scooper-service" compact /></div>
+      <p class="mt-8 text-center text-base text-ink-700">
+        <span class="font-semibold text-forest-900">Your first month is half off.</span> Turf care, deep cleans and litter boxes too —
+        <a href="/pricing" class="link">see all pricing</a>.
+      </p>
+    </div>
+  </section>
+
+  <!-- 3. HOW IT WORKS — the product, on a dark surface -->
+  <section class="relative overflow-hidden bg-forest-900 py-section text-forest-100" aria-labelledby="how-title">
+    <div class="container-site grid items-center gap-14 lg:grid-cols-2">
+      <div>
+        <p class="eyebrow-on-dark mb-3">How it works</p>
+        <h2 id="how-title" class="text-h2 text-white">Booked in a minute.<br />Handled every week.</h2>
+        <ol class="mt-10 space-y-8">
+          {[
+            { t: 'See your price', d: 'Your address and how many dogs. The monthly price is on screen before we ask for anything else.' },
+            { t: 'Pick your day', d: 'We serve each city on set days, so you get the same day every week. Pay your first month, half off.' },
+            { t: 'Run it from your account', d: 'Your next visit, your plan and your payments in one place. Skip, pause or cancel in a tap.' },
+          ].map((s, i) => (
+            <li class="flex gap-5">
+              <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-amber-400/60 font-serif text-lg text-amber-400">{i + 1}</span>
+              <div>
+                <h3 class="text-xl font-semibold text-white">{s.t}</h3>
+                <p class="mt-1.5 max-w-md text-base text-forest-200">{s.d}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+        <a href="/book" class="btn-primary btn-lg mt-10">See my price</a>
+      </div>
+      <div class="relative flex flex-col items-center gap-5 lg:items-end">
+        <div class="w-full max-w-sm lg:mr-16"><PortalPreview variant="next-visit" /></div>
+        <div class="w-full max-w-sm lg:-mt-2"><PortalPreview variant="plan" /></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. REAL YARDS + GUARANTEE -->
+  <section class="bg-cream py-section" aria-labelledby="proof-title">
+    <div class="container-site">
+      <div class="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+        <div class="max-w-narrow">
+          <h2 id="proof-title" class="text-h2 text-forest-900">Real yards. Actually clean.</h2>
+          <p class="mt-4 text-lg text-ink-500">Scoop Dogg jobs, before and after. Drag across a photo to compare.</p>
+        </div>
+        <a href="/gallery" class="link shrink-0 text-base">More before-and-afters</a>
+      </div>
+      <div class="-mx-5 mt-10 flex snap-x snap-mandatory gap-4 overflow-x-auto px-5 pb-2 sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-6 sm:overflow-visible sm:px-0 [&>figure]:w-[72%] [&>figure]:shrink-0 [&>figure]:snap-center sm:[&>figure]:w-auto">
+        <BeforeAfter before={turfBefore} after={turfAfter} caption="Artificial turf" alt="artificial turf yard" />
+        <BeforeAfter before={runBefore} after={runAfter} caption="Side-yard dog run" alt="side-yard dog run" />
+        <BeforeAfter before={yardBefore} after={yardAfter} caption="Backyard" alt="backyard" />
+      </div>
+      {trust.guarantee && (
+        <div class="mt-12 flex flex-col items-start gap-4 rounded-lg bg-forest-50 p-6 sm:flex-row sm:items-center sm:p-8">
+          <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-forest-700 text-white" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l7 3v6c0 4.5-3 8-7 9-4-1-7-4.5-7-9V6l7-3Z" /><path d="M8.5 12l2.5 2.5 4.5-5" /></svg>
+          </span>
+          <p class="text-lg text-forest-900"><span class="font-semibold">{trust.guarantee.split(':')[0]}.</span>{trust.guarantee.includes(':') ? trust.guarantee.slice(trust.guarantee.indexOf(':') + 1) : ''}</p>
+        </div>
+      )}
+    </div>
+  </section>
+
+  <!-- 5. JOSUE -->
+  <section class="bg-sand py-section" aria-labelledby="josue-title">
+    <div class="container-site grid items-center gap-12 lg:grid-cols-12">
+      <div class="lg:col-span-5">
+        <div class="relative mx-auto max-w-sm">
+          <Image src={josue} alt="Josue, owner of Scoop Dogg, cleaning a backyard" widths={[360, 720]} sizes="(min-width: 1024px) 380px, 80vw" class="aspect-[4/5] w-full rounded-xl object-cover shadow-lg" />
+          <img src="/brand/mark-192.png" alt="" width="96" height="96" class="absolute -bottom-6 -right-5 h-20 w-20 rounded-full border-4 border-sand shadow-md sm:h-24 sm:w-24" loading="lazy" />
+        </div>
+      </div>
+      <div class="lg:col-span-6 lg:col-start-7">
+        <p class="eyebrow mb-3">Meet the owner</p>
+        <h2 id="josue-title" class="text-h2 text-forest-900">“I know my clients' dogs by name.”</h2>
+        <div class="mt-6 space-y-4 text-lg text-ink-700">
+          <p>I'm Josue. I started Scoop Dogg because dog owners shouldn't have to dread their own backyard.</p>
+          <p>I know which gates stick and which yards have the sneaky spots. This isn't a side hustle — it's my business, and I take it personally.</p>
+        </div>
+        <ul class="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-base font-medium text-forest-800">
+          {trust.insured && <li class="inline-flex items-center gap-2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-forest-500" aria-hidden="true"><path d={check} /></svg>Fully insured</li>}
+          {trust.backgroundChecked && <li class="inline-flex items-center gap-2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-forest-500" aria-hidden="true"><path d={check} /></svg>Background-checked</li>}
+          <li class="inline-flex items-center gap-2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-forest-500" aria-hidden="true"><path d={check} /></svg>Locally owned</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. REVIEWS — one voice, large -->
+  {featured && (
+    <section class="bg-paper py-section" aria-labelledby="reviews-title">
+      <div class="container-site">
+        <h2 id="reviews-title" class="sr-only">Customer reviews</h2>
+        <figure class="mx-auto max-w-4xl text-center">
+          {reviewSummary.rating && <Stars rating={reviewSummary.rating} size={22} />}
+          <blockquote class="mt-6 font-serif text-h3 text-forest-900">“{featured.quote}”</blockquote>
+          <figcaption class="mt-6 text-base text-ink-500"><span class="font-semibold text-forest-900">{featured.author_name}</span> · Google review</figcaption>
+        </figure>
+        <div class="mx-auto mt-14 grid max-w-5xl gap-4 md:grid-cols-2">
+          {moreReviews.map((r) => (
+            <figure class="rounded-lg bg-cream p-6">
+              <blockquote class="text-base text-ink-700">“{r.quote}”</blockquote>
+              <figcaption class="mt-4 text-sm"><span class="font-semibold text-forest-900">{r.author_name}</span><span class="text-ink-500"> · Google review</span></figcaption>
+            </figure>
+          ))}
+        </div>
+        <p class="mt-8 text-center text-base"><a href="/reviews" class="link">Read all {reviewSummary.count} reviews</a></p>
+      </div>
+    </section>
+  )}
+
+  <!-- 7. SERVICES + AREAS -->
+  <section class="bg-cream py-section" aria-labelledby="more-title">
+    <div class="container-site grid gap-16 lg:grid-cols-2">
+      <div>
+        <h2 id="more-title" class="text-h2 text-forest-900">More than scooping</h2>
+        <ul class="mt-8 divide-y divide-line border-y border-line">
+          {others.map(({ s, price }) => (
+            <li>
+              <a href={`/services/${s.slug}`} class="group flex items-center justify-between gap-4 py-4">
+                <span class="text-lg font-medium text-forest-900 group-hover:text-forest-600">{s.name}</span>
+                <span class="flex items-center gap-3 text-sm text-ink-500">
+                  {price && <span class="whitespace-nowrap">{price.text}{price.per}</span>}
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-forest-400 transition duration-fast group-hover:translate-x-0.5" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                </span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div>
+        <h2 class="text-h2 text-forest-900">Where we work</h2>
+        <p class="mt-4 text-lg text-ink-500">{region}.</p>
+        <div class="mt-8 grid gap-8 sm:grid-cols-2">
+          {markets().map((m) => (
+            <div>
+              <h3 class="text-base font-semibold text-forest-900">{m.label.replace(/^the /, 'The ')}</h3>
+              <p class="mt-2 text-base leading-relaxed text-ink-700">
+                {m.areas.map((a, i) => <><a href={`/areas/${a.slug}`} class="hover:text-forest-600 hover:underline">{a.name}</a>{i < m.areas.length - 1 ? ', ' : ''}</>)}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8. FAQ -->
+  <section class="bg-paper py-section" aria-labelledby="faq-title">
+    <div class="container-site">
+      <h2 id="faq-title" class="text-center text-h2 text-forest-900">Questions, answered</h2>
+      <div class="mx-auto mt-10 max-w-narrow"><Faq items={faqs} /></div>
+      <p class="mt-8 text-center text-base text-ink-700">Something else? Call <a href={business.phoneHref} class="link">{business.phone}</a>.</p>
+    </div>
+  </section>
+
+  <!-- 9. CLOSE -->
+  <section class="relative overflow-hidden bg-forest-800 py-section-sm" aria-labelledby="close-title">
+    <div class="container-site relative grid items-center gap-10 lg:grid-cols-12">
+      <div class="lg:col-span-7">
+        <h2 id="close-title" class="text-h2 text-white">Never pick up after your dog again.</h2>
+        <p class="mt-3 text-lg text-forest-200">See your price in a minute. Your first month is half off.</p>
+        <div class="mt-8"><AddressForm dark size="md" label="Your address" source="home-close" /></div>
+      </div>
+      <div class="hidden justify-end lg:col-span-5 lg:flex">
+        <Image src={mascot} alt="" widths={[260, 520]} sizes="260px" class="h-auto w-64 drop-shadow-xl" />
+      </div>
+    </div>
+  </section>
+</Site>

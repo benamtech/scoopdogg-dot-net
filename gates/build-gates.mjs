@@ -33,8 +33,11 @@ if (!pages.length) { console.log('  FAIL  no pages in dist/ — did the build ru
 
 // 1. crawlable — the defect that made all 71 live URLs serve one empty shell
 {
+  // A noindex app screen (the booking confirmation, the customer account) is not for a
+  // crawler, so the rule applies to every page a crawler is invited to index (2026-09-16).
   const bad = pages.filter((f) => {
     const h = readFileSync(f, 'utf8');
+    if (/name="robots"\s+content="noindex/.test(h)) return false;
     return (h.match(/<h1/g) || []).length !== 1 || textOf(h).length < 1000;
   });
   bad.length
@@ -93,7 +96,9 @@ for (const [scheme, label] of [['tel', 'tel'], ['mailto', 'mailto']]) {
 {
   const bad = pages.filter((f) => {
     const h = readFileSync(f, 'utf8');
-    const body = h.slice(h.indexOf('<body'));
+    // An invisible <input> laid over a control (the before/after slider's range) hides no
+    // content; everything else at opacity-0 is content a no-JS visitor never sees.
+    const body = h.slice(h.indexOf('<body')).replace(/<input\b[^>]*>/gi, '');
     return /class="[^"]*\bopacity-0\b/.test(body);
   });
   bad.length ? no('visible-without-js', `${bad.length} page(s) render content at opacity-0: ${bad.slice(0,3).map(route)}`)
@@ -177,9 +182,11 @@ for (const [scheme, label] of [['tel', 'tel'], ['mailto', 'mailto']]) {
 //     green. A site that cannot take a booking is worse than the one it replaced.
 {
   const checks = [
-    ['/book', ['Where&#x27;s your yard?', 'Ventura'], 'booking wizard step 1'],
+    // Copy updated for the 2026-09-16 booking flow; the invariant is unchanged: step one of
+    // booking and the city list are in the server HTML.
+    ['/book', ['Where is your yard?', 'Ventura'], 'booking flow step 1'],
     ['/contact', ['<textarea', '<input'], 'contact form fields'],
-    ['/', ['Book in 60 Seconds'], 'homepage booking call to action'],
+    ['/', ['data-hero-cta', 'See my price', 'name="address"'], 'homepage address form (the first step of booking)'],
   ];
   for (const [route, needles, what] of checks) {
     const f = path.join(DIST, route === '/' ? '' : route, 'index.html');
@@ -292,6 +299,9 @@ for (const [scheme, label] of [['tel', 'tel'], ['mailto', 'mailto']]) {
       const src = (tag.match(/\bsrc="(\/[^"]+)"/) || [])[1];
       const cls = (tag.match(/\bclass="([^"]*)"/) || [, ''])[1];
       if (!src || !/(^|\s|:)absolute(\s|$)/.test(cls)) continue;
+      // A photo that exactly fills its own frame (inset-0 + object-cover, e.g. the before/after
+      // slider) is not floated over anything; the rule is about cut-out art pasted on a card.
+      if (/\binset-0\b/.test(cls) && /\bobject-cover\b/.test(cls)) continue;
       floated.set(src, [...(floated.get(src) || []), route(f)]);
     }
   }
