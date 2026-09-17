@@ -8,7 +8,8 @@ export default function Nav() {
   const [hidden, setHidden] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [areasOpen, setAreasOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const desktopDropdownRef = useRef<HTMLDivElement>(null);
+  const mobileDropdownRef = useRef<HTMLDivElement>(null);
   const lastScrollY = useRef(0);
   const location = useLocation();
 
@@ -36,7 +37,11 @@ export default function Nav() {
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      const clickedOutsideDesktop = !desktopDropdownRef.current?.contains(target);
+      const clickedOutsideMobile = !mobileDropdownRef.current?.contains(target);
+
+      if (clickedOutsideDesktop && clickedOutsideMobile) {
         setAreasOpen(false);
       }
     };
@@ -81,7 +86,7 @@ export default function Nav() {
                 Services
               </Link>
 
-              <div className="relative" ref={dropdownRef}>
+              <div className="relative" ref={desktopDropdownRef}>
                 <button
                   onClick={() => setAreasOpen((p) => !p)}
                   className="flex items-center gap-1 text-dark hover:text-forest font-medium transition-colors text-sm"
@@ -196,7 +201,7 @@ export default function Nav() {
               Services
             </Link>
 
-            <div className="border-b border-sage-light">
+            <div className="border-b border-sage-light" ref={mobileDropdownRef}>
               <button
                 onClick={() => setAreasOpen((p) => !p)}
                 className="w-full py-3 text-lg font-medium text-dark flex items-center justify-between"
