@@ -32,7 +32,7 @@ export default function Nav() {
   useEffect(() => {
     setMobileOpen(false);
     setAreasOpen(false);
-  }, [location]);
+  }, [location.pathname]);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
