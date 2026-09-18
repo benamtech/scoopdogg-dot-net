@@ -2,7 +2,7 @@
  * /api/account/* — the customer portal. Everything except login/* needs a customer session.
  */
 import { sendJson, readJsonBody, safeError, type ApiRequest, type ApiResponse } from '../server/lib/http.js';
-import { rateLimit } from '../server/lib/admin-auth.js';
+import { rateLimit, isOverLimit } from '../server/lib/admin-auth.js';
 import { startCustomerLogin, verifyCustomerLogin, getCustomerSession, endCustomerSession } from '../server/lib/customer-auth.js';
 import { AccountError, overview, skipVisit, unskipVisit, pausePlan, resumePlan, cancelPlan, keepPlan, billingPortalUrl } from '../server/lib/account.js';
 
@@ -16,13 +16,23 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       const body = await readJsonBody(req);
       const email = String(body.email ?? '').trim();
       if (!email) return sendJson(res, 400, { error: 'Enter your email address.' });
-      try { await rateLimit(`account_login:${email.toLowerCase()}`, 5, 15 * 60); } catch { return sendJson(res, 429, { error: 'Too many attempts. Try again in a few minutes.' }); }
+      try { await rateLimit(`account_login:${email.toLowerCase()}`, 5, 15 * 60); }
+      catch (e) {
+        if (isOverLimit(e)) return sendJson(res, 429, { error: 'Too many attempts. Try again in a few minutes.' });
+        safeError('account:login/start:ratelimit', e);
+        return sendJson(res, 503, { error: 'We could not reach the sign-in service. Try again in a moment.' });
+      }
       try { await startCustomerLogin(email); } catch (e) { safeError('account:login/start', e); return sendJson(res, 503, { error: 'We could not send the code just now. Try again shortly.' }); }
       return sendJson(res, 200, { ok: true });
     }
     if (path === 'login/verify' && req.method === 'POST') {
       const body = await readJsonBody(req);
-      try { await rateLimit(`account_verify:${String(body.email ?? '').toLowerCase()}`, 10, 15 * 60); } catch { return sendJson(res, 429, { error: 'Too many attempts.' }); }
+      try { await rateLimit(`account_verify:${String(body.email ?? '').toLowerCase()}`, 10, 15 * 60); }
+      catch (e) {
+        if (isOverLimit(e)) return sendJson(res, 429, { error: 'Too many attempts.' });
+        safeError('account:login/verify:ratelimit', e);
+        return sendJson(res, 503, { error: 'We could not reach the sign-in service. Try again in a moment.' });
+      }
       const s = await verifyCustomerLogin(res, String(body.email ?? ''), String(body.code ?? ''));
       if (!s) return sendJson(res, 401, { error: 'That code is not right, or it has expired.' });
       return sendJson(res, 200, { ok: true });

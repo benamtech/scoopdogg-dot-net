@@ -7,7 +7,7 @@
  *   POST waitlist   { email, address, city } -> saved, Josue told
  */
 import { sendJson, readJsonBody, safeError, type ApiRequest, type ApiResponse } from '../server/lib/http.js';
-import { rateLimit } from '../server/lib/admin-auth.js';
+import { rateLimit, isOverLimit } from '../server/lib/admin-auth.js';
 import { BookingError, parseInput, priceBooking, createBooking, completeBooking, joinWaitlist } from '../server/lib/booking.js';
 
 const routePath = (req: ApiRequest) =>
@@ -40,7 +40,12 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       });
     }
     if (path === 'checkout') {
-      try { await rateLimit(`booking:${ip}`, 12, 60 * 60); } catch { return sendJson(res, 429, { error: 'Too many attempts. Please call us on (805) 869-8070.' }); }
+      try { await rateLimit(`booking:${ip}`, 12, 60 * 60); }
+      catch (e) {
+        if (isOverLimit(e)) return sendJson(res, 429, { error: 'Too many attempts. Please call us on (805) 869-8070.' });
+        safeError('booking:ratelimit', e);
+        return sendJson(res, 503, { error: 'We could not take that just now. Please call us on (805) 869-8070.' });
+      }
       const result = await createBooking(parseInput(body), baseUrl(req));
       return sendJson(res, 200, result);
     }
@@ -49,7 +54,12 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       return sendJson(res, 200, result);
     }
     if (path === 'waitlist') {
-      try { await rateLimit(`waitlist:${ip}`, 10, 60 * 60); } catch { return sendJson(res, 429, { error: 'Too many attempts.' }); }
+      try { await rateLimit(`waitlist:${ip}`, 10, 60 * 60); }
+      catch (e) {
+        if (isOverLimit(e)) return sendJson(res, 429, { error: 'Too many attempts.' });
+        safeError('waitlist:ratelimit', e);
+        return sendJson(res, 503, { error: 'We could not take that just now. Please call us on (805) 869-8070.' });
+      }
       return sendJson(res, 200, await joinWaitlist(body));
     }
     return sendJson(res, 404, { error: 'Not found.' });

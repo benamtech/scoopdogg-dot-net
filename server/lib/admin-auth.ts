@@ -52,6 +52,11 @@ export function clearSessionCookie(res: ApiResponse) {
 }
 
 /** Rate limit by key. Cheap, in the database, so it survives a cold start. */
+/** True only when rateLimit refused because the caller is over the limit, not because the
+ *  database was unreachable. A connection failure that reads as "too many attempts" sends the
+ *  user away to wait for a limit that was never hit (Ben, locked out of admin 2026-09-18). */
+export const isOverLimit = (e: unknown) => (e as Error)?.message === 'rate_limited';
+
 export async function rateLimit(key: string, limit: number, windowSeconds: number) {
   const { rows } = await db().query(
     `insert into rate_limits (key, count, reset_at)

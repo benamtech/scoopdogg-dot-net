@@ -11,7 +11,7 @@
 import { db } from '../server/lib/db.js';
 import { demoMode, demoStatus } from '../server/lib/notify.js';
 import { sendJson, readJsonBody, safeError, type ApiRequest, type ApiResponse } from '../server/lib/http.js';
-import { startLogin, verifyLogin, getSession, endSession, rateLimit, type AdminSession } from '../server/lib/admin-auth.js';
+import { startLogin, verifyLogin, getSession, endSession, rateLimit, isOverLimit, type AdminSession } from '../server/lib/admin-auth.js';
 import { probeAccount, createConnectedAccount, onboardingLink, publishAllPrices, connection, type StripeMode } from '../server/lib/stripe.js';
 
 const routePath = (req: ApiRequest) =>
@@ -32,8 +32,10 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       if (!email) return sendJson(res, 400, { error: 'Enter your email address.' });
       try {
         await rateLimit(`admin_login:${email.toLowerCase()}`, 5, 15 * 60);
-      } catch {
-        return sendJson(res, 429, { error: 'Too many attempts. Try again in a few minutes.' });
+      } catch (e) {
+        if (isOverLimit(e)) return sendJson(res, 429, { error: 'Too many attempts. Try again in a few minutes.' });
+        safeError('admin:login/start:ratelimit', e);
+        return sendJson(res, 503, { error: 'We could not reach the sign-in service. Try again in a moment.' });
       }
       try { await startLogin(email); } catch (e) {
         safeError('admin:login/start', e);
@@ -54,8 +56,10 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       if (!email || !code) return sendJson(res, 400, { error: 'Enter your email and the code.' });
       try {
         await rateLimit(`admin_verify:${email.toLowerCase()}`, 10, 15 * 60);
-      } catch {
-        return sendJson(res, 429, { error: 'Too many attempts. Try again in a few minutes.' });
+      } catch (e) {
+        if (isOverLimit(e)) return sendJson(res, 429, { error: 'Too many attempts. Try again in a few minutes.' });
+        safeError('admin:login/verify:ratelimit', e);
+        return sendJson(res, 503, { error: 'We could not reach the sign-in service. Try again in a moment.' });
       }
       const session = await verifyLogin(res, email, code);
       if (!session) return sendJson(res, 401, { error: 'That code is not right, or it has expired.' });
