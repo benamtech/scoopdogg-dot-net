@@ -1,13 +1,59 @@
 ---
+/**
+ * Before and after, every real job photo pair we hold, as drag-to-compare sliders. Rebuilt from
+ * the React page on the section library (loop 2 item 5). Captions and descriptions are the
+ * predecessor site's own; the photos are the ones Ben confirmed are real Scoop Dogg jobs.
+ */
 import Site from '../layouts/Site.astro';
+import PageHero from '../components/site/PageHero.astro';
+import Section from '../components/site/Section.astro';
+import BeforeAfter from '../components/site/BeforeAfter.astro';
+import CloseCta from '../components/site/CloseCta.astro';
 import { SITE_URL } from '../lib/constants';
-import Page from '../pages_react/GalleryPage';
+import backyardB from '../assets/photos/backyard-before.jpg';
+import backyardA from '../assets/photos/backyard-after.jpg';
+import sectionB from '../assets/photos/backyard-section-before.jpg';
+import sectionA from '../assets/photos/backyard-section-after.jpg';
+import pavedB from '../assets/photos/paved-dog-run-before.jpg';
+import pavedA from '../assets/photos/paved-dog-run-after.jpg';
+import grassB from '../assets/photos/grass-dog-run-before.jpg';
+import grassA from '../assets/photos/grass-dog-run-after.jpg';
+import enclosureB from '../assets/photos/enclosure-before.jpg';
+import enclosureA from '../assets/photos/enclosure-after.jpg';
+import smallB from '../assets/photos/small-section-before.jpg';
+import smallA from '../assets/photos/small-section-after.jpg';
+import walkwayB from '../assets/photos/walkway-before.jpg';
+import walkwayA from '../assets/photos/walkway-after.jpg';
+import turfB from '../assets/photos/turf1-before.jpg';
+import turfA from '../assets/photos/turf2-after.jpg';
+import hedgeB from '../assets/photos/gravel-sand-yard-before.jpg';
+import hedgeA from '../assets/photos/gravel-sand-yard-after.jpg';
+
+const items = [
+  { before: turfB, after: turfA, title: 'Artificial turf treatment', d: 'Artificial turf traps odor like a sponge. We pressure-washed the entire surface and applied professional enzyme treatment to neutralize bacteria deep in the infill.' },
+  { before: backyardB, after: backyardA, title: 'Full backyard cleanup', d: 'A heavily used backyard brought back to a clean, usable state. Waste removed, surfaces treated, and ready for weekly maintenance to keep it this way.' },
+  { before: grassB, after: grassA, title: 'Grass dog run cleanup', d: 'A grass dog run that had gotten out of hand. Waste removed, grass treated with enzyme spray, and the area sanitized to stop odor at the source.' },
+  { before: enclosureB, after: enclosureA, title: 'Dog enclosure deep clean', d: 'A fully enclosed dog area cleaned top to bottom — solid waste removed, surfaces scrubbed, and a professional deodorizer applied to the entire space.' },
+  { before: sectionB, after: sectionA, title: 'Backyard section reset', d: 'A problem corner that had accumulated months of buildup. We cleared waste, applied enzyme treatment to the grass, and eliminated the odor.' },
+  { before: pavedB, after: pavedA, title: 'Paved dog run restored', d: 'Years of buildup on a paved dog run require more than a hose. We pressure-washed, scrubbed, and applied a sanitizing agent that keeps odors from returning.' },
+  { before: smallB, after: smallA, title: 'Small section spot clean', d: 'Even a small problem area can make the whole yard unusable. We cleared the waste, treated the ground, and had this section smelling fresh.' },
+  { before: walkwayB, after: walkwayA, title: 'Neglected walkway restored', d: 'This walkway had years of grime, moss, and buildup that made it slippery. Pressure-washed back to looking new.' },
+  { before: hedgeB, after: hedgeA, title: 'Hedge trimming', d: 'Overgrown hedges crowding a fence line brought back into shape in a single visit.', landscape: true },
+];
 const jsonLd = {
   '@context': 'https://schema.org', '@type': 'CollectionPage',
-  name: 'Scoop Dogg Gallery',
+  name: 'Scoop Dogg before and after gallery',
   about: { '@type': 'LocalBusiness', '@id': `${SITE_URL}/#business`, name: 'Scoop Dogg' },
 };
 ---
-<Site jsonLd={jsonLd} title={'Gallery | Scoop Dogg Before and After'} description={'Yards, turf and dog runs across Ventura County, before and after a Scoop Dogg visit.'} canonicalPath="/gallery">
-  <Page />
+<Site jsonLd={jsonLd} title="Gallery | Scoop Dogg Before and After" description="Yards, turf and dog runs across Ventura and Santa Barbara counties, before and after a Scoop Dogg visit." canonicalPath="/gallery">
+  <PageHero eyebrow="Gallery" title="Real yards, before and after" lede="Every photo here is a Scoop Dogg job. Drag across a photo to compare." />
+  <Section tone="white">
+    <div class="grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
+      {items.map((it) => (
+        <BeforeAfter before={it.before} after={it.after} caption={it.title} description={it.d} alt={it.title.toLowerCase()} landscape={it.landscape} />
+      ))}
+    </div>
+  </Section>
+  <CloseCta source="gallery-close" title="Your yard could be next." />
 </Site>

@@ -1,6 +1,11 @@
 ---
+/**
+ * Every review we hold, quoted in full with its name and its date (R6 §A5: words, count and
+ * recency are what a reader trusts, not a star badge). Hero on the brand green with the score.
+ */
 import Site from '../layouts/Site.astro';
 import PageHero from '../components/site/PageHero.astro';
+import Section from '../components/site/Section.astro';
 import Stars from '../components/site/Stars.astro';
 import CloseCta from '../components/site/CloseCta.astro';
 import { reviews, reviewSummary } from '../lib/catalog';
@@ -9,24 +14,36 @@ const jsonLd = {
   '@context': 'https://schema.org', '@type': 'LocalBusiness', '@id': `${SITE_URL}/#business`, name: 'Scoop Dogg',
   review: reviews.slice(0, 10).map((r) => ({ '@type': 'Review', author: { '@type': 'Person', name: r.author_name }, reviewBody: r.quote })),
 };
+const initials = (n: string) => n.split(' ').map((p) => p[0]).slice(0, 2).join('');
 ---
 <Site title="Reviews | Scoop Dogg Pooper Scooper Reviews" description={`Read ${reviewSummary.count} Google reviews from Scoop Dogg customers.`} canonicalPath="/reviews" jsonLd={jsonLd}>
-  <PageHero eyebrow="Reviews" title="Dog owners say it best" lede={`Real Google reviews from real Scoop Dogg customers.`}>
-    <div class="mt-6 flex flex-wrap items-center gap-4">
-      {reviewSummary.rating && <span class="inline-flex items-center gap-2"><Stars rating={reviewSummary.rating} size={22} /><span class="text-lg font-semibold text-forest-900">{reviewSummary.rating.toFixed(1)}</span></span>}
-      <a href={reviewSummary.profileUrl} rel="noopener" class="link text-base">See us on Google</a>
+  <PageHero tone="forest" eyebrow="Reviews" title="Dog owners say it best" lede="Real Google reviews from real Scoop Dogg customers, in their own words.">
+    <div slot="aside" class="tone-white rounded-xl bg-paper p-7 shadow-lg sm:p-9">
+      {reviewSummary.rating && (
+        <div class="flex items-center gap-5">
+          <span class="font-serif text-hero leading-none text-forest-900">{reviewSummary.rating.toFixed(1)}</span>
+          <span class="flex flex-col gap-1.5"><Stars rating={reviewSummary.rating} size={22} /><span class="text-base text-ink-500">{reviewSummary.count} Google reviews</span></span>
+        </div>
+      )}
+      <div class="mt-7 grid gap-3 sm:grid-cols-2">
+        <a href={reviewSummary.profileUrl} rel="noopener" class="btn-forest">See us on Google</a>
+        <a href="/book" class="btn-primary">See my price</a>
+      </div>
     </div>
   </PageHero>
-  <section class="bg-paper py-section">
-    <div class="container-site columns-1 gap-5 md:columns-2 lg:columns-3">
+  <Section tone="white">
+    <div class="columns-1 gap-5 md:columns-2 lg:columns-3">
       {reviews.map((r) => (
-        <figure class="mb-5 break-inside-avoid rounded-lg border border-line bg-paper p-6 shadow-xs">
+        <figure class="mb-5 break-inside-avoid rounded-xl border border-line bg-paper p-6 shadow-sm">
           <Stars rating={5} size={15} />
           <blockquote class="mt-3 text-base text-ink-700">“{r.quote}”</blockquote>
-          <figcaption class="mt-4 text-sm"><span class="font-semibold text-forest-900">{r.author_name}</span><span class="text-ink-500">{r.author_badge ? ` · ${r.author_badge}` : ''}{r.reviewed_on ? ` · ${r.reviewed_on}` : ''}</span></figcaption>
+          <figcaption class="mt-5 flex items-center gap-3 border-t border-line pt-4">
+            <span class="flex h-9 w-9 items-center justify-center rounded-full bg-forest-700 text-sm font-semibold text-white" aria-hidden="true">{initials(r.author_name)}</span>
+            <span class="text-sm leading-tight"><span class="block font-semibold text-forest-900">{r.author_name}</span><span class="text-ink-500">{r.author_badge ? `${r.author_badge} · ` : ''}{r.reviewed_on ?? 'Google review'}</span></span>
+          </figcaption>
         </figure>
       ))}
     </div>
-  </section>
+  </Section>
   <CloseCta source="reviews-close" title="Join them." />
 </Site>

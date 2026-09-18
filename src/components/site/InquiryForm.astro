@@ -5,19 +5,22 @@
  * mailto link; with it, it submits in place and confirms.
  */
 import { business } from '../../lib/catalog';
-export interface Props { subject: string; fields?: { name: string; label: string; type?: string; required?: boolean; textarea?: boolean }[]; cta?: string; note?: string }
-const { subject, cta = 'Send', note, fields = [] } = Astro.props;
+export interface Props { subject: string; fields?: { name: string; label: string; type?: string; required?: boolean; textarea?: boolean; options?: string[] }[]; cta?: string; note?: string; title?: string; lede?: string }
+const { subject, cta = 'Send', note, fields = [], title, lede } = Astro.props;
 const id = `inq-${subject.toLowerCase().replace(/[^a-z]+/g, '-')}`;
 ---
-<form id={id} class="rounded-xl border border-line bg-paper p-6 shadow-sm sm:p-8" data-inquiry data-subject={subject} novalidate>
-  <div class="grid gap-5 sm:grid-cols-2">
+<form id={id} class="tone-white rounded-xl bg-paper p-6 shadow-lg ring-1 ring-black/5 sm:p-8" data-inquiry data-subject={subject} novalidate>
+  {title && <h2 class="text-h3 text-forest-900">{title}</h2>}
+  {lede && <p class="mt-2 text-base text-ink-500">{lede}</p>}
+  <div class={`grid gap-5 sm:grid-cols-2 ${title || lede ? 'mt-6' : ''}`}>
     <div><label class="field-label" for={`${id}-name`}>Name</label><input class="field" id={`${id}-name`} name="name" autocomplete="name" required /></div>
     <div><label class="field-label" for={`${id}-phone`}>Phone</label><input class="field" id={`${id}-phone`} name="phone" type="tel" autocomplete="tel" /></div>
     <div class="sm:col-span-2"><label class="field-label" for={`${id}-email`}>Email</label><input class="field" id={`${id}-email`} name="email" type="email" autocomplete="email" required /></div>
     {fields.map((f) => (
       <div class="sm:col-span-2">
         <label class="field-label" for={`${id}-${f.name}`}>{f.label}</label>
-        {f.textarea ? <textarea class="field min-h-[110px]" id={`${id}-${f.name}`} name={f.name} required={f.required}></textarea>
+        {f.options ? <select class="field" id={`${id}-${f.name}`} name={f.name} required={f.required}>{f.options.map((o) => <option value={o}>{o}</option>)}</select>
+          : f.textarea ? <textarea class="field min-h-[130px]" id={`${id}-${f.name}`} name={f.name} required={f.required}></textarea>
           : <input class="field" id={`${id}-${f.name}`} name={f.name} type={f.type ?? 'text'} required={f.required} />}
       </div>
     ))}
@@ -27,7 +30,7 @@ const id = `inq-${subject.toLowerCase().replace(/[^a-z]+/g, '-')}`;
   {note && <p class="mt-3 text-sm text-ink-500">{note}</p>}
   <noscript><p class="mt-3 text-sm text-ink-700">Or email <a class="link" href={`mailto:${business.email}`}>{business.email}</a>.</p></noscript>
 </form>
-<div class="hidden rounded-xl border border-line bg-paper p-8 text-center" data-inquiry-done={id}>
+<div class="tone-white hidden rounded-xl bg-paper p-8 text-center shadow-lg ring-1 ring-black/5" data-inquiry-done={id}>
   <p class="text-h3 text-forest-900">Thanks — we got it.</p>
   <p class="mt-2 text-base text-ink-700">We'll be in touch within a day. Need us sooner? Call <a class="link" href={business.phoneHref}>{business.phone}</a>.</p>
 </div>

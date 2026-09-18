@@ -4,10 +4,10 @@ import Logo from '../../components/site/Logo.astro';
 import BookingComplete from '../../components/booking/BookingComplete';
 ---
 <Base title="You're booked | Scoop Dogg" description="Your Scoop Dogg booking." canonicalPath="/book/complete" noindex>
-  <header class="border-b border-line bg-cream">
+  <header class="tone-white border-b border-line bg-paper">
     <div class="container-site flex h-[72px] items-center justify-between"><Logo size="md" /><a href="/account" class="text-base font-medium text-forest-700 hover:text-forest-900">Sign in</a></div>
   </header>
-  <main id="main" class="min-h-[calc(100vh-72px)] bg-cream py-section-sm">
+  <main id="main" class="min-h-[calc(100vh-72px)] tone-tint bg-tone-bg py-section-sm">
     <div class="container-site max-w-narrow"><BookingComplete client:load /></div>
   </main>
 </Base>

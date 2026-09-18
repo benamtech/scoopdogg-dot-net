@@ -1,19 +1,45 @@
 ---
+/** Guides. Rebuilt from the React page on the section library (loop 2 item 5). */
 import Site from '../layouts/Site.astro';
+import PageHero from '../components/site/PageHero.astro';
+import Section from '../components/site/Section.astro';
+import CloseCta from '../components/site/CloseCta.astro';
 import { SITE_URL } from '../lib/constants';
 import { ARTICLES } from '../lib/articles';
-import Page from '../pages_react/ResourcesPage';
 const jsonLd = {
   '@context': 'https://schema.org', '@type': 'CollectionPage',
-  name: 'Scoop Dogg Resources',
+  name: 'Scoop Dogg guides',
   mainEntity: {
     '@type': 'ItemList',
-    itemListElement: ARTICLES.map((a, i) => ({
-      '@type': 'ListItem', position: i + 1, name: a.title, url: `${SITE_URL}/resources/${a.slug}`,
-    })),
+    itemListElement: ARTICLES.map((a, i) => ({ '@type': 'ListItem', position: i + 1, name: a.title, url: `${SITE_URL}/resources/${a.slug}` })),
   },
 };
+const [lead, ...rest] = ARTICLES;
+const fmt = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 ---
-<Site jsonLd={jsonLd} title={'Resources | Dog Waste, Turf and Yard Guides for Ventura County'} description={'Local guides on dog waste disposal rules, artificial turf cleaning, drought-tolerant yards and city-by-city ordinances.'} canonicalPath="/resources">
-  <Page />
+<Site jsonLd={jsonLd} title="Guides | Dog Waste, Turf and Yard Care in Ventura County | Scoop Dogg" description="Local guides on dog waste disposal rules, artificial turf cleaning, drought-tolerant yards and city-by-city ordinances." canonicalPath="/resources">
+  <PageHero eyebrow="Guides" title="Straight answers about dog waste, turf and yards" lede="Local rules, cleaning methods and what actually works in Ventura County yards." />
+  <Section tone="white">
+    {lead && (
+      <a href={`/resources/${lead.slug}`} class="tone-forest group grid gap-6 rounded-xl bg-tone-bg p-7 transition duration-base ease-brand hover:shadow-lg sm:p-10 lg:grid-cols-12 lg:items-end">
+        <div class="lg:col-span-8">
+          <p class="eyebrow mb-4">Featured guide · {lead.readTime}</p>
+          <h2 class="text-h2 text-white">{lead.title}</h2>
+          <p class="mt-4 max-w-prose text-lg text-tone-fg">{lead.excerpt}</p>
+        </div>
+        <span class="btn-primary justify-self-start lg:col-span-4 lg:justify-self-end">Read the guide</span>
+      </a>
+    )}
+    <ul class="mt-6 grid gap-5 md:grid-cols-2">
+      {rest.map((a) => (
+        <li><a href={`/resources/${a.slug}`} class="card-lift group flex h-full flex-col p-7">
+          <span class="text-sm text-ink-500">{a.readTime} · Updated {fmt(a.updatedDate || a.publishedDate)}</span>
+          <span class="mt-3 text-h3 text-forest-900 group-hover:text-forest-600">{a.title}</span>
+          <span class="mt-3 line-clamp-3 flex-1 text-base text-ink-700">{a.excerpt}</span>
+          <span class="mt-5 text-base font-semibold text-forest-700">Read the guide →</span>
+        </a></li>
+      ))}
+    </ul>
+  </Section>
+  <CloseCta source="resources-close" />
 </Site>

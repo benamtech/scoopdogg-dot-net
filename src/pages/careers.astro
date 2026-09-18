@@ -1,28 +1,27 @@
 ---
+/** Careers. Hero on the brand green -> the job and the application (white). */
 import Site from '../layouts/Site.astro';
 import PageHero from '../components/site/PageHero.astro';
+import Section from '../components/site/Section.astro';
 import InquiryForm from '../components/site/InquiryForm.astro';
 import { regionSentence } from '../lib/catalog';
+const perks = ['Outdoors, active, independent days', 'A predictable weekly route', "Dog lovers wanted — you'll meet a lot of them", "A valid driver's license and a smartphone"];
 ---
 <Site title="Careers | Join the Scoop Dogg Team" description={`Work outdoors on a set weekly route across ${regionSentence()}. Scoop Dogg is growing.`} canonicalPath="/careers">
-  <PageHero eyebrow="Careers" title="We're growing. Join the crew." lede="Work outdoors, on a steady weekly route, with customers who are genuinely happy to see you." />
-  <section class="bg-paper py-section">
-    <div class="container-site grid gap-14 lg:grid-cols-12">
-      <div class="lg:col-span-6 space-y-6 text-lg text-ink-700">
+  <PageHero tone="forest" eyebrow="Careers" title="We're growing. Join the crew." lede="Work outdoors, on a steady weekly route, with customers who are genuinely happy to see you." />
+  <Section tone="white">
+    <div class="grid gap-14 lg:grid-cols-12">
+      <div class="lg:col-span-6">
+        <p class="eyebrow mb-4">The job</p>
         <h2 class="text-h2 text-forest-900">What the job is</h2>
-        <p>You'll run a route of yards on set days — scooping, bagging and hauling away, turf care, and leaving every gate the way you found it.</p>
-        <ul class="space-y-3 text-base">
-          <li>✓ Outdoors, active, independent days</li>
-          <li>✓ A predictable weekly route</li>
-          <li>✓ Dog lovers wanted — you'll meet a lot of them</li>
-          <li>✓ A valid driver's license and a smartphone</li>
+        <p class="mt-6 text-lg text-ink-700">You'll run a route of yards on set days — scooping, bagging and hauling away, turf care, and leaving every gate the way you found it.</p>
+        <ul class="mt-8 space-y-3">
+          {perks.map((p) => <li class="flex gap-3 text-lg text-ink-700"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" class="mt-1 shrink-0 text-orange-600" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>{p}</li>)}
         </ul>
       </div>
       <div class="lg:col-span-6">
-        <h2 class="text-h3 text-forest-900">Apply in two minutes</h2>
-        <p class="mt-2 mb-6 text-base text-ink-500">Tell us a little about yourself and we'll reach out.</p>
-        <InquiryForm subject="Job application" cta="Send application" fields={[{ name: 'city', label: 'Which city do you live in?', required: true }, { name: 'about', label: 'Tell us about yourself and your availability', textarea: true, required: true }]} />
+        <InquiryForm title="Apply in two minutes" lede="Tell us a little about yourself and we'll reach out." subject="Job application" cta="Send application" fields={[{ name: 'city', label: 'Which city do you live in?', required: true }, { name: 'about', label: 'Tell us about yourself and your availability', textarea: true, required: true }]} />
       </div>
     </div>
-  </section>
+  </Section>
 </Site>

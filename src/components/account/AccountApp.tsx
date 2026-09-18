@@ -139,7 +139,7 @@ export default function AccountApp({ phone, phoneHref }: { phone: string; phoneH
               <button className="btn-ghost btn-sm" disabled={!!busy} onClick={async () => { setBusy('billing'); try { const j = await api('billing', {}); location.href = j.url; } catch (e) { setErr((e as Error).message); setBusy(''); } }}>Cards & receipts</button>
             </div>
             {confirmCancel === sub.id && (
-              <div className="mt-5 rounded-lg border border-line bg-cream p-5" role="dialog" aria-labelledby="cancel-h">
+              <div className="mt-5 rounded-lg border border-line bg-forest-50 p-5" role="dialog" aria-labelledby="cancel-h">
                 <h3 id="cancel-h" className="text-lg font-semibold text-forest-900">Before you go — would a pause help?</h3>
                 <p className="mt-1 text-base text-ink-700">Going away or tight this month? Pause instead and pick up where you left off. Or cancel — no questions asked.</p>
                 <div className="mt-4 flex flex-wrap gap-2">

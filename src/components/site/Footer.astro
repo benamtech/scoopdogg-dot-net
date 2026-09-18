@@ -15,46 +15,46 @@ const company = [
   ...(growth.careers ? [{ href: '/careers', label: 'Careers' }] : []),
 ];
 ---
-<footer class="bg-forest-900 text-forest-100">
+<footer class="tone-deep bg-tone-bg text-tone-fg">
   <div class="container-site grid gap-12 py-section-sm lg:grid-cols-12">
     <div class="lg:col-span-4">
       <Logo tone="dark" size="lg" tagline />
-      <p class="mt-6 max-w-sm text-base text-forest-200">
+      <p class="mt-6 max-w-sm text-base text-tone-fg">
         Weekly dog poop cleanup and turf care on the same day every week. Locally owned by Josue.
       </p>
       <div class="mt-6 flex flex-col gap-2 text-base">
         <a href={business.phoneHref} class="font-semibold text-white hover:text-amber-400">{business.phone}</a>
-        <a href={`mailto:${business.email}`} class="text-forest-200 hover:text-white">{business.email}</a>
+        <a href={`mailto:${business.email}`} class="text-tone-fg hover:text-white">{business.email}</a>
       </div>
       <div class="mt-8 flex flex-wrap gap-3">
         <a href="/book" class="btn-primary btn-sm">See my price</a>
-        <a href="/account" class="btn-ghost-dark btn-sm">Sign in</a>
+        <a href="/account" class="btn-ghost btn-sm">Sign in</a>
       </div>
     </div>
 
     <nav aria-label="Services" class="lg:col-span-2">
-      <p class="eyebrow-on-dark mb-4">Services</p>
+      <p class="eyebrow mb-5">Services</p>
       <ul class="space-y-2.5">
-        {serviceLinks.map((l) => <li><a href={l.href} class="text-base text-forest-200 hover:text-white">{l.label}</a></li>)}
+        {serviceLinks.map((l) => <li><a href={l.href} class="text-base text-tone-fg hover:text-white">{l.label}</a></li>)}
         <li><a href="/services" class="text-base font-medium text-white hover:text-amber-400">All services →</a></li>
       </ul>
     </nav>
 
     <nav aria-label="Company" class="lg:col-span-2">
-      <p class="eyebrow-on-dark mb-4">Scoop Dogg</p>
+      <p class="eyebrow mb-5">Scoop Dogg</p>
       <ul class="space-y-2.5">
-        {company.map((l) => <li><a href={l.href} class="text-base text-forest-200 hover:text-white">{l.label}</a></li>)}
+        {company.map((l) => <li><a href={l.href} class="text-base text-tone-fg hover:text-white">{l.label}</a></li>)}
       </ul>
     </nav>
 
     <nav aria-label="Areas" class="lg:col-span-4">
-      <p class="eyebrow-on-dark mb-4">Where we work</p>
+      <p class="eyebrow mb-5">Where we work</p>
       <div class="grid grid-cols-2 gap-x-6 gap-y-5">
         {markets().map((m) => (
           <div>
             <p class="mb-2 text-sm font-semibold capitalize text-white">{m.label}</p>
             <ul class="space-y-1.5">
-              {m.areas.map((a) => <li><a href={`/areas/${a.slug}`} class="text-sm text-forest-200 hover:text-white">{a.name}</a></li>)}
+              {m.areas.map((a) => <li><a href={`/areas/${a.slug}`} class="text-sm text-tone-fg hover:text-white">{a.name}</a></li>)}
             </ul>
           </div>
         ))}
@@ -62,7 +62,7 @@ const company = [
     </nav>
   </div>
   <div class="border-t border-white/10">
-    <div class="container-site flex flex-col gap-2 py-6 text-sm text-forest-300 sm:flex-row sm:items-center sm:justify-between">
+    <div class="container-site flex flex-col gap-2 py-6 text-sm text-tone-muted sm:flex-row sm:items-center sm:justify-between">
       <p>© {year} Scoop Dogg. Locally owned and operated.</p>
       <p><a href="/admin/login" class="hover:text-white">Team sign-in</a></p>
     </div>

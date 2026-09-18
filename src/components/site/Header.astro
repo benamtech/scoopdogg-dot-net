@@ -7,7 +7,7 @@
  * from the homepage), and the one call to action is "See my price" (R5 §2).
  */
 import Logo from './Logo.astro';
-import { business } from '../../lib/catalog';
+import { business, headlineOffer, serviceRegion } from '../../lib/catalog';
 
 export interface Props { current?: string }
 const { current = '' } = Astro.props;
@@ -20,7 +20,16 @@ const links = [
 ];
 const isCurrent = (href: string) => current === href || (href !== '/' && current.startsWith(href + '/'));
 ---
-<header class="sticky top-0 z-40 border-b border-line/70 bg-cream/90 backdrop-blur supports-[backdrop-filter]:bg-cream/80" data-site-header>
+<div class="tone-forest bg-tone-bg text-sm text-white">
+  <div class="container-site flex h-9 items-center justify-center gap-2 sm:justify-between">
+    <p class="truncate">{headlineOffer && <><span class="font-semibold text-amber-400">{headlineOffer.name}</span><span class="hidden sm:inline"> on weekly scooping</span> · </>}No contract · Cancel anytime</p>
+    <p class="hidden items-center gap-5 sm:flex">
+      <span class="hidden lg:inline">{serviceRegion}</span>
+      <a href={business.phoneHref} class="font-semibold hover:text-amber-400">{business.phone}</a>
+    </p>
+  </div>
+</div>
+<header class="tone-white sticky top-0 z-40 border-b border-line bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/85" data-site-header>
   <div class="container-site flex h-[72px] items-center justify-between gap-6">
     <Logo size="md" />
 
@@ -31,7 +40,7 @@ const isCurrent = (href: string) => current === href || (href !== '/' && current
             <a
               href={l.href}
               aria-current={isCurrent(l.href) ? 'page' : undefined}
-              class={`rounded-md px-3 py-2 text-base font-medium transition duration-fast ${isCurrent(l.href) ? 'text-forest-800' : 'text-ink-700 hover:bg-forest-50 hover:text-forest-800'}`}
+              class={`rounded-md px-3 py-2 text-base font-medium transition duration-fast ${isCurrent(l.href) ? 'text-forest-800 underline decoration-orange-600 decoration-2 underline-offset-8' : 'text-ink-700 hover:bg-forest-50 hover:text-forest-800'}`}
             >{l.label}</a>
           </li>
         ))}
@@ -39,8 +48,7 @@ const isCurrent = (href: string) => current === href || (href !== '/' && current
     </nav>
 
     <div class="flex items-center gap-2">
-      <a href={business.phoneHref} class="hidden rounded-md px-3 py-2 text-base font-medium text-ink-700 hover:text-forest-800 xl:inline-flex">{business.phone}</a>
-      <a href="/account" class="btn btn-sm hidden border border-line-strong bg-paper text-forest-800 hover:border-forest-400 sm:inline-flex">Sign in</a>
+            <a href="/account" class="btn btn-sm hidden border border-line-strong bg-paper text-forest-800 hover:border-forest-400 sm:inline-flex">Sign in</a>
       <a href="/book" class="btn-primary btn-sm hidden sm:inline-flex" data-cta="header">See my price</a>
       <button
         type="button"
@@ -56,7 +64,7 @@ const isCurrent = (href: string) => current === href || (href !== '/' && current
     </div>
   </div>
 
-  <div id="mobile-menu" class="hidden border-t border-line bg-cream nav:hidden" data-menu>
+  <div id="mobile-menu" class="hidden border-t border-line bg-paper nav:hidden" data-menu>
     <nav aria-label="Mobile" class="container-site py-4">
       <ul class="flex flex-col">
         {links.map((l) => (

@@ -10,6 +10,16 @@
 //
 // Legacy names (forest, forest-dark, sage, sage-light, amber, amber-hover, cream, dark) are
 // kept as aliases so the admin screens keep rendering while they move onto the scales.
+//
+// Design pass 2 (Ben, 2026-09-16): "white-text-on-green ... white-text on orange ... others may
+// use a combination of all three (the third being our default black text on white which
+// dominates the site)". So there are three SURFACES, and a band declares one with
+// <Section tone="white|forest|orange">. Text colours inside a band come from the `tone-*`
+// colours below, which read CSS variables the band sets (src/index.css), so a heading, a link
+// or an eyebrow is right on any surface without a `dark` prop. Every pairing is a number in
+// tests/contrast.test.ts. The rule the numbers force: white on orange is 3.15:1, so on an
+// orange band only LARGE text is white (text-h*, text-statement); anything smaller sits on a
+// white card inside the band.
 export default {
   content: ['./src/**/*.{astro,js,ts,jsx,tsx,md,mdx}'],
   theme: {
@@ -51,6 +61,25 @@ export default {
           100: '#FDF0DA',
           hover: '#E8911A',
         },
+        // The band orange. Deepened from amber because white on amber is 2.12:1 (the old site's
+        // service-area band). #DD7607 is the deepest orange that still reads as the brand when
+        // rendered beside the emblem; #B85C00 and darker carry small white text but read brown.
+        orange: {
+          DEFAULT: '#DD7607',
+          600: '#DD7607',
+          700: '#B85C00',
+          100: '#FDEBD3',
+          50: '#FFF7ED',
+        },
+        // What text inside a band uses. Values are set per surface in src/index.css.
+        tone: {
+          bg: 'rgb(var(--tone-bg) / <alpha-value>)',
+          fg: 'rgb(var(--tone-fg) / <alpha-value>)',
+          heading: 'rgb(var(--tone-heading) / <alpha-value>)',
+          muted: 'rgb(var(--tone-muted) / <alpha-value>)',
+          accent: 'rgb(var(--tone-accent) / <alpha-value>)',
+          rule: 'rgb(var(--tone-rule) / <alpha-value>)',
+        },
         cream: '#FAF8F5',
         sand: '#F2EDE4',
         paper: '#FFFFFF',
@@ -62,7 +91,9 @@ export default {
           // 4.9:1 on white, so small secondary text passes WCAG AA (was #7C8781, 3.9:1).
           400: '#687169',
         },
-        line: { DEFAULT: '#E6E1D8', strong: '#D4CEC2' },
+        // Cooler than before: the page is white now, not cream, and a warm grey rule on white
+        // reads as dirt.
+        line: { DEFAULT: '#E3E8E4', strong: '#CBD4CE' },
         sage: { DEFAULT: '#95B8A2', light: '#E8F0EB' },
         dark: '#1A1A1A',
         danger: { DEFAULT: '#B42318', 100: '#FDECEA' },
@@ -73,7 +104,7 @@ export default {
         serif: ['"DM Serif Display"', 'Georgia', 'serif'],
         sans: ['"Outfit Variable"', 'Outfit', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
       },
-      // Nine sizes. Display sizes are fluid, so a heading is proportionate at 390px and at
+      // Ten sizes. Display sizes are fluid, so a heading is proportionate at 390px and at
       // 1440px without a breakpoint per page.
       fontSize: {
         micro: ['0.75rem', { lineHeight: '1.1rem', letterSpacing: '0.12em' }],
@@ -81,6 +112,9 @@ export default {
         base: ['1rem', { lineHeight: '1.65rem' }],
         lg: ['1.1875rem', { lineHeight: '1.8rem' }],
         xl: ['1.375rem', { lineHeight: '1.9rem' }],
+        // Never below 24px, so it is WCAG "large text" at every width: the size that may be
+        // white on the orange band.
+        statement: ['clamp(1.5rem, 1.25rem + 0.8vw, 1.875rem)', { lineHeight: '1.3' }],
         h3: ['clamp(1.375rem, 1.1rem + 0.9vw, 1.75rem)', { lineHeight: '1.2' }],
         h2: ['clamp(1.875rem, 1.3rem + 2vw, 2.875rem)', { lineHeight: '1.08', letterSpacing: '-0.01em' }],
         h1: ['clamp(2.375rem, 1.5rem + 3.4vw, 4.25rem)', { lineHeight: '1.02', letterSpacing: '-0.015em' }],

@@ -1,0 +1,35 @@
+---
+/**
+ * The guarantee drawn as a stamp: round text around a shield, next to the guarantee in words.
+ * The ring text is decoration (aria-hidden); the sentence beside it is what is read. Renders
+ * nothing when the guarantee setting is empty.
+ */
+import { trust } from '../../lib/catalog';
+export interface Props { size?: number; withText?: boolean }
+const { size = 132, withText = true } = Astro.props;
+const text = trust.guarantee;
+const head = text?.includes(':') ? text.split(':')[0] : 'Our guarantee';
+const rest = text?.includes(':') ? text.slice(text.indexOf(':') + 1).trim() : text;
+const body = rest ? rest.charAt(0).toUpperCase() + rest.slice(1) : rest;
+const ring = `${head.toUpperCase()} · SCOOP DOGG · `;
+const uid = `stamp-${Math.random().toString(36).slice(2, 8)}`;
+---
+{text && (
+  <div class={withText ? 'flex flex-col items-start gap-6 sm:flex-row sm:items-center' : ''}>
+    <svg width={size} height={size} viewBox="0 0 200 200" class="shrink-0" aria-hidden="true">
+      <defs><path id={uid} d="M100,100 m-74,0 a74,74 0 1,1 148,0 a74,74 0 1,1 -148,0" /></defs>
+      <circle cx="100" cy="100" r="96" class="fill-orange-600" />
+      <circle cx="100" cy="100" r="54" class="fill-paper" />
+      <text class="fill-white font-sans" font-size="16.5" font-weight="700" letter-spacing="2.2">
+        <textPath href={`#${uid}`} textLength="462">{ring}</textPath>
+      </text>
+      <g transform="translate(72 70)" class="stroke-forest-700" fill="none" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M28 4l24 10v20c0 15-10 26-24 30C14 60 4 49 4 34V14L28 4Z" />
+        <path d="M16 33l8 8 15-16" />
+      </g>
+    </svg>
+    {withText && (
+      <p class="max-w-xl text-lg text-tone-fg"><span class="mb-1 block font-serif text-h3 text-tone-heading">{head}.</span>{body}</p>
+    )}
+  </div>
+)}

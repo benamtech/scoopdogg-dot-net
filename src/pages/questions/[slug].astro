@@ -1,0 +1,154 @@
+---
+/**
+ * One question, one page (src/lib/questions.ts). The question is the H1 and the direct answer
+ * sits right under it on a white card, so a person, a crawler and an AI agent all get the
+ * answer in the first screen and the first sentence (R6 §C3). Everything under
+ * [data-question-body] is what gates/question-pages.mjs checks: facts resolved against the
+ * catalog and visible, and distance from the nearest sibling page.
+ */
+import Site from '../../layouts/Site.astro';
+import Section from '../../components/site/Section.astro';
+import AddressForm from '../../components/site/AddressForm.astro';
+import Stars from '../../components/site/Stars.astro';
+import CloseCta from '../../components/site/CloseCta.astro';
+import { questions, questionBySlug, reviewFor } from '../../lib/questions';
+import { serviceBySlug, reviewSummary, headlineOffer } from '../../lib/catalog';
+import { SITE_URL } from '../../lib/constants';
+
+export function getStaticPaths() {
+  return questions().map((q) => ({ params: { slug: q.slug } }));
+}
+const q = questionBySlug(Astro.params.slug!)!;
+const svc = q.service ? serviceBySlug(q.service) : undefined;
+const review = reviewFor(q);
+const related = (q.related ?? []).map((s) => questionBySlug(s)).filter(Boolean) as ReturnType<typeof questions>;
+const firstSentence = q.answer.split(/(?<=[.?!])\s/)[0];
+const description = (q.answer.length > 155 ? `${firstSentence}` : q.answer).slice(0, 158);
+const isBooking = q.action.href.startsWith('/book');
+const jsonLd = [
+  {
+    '@context': 'https://schema.org', '@type': 'FAQPage',
+    mainEntity: [{ '@type': 'Question', name: q.q, acceptedAnswer: { '@type': 'Answer', text: [q.answer, q.more].filter(Boolean).join(' ') } }],
+    about: { '@type': 'LocalBusiness', '@id': `${SITE_URL}/#business`, name: 'Scoop Dogg' },
+  },
+  {
+    '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+      { '@type': 'ListItem', position: 2, name: 'Questions', item: `${SITE_URL}/questions` },
+      { '@type': 'ListItem', position: 3, name: q.q, item: `${SITE_URL}/questions/${q.slug}` },
+    ],
+  },
+];
+---
+<Site title={`${q.q} | Scoop Dogg`} description={description} canonicalPath={`/questions/${q.slug}`} jsonLd={jsonLd}>
+  <link slot="head" rel="alternate" type="text/markdown" href={`/questions/${q.slug}.md`} />
+  <script type="application/json" data-question-facts set:html={JSON.stringify({ slug: q.slug, facts: q.facts })} />
+
+  <section class="tone-forest bg-tone-bg">
+    <div class="container-site grid gap-10 py-12 lg:grid-cols-12 lg:gap-12 lg:py-16">
+      <div class="lg:col-span-8" data-question-body>
+        <nav aria-label="Breadcrumb" class="mb-6 text-sm text-tone-muted">
+          <ol class="flex flex-wrap items-center gap-1.5">
+            <li><a href="/" class="hover:text-white hover:underline">Home</a></li>
+            <li class="flex items-center gap-1.5"><span aria-hidden="true" class="opacity-60">/</span><a href="/questions" class="hover:text-white hover:underline">Questions</a></li>
+          </ol>
+        </nav>
+        <p class="eyebrow mb-5">{q.topic}</p>
+        <h1 class={`${q.q.length > 60 ? 'text-h2' : 'text-h1'} text-white`}>{q.q}</h1>
+        <div class="tone-white mt-8 rounded-xl bg-paper p-6 shadow-lg sm:p-8">
+          <p class="text-sm font-semibold uppercase tracking-[0.1em] text-orange-700">The answer</p>
+          <p class="mt-3 text-xl leading-relaxed text-forest-900" data-answer data-speakable>{q.answer}</p>
+          {q.more && <p class="mt-4 text-lg text-ink-700" data-more>{q.more}</p>}
+        </div>
+      </div>
+      <aside class="lg:col-span-4 lg:pt-24">
+        {isBooking ? (
+          <div class="tone-white rounded-xl bg-paper p-6 shadow-lg sm:p-7">
+            <p class="font-serif text-h3 text-forest-900">See your price</p>
+            <p class="mt-1.5 text-base text-ink-500">About a minute.{headlineOffer ? ` ${headlineOffer.name}.` : ''}</p>
+            <div class="mt-5"><AddressForm size="md" stack flat heroAnchor label="Where is your yard?" service={q.action.service} source={`question-${q.slug}`} /></div>
+          </div>
+        ) : (
+          <div class="tone-white rounded-xl bg-paper p-6 shadow-lg sm:p-7">
+            <p class="font-serif text-h3 text-forest-900">Ready when you are</p>
+            <a href={q.action.href} class="btn-primary mt-5 w-full" data-hero-cta>{q.action.label}</a>
+          </div>
+        )}
+        {reviewSummary.rating && (
+          <a href="/reviews" class="mt-5 flex items-center gap-3 text-base text-tone-fg hover:text-white">
+            <Stars rating={reviewSummary.rating} size={16} /><span><strong class="font-semibold text-white">{reviewSummary.rating.toFixed(1)}</strong> · {reviewSummary.count} Google reviews</span>
+          </a>
+        )}
+      </aside>
+    </div>
+  </section>
+
+  <Section tone="white">
+    <div class="grid gap-12 lg:grid-cols-12">
+      <div class="min-w-0 space-y-12 lg:col-span-8" data-question-body>
+        {q.blocks.map((b) => (
+          <div>
+            <h2 class="text-h3 text-forest-900">{b.title}</h2>
+            {b.kind === 'table' && (
+              <div class="mt-5 overflow-x-auto rounded-lg border border-line">
+                <table class="w-full border-collapse text-left text-base">
+                  <thead class="bg-forest-50"><tr>{b.head.map((h) => <th scope="col" class="px-4 py-3 text-sm font-semibold text-forest-900">{h}</th>)}</tr></thead>
+                  <tbody>{b.rows.map((r) => <tr class="border-t border-line">{r.map((c, i) => i === 0 ? <th scope="row" class="px-4 py-3 font-medium text-ink-900">{c}</th> : <td class="px-4 py-3 text-ink-700">{c}</td>)}</tr>)}</tbody>
+                </table>
+              </div>
+            )}
+            {b.kind === 'list' && (
+              <ul class="mt-5 space-y-3">
+                {b.items.map((i) => <li class="flex gap-3 text-lg text-ink-700"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" class="mt-1 shrink-0 text-orange-600" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>{i}</li>)}
+              </ul>
+            )}
+            {b.kind === 'steps' && (
+              <ol class="mt-5 space-y-5">
+                {b.items.map((s, n) => (
+                  <li class="flex gap-4">
+                    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-forest-700 font-serif text-lg text-white" aria-hidden="true">{n + 1}</span>
+                    <p class="text-lg text-ink-700"><strong class="font-semibold text-forest-900">{s.t}.</strong> {s.d}</p>
+                  </li>
+                ))}
+              </ol>
+            )}
+            {b.kind === 'links' && (
+              <ul class="mt-5 flex flex-wrap gap-2.5">
+                {b.items.map((l) => <li><a href={l.href} class="inline-flex items-center gap-1.5 rounded-full border border-line-strong px-4 py-2 text-base font-medium text-forest-900 hover:border-forest-500 hover:bg-forest-50">{l.label}<span aria-hidden="true" class="text-orange-600">→</span></a></li>)}
+              </ul>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <aside class="space-y-6 lg:col-span-4">
+        {review && (
+          <figure class="rounded-xl border border-line p-6">
+            <Stars rating={5} size={15} />
+            <blockquote class="mt-3 text-base text-ink-700">“{review.quote}”</blockquote>
+            <figcaption class="mt-4 text-sm"><span class="font-semibold text-forest-900">{review.author_name}</span><span class="text-ink-500"> · Google review</span></figcaption>
+          </figure>
+        )}
+        {svc && (
+          <a href={`/services/${svc.slug}`} class="card-lift group flex items-center justify-between gap-4 p-5">
+            <span><span class="block text-sm text-ink-500">Service</span><span class="block text-lg font-semibold text-forest-900">{svc.name}</span></span>
+            <span aria-hidden="true" class="text-orange-600 transition duration-fast group-hover:translate-x-0.5">→</span>
+          </a>
+        )}
+      </aside>
+    </div>
+  </Section>
+
+  {related.length > 0 && (
+    <Section tone="white" size="sm" rule labelledby="related-q">
+      <h2 id="related-q" class="text-h3 text-forest-900">Related questions</h2>
+      <ul class="mt-6 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+        {related.map((r) => <li><a href={`/questions/${r.slug}`} class="card-lift flex h-full items-start justify-between gap-4 p-5"><span class="text-base font-semibold text-forest-900">{r.q}</span><span aria-hidden="true" class="text-orange-600">→</span></a></li>)}
+      </ul>
+      <p class="mt-6"><a href="/questions" class="link text-base">All questions</a></p>
+    </Section>
+  )}
+
+  <CloseCta source={`question-${q.slug}-close`} service={q.action.service} />
+</Site>

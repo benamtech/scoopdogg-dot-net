@@ -5,13 +5,13 @@ import AccountApp from '../components/account/AccountApp';
 import { business } from '../lib/catalog';
 ---
 <Base title="Your account | Scoop Dogg" description="Manage your Scoop Dogg plan, visits and payments." canonicalPath="/account" noindex>
-  <header class="border-b border-line bg-cream">
+  <header class="tone-white border-b border-line bg-paper">
     <div class="container-site flex h-[72px] items-center justify-between">
       <Logo size="md" />
       <a href="/" class="text-base font-medium text-forest-700 hover:text-forest-900">scoopdogg.net</a>
     </div>
   </header>
-  <main id="main" class="min-h-[calc(100vh-72px)] bg-cream py-12">
+  <main id="main" class="min-h-[calc(100vh-72px)] tone-tint bg-tone-bg py-12">
     <div class="container-site"><AccountApp client:load phone={business.phone} phoneHref={business.phoneHref} /></div>
   </main>
 </Base>

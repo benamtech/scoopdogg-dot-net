@@ -1,18 +1,21 @@
 ---
-/** Native <details>: accessible, zero JavaScript, and the answers are in the HTML for crawlers. */
-export interface Props { items: { q: string; a: string }[]; schema?: boolean }
-const { items } = Astro.props;
+/**
+ * Native <details>: accessible, zero JavaScript, and the answers are in the HTML for crawlers.
+ * Drawn as open rows on the page rather than a boxed widget; the plus turns orange when open.
+ */
+export interface Props { items: { q: string; a: string }[]; schema?: boolean; openFirst?: boolean }
+const { items, openFirst = true } = Astro.props;
 ---
-<div class="divide-y divide-line rounded-lg border border-line bg-paper">
+<div class="border-t border-line">
   {items.map((f, i) => (
-    <details class="group px-5 sm:px-7" open={i === 0}>
-      <summary class="flex cursor-pointer list-none items-center justify-between gap-6 py-5 text-lg font-semibold text-forest-900 [&::-webkit-details-marker]:hidden">
+    <details class="group border-b border-line" open={openFirst && i === 0}>
+      <summary class="flex cursor-pointer list-none items-center justify-between gap-6 py-6 text-lg font-semibold text-forest-900 transition duration-fast hover:text-forest-600 sm:text-xl [&::-webkit-details-marker]:hidden">
         {f.q}
-        <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-forest-50 text-forest-700 transition duration-fast group-open:rotate-45" aria-hidden="true">
+        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-line-strong text-forest-700 transition duration-base ease-brand group-open:rotate-45 group-open:border-orange-600 group-open:bg-orange-600 group-open:text-white" aria-hidden="true">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14" /></svg>
         </span>
       </summary>
-      <p class="max-w-prose pb-6 text-base text-ink-700">{f.a}</p>
+      <p class="max-w-prose pb-7 pr-12 text-lg text-ink-700">{f.a}</p>
     </details>
   ))}
 </div>

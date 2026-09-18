@@ -5,11 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "node scripts/pull-catalog.mjs && node scripts/pull-demo-state.mjs && astro build && node gates/build-gates.mjs",
+    "build": "node scripts/pull-catalog.mjs && node scripts/pull-demo-state.mjs && astro build && node gates/build-gates.mjs && node gates/question-pages.mjs",
     "build:only": "node scripts/pull-catalog.mjs && node scripts/pull-demo-state.mjs && astro build",
     "build:bare": "astro build",
     "preview": "astro preview",
-    "gates": "node gates/build-gates.mjs",
+    "gates": "node gates/build-gates.mjs && node gates/question-pages.mjs && node gates/brand-tokens.mjs",
     "gates:db": "bash gates/schema-guards.sh",
     "typecheck": "astro check",
     "seed:catalog": "node --experimental-strip-types scripts/build-catalog-seed.mjs",

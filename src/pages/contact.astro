@@ -1,17 +1,62 @@
 ---
+/**
+ * Contact. Rebuilt from the React page on the section library (loop 2 item 5): zero JavaScript
+ * framework, the same /api/contact lead path through InquiryForm. Booking online is offered
+ * first because a price in a minute beats a message and a wait (R6 §B6).
+ */
 import Site from '../layouts/Site.astro';
+import PageHero from '../components/site/PageHero.astro';
+import Section from '../components/site/Section.astro';
+import InquiryForm from '../components/site/InquiryForm.astro';
+import AddressForm from '../components/site/AddressForm.astro';
 import { SITE_URL } from '../lib/constants';
-import Page from '../pages_react/ContactPage';
+import { business, regionSentence, headlineOffer } from '../lib/catalog';
 const jsonLd = {
   '@context': 'https://schema.org', '@type': 'ContactPage',
   name: 'Contact Scoop Dogg',
   mainEntity: {
     '@type': 'LocalBusiness', '@id': `${SITE_URL}/#business`, name: 'Scoop Dogg',
-    telephone: '+18058698070', email: 'josue@scoopdogg.net',
+    telephone: '+18058698070', email: business.email,
     contactPoint: { '@type': 'ContactPoint', telephone: '+18058698070', contactType: 'customer service', areaServed: 'US-CA', availableLanguage: 'English' },
   },
 };
 ---
-<Site jsonLd={jsonLd} title={'Contact Scoop Dogg | Ventura County Dog Poop Cleanup'} description={'Call (805) 869-8070 or send a message. Free quote in 60 seconds, most new customers confirmed within 24 hours.'} canonicalPath="/contact">
-  <Page />
+<Site jsonLd={jsonLd} title="Contact Scoop Dogg | Dog Poop Cleanup in Ventura & Santa Barbara Counties" description={`Call or text ${business.phone}, email, or send a message. Or see your monthly price online in about a minute.`} canonicalPath="/contact">
+  <PageHero tone="forest" eyebrow="Contact" title="Talk to Josue" lede={`Questions about your yard, your plan or a one-time job. We serve ${regionSentence()}.`}>
+    <div slot="aside" class="tone-white rounded-xl bg-paper p-7 shadow-lg sm:p-8">
+      <p class="text-sm font-semibold uppercase tracking-[0.1em] text-ink-500">Call or text</p>
+      <a href={business.phoneHref} class="mt-1 block font-serif text-h2 text-forest-900 hover:text-forest-600">{business.phone}</a>
+      <p class="mt-6 text-sm font-semibold uppercase tracking-[0.1em] text-ink-500">Email</p>
+      <a href={`mailto:${business.email}`} class="link mt-1 inline-block text-lg">{business.email}</a>
+    </div>
+  </PageHero>
+
+  <Section tone="white">
+    <div class="grid gap-12 lg:grid-cols-12">
+      <div class="lg:col-span-7">
+        <InquiryForm
+          title="Send a message"
+          lede="We reply within a day."
+          subject="Website message"
+          cta="Send message"
+          fields={[
+            { name: 'topic', label: 'What is it about?', options: ['General question', 'Request a quote', 'Existing customer', 'Other'] },
+            { name: 'message', label: 'Your message', textarea: true, required: true },
+          ]}
+        />
+      </div>
+      <aside class="lg:col-span-5">
+        <div class="tone-orange rounded-xl bg-tone-bg p-7 sm:p-9">
+          <h2 class="text-h2 text-white">Faster: see your price now</h2>
+          <p class="mt-3 text-statement text-white">About a minute, no waiting for a reply.{headlineOffer ? ` ${headlineOffer.name}.` : ''}</p>
+          <div class="mt-7"><AddressForm size="md" stack hideLabel label="Your street address" source="contact-aside" /></div>
+        </div>
+        <div class="mt-5 rounded-xl border border-line p-7">
+          <h2 class="font-sans text-lg font-semibold text-forest-900">Already a customer?</h2>
+          <p class="mt-2 text-base text-ink-700">Skip a visit, pause, update your card or cancel from your account, any time.</p>
+          <a href="/account" class="btn-forest btn-sm mt-5">Sign in</a>
+        </div>
+      </aside>
+    </div>
+  </Section>
 </Site>

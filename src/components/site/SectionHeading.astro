@@ -1,20 +1,40 @@
 ---
+/**
+ * The heading of a band: eyebrow, title, lede, and an optional action on the right. Colours
+ * follow the band's surface, so the same markup is right on white, forest or orange.
+ *
+ * Plain `title` is text; a title with markup (a line break, an accent) goes in the `title` slot,
+ * so nothing from the catalog is ever rendered as HTML.
+ *
+ * On an orange band the lede is set at `statement` size (never below 24px), because white
+ * body-size text on the band orange is 3.15:1 and fails; large text passes.
+ */
 export interface Props {
   eyebrow?: string;
-  title: string;
+  title?: string;
   lede?: string;
   align?: 'left' | 'center';
-  dark?: boolean;
   id?: string;
   level?: 'h1' | 'h2';
+  size?: 'hero' | 'h1' | 'h2' | 'h3';
+  onOrange?: boolean;
+  class?: string;
 }
-const { eyebrow, title, lede, align = 'left', dark = false, id, level = 'h2' } = Astro.props;
+const { eyebrow, title, lede, align = 'left', id, level = 'h2', size, onOrange = false, class: extra = '' } = Astro.props;
 const H = level;
-const center = align === 'center' ? 'mx-auto text-center' : '';
+const sizes = { hero: 'text-hero', h1: 'text-h1', h2: 'text-h2', h3: 'text-h3' } as const;
+const titleSize = sizes[size ?? (level === 'h1' ? 'h1' : 'h2')];
+const center = align === 'center';
+const hasAction = Astro.slots.has('action');
 ---
-<div class={`max-w-narrow ${center}`}>
-  {eyebrow && <p class={dark ? 'eyebrow-on-dark mb-3' : 'eyebrow mb-3'}>{eyebrow}</p>}
-  <H id={id} class={`${level === 'h1' ? 'text-h1' : 'text-h2'} ${dark ? 'text-white' : 'text-forest-900'}`}>{title}</H>
-  {lede && <p class={`mt-4 text-lg ${dark ? 'text-forest-200' : 'text-ink-500'} ${align === 'center' ? 'mx-auto' : ''} max-w-prose`}>{lede}</p>}
-  <slot />
+<div class={`${hasAction ? 'flex flex-col gap-6 md:flex-row md:items-end md:justify-between' : ''} ${extra}`}>
+  <div class={`max-w-narrow ${center ? 'mx-auto text-center' : ''}`}>
+    {eyebrow && <p class={`eyebrow mb-4 ${center ? 'justify-center' : ''}`}>{eyebrow}</p>}
+    <H id={id} class={`${titleSize} text-tone-heading`}>{Astro.slots.has('title') ? <slot name="title" /> : title}</H>
+    {lede && (
+      <p class={`mt-4 max-w-prose ${onOrange ? 'text-statement text-white' : 'text-lg text-tone-muted'} ${center ? 'mx-auto' : ''}`}>{lede}</p>
+    )}
+    <slot />
+  </div>
+  {hasAction && <div class="shrink-0"><slot name="action" /></div>}
 </div>

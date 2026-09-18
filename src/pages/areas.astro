@@ -1,23 +1,28 @@
 ---
+/** Where Scoop Dogg works. Bands: hero (white, form) -> proof (green) -> the markets (white) -> close (orange). */
 import Site from '../layouts/Site.astro';
 import PageHero from '../components/site/PageHero.astro';
+import Section from '../components/site/Section.astro';
+import ProofBar from '../components/site/ProofBar.astro';
 import CloseCta from '../components/site/CloseCta.astro';
 import { markets, regionSentence } from '../lib/catalog';
 ---
 <Site title="Service Areas | Ventura & Santa Barbara Counties | Scoop Dogg" description={`Weekly dog poop cleanup across ${regionSentence()}.`} canonicalPath="/areas">
-  <PageHero eyebrow="Where we work" title="Local routes across two counties" lede={`${regionSentence()}. Each city has set service days, which is how every customer gets the same day every week.`} form source="areas-hero" />
-  <section class="bg-paper py-section">
-    <div class="container-site grid gap-10 md:grid-cols-2">
+  <PageHero eyebrow="Where we work" title="Local routes across two counties" lede={`${regionSentence()}. Each city has set service days, which is how every customer gets the same day every week.`} form formTitle="Is your yard on a route?" source="areas-hero" />
+  <ProofBar />
+  <Section tone="white">
+    <div class="grid gap-5 md:grid-cols-2">
       {markets().map((m) => (
-        <div class="rounded-xl border border-line bg-paper p-7">
+        <div class="rounded-xl border border-line bg-paper p-7 shadow-sm sm:p-8">
           <h2 class="text-h3 text-forest-900">{m.label.replace(/^the /, 'The ')}</h2>
-          <ul class="mt-5 grid grid-cols-2 gap-x-4 gap-y-2">
-            {m.areas.map((a) => <li><a href={`/areas/${a.slug}`} class="group flex items-center justify-between rounded-md px-3 py-2 text-base text-forest-800 hover:bg-forest-50"><span>{a.name}</span><span class="text-forest-300 group-hover:text-forest-600" aria-hidden="true">→</span></a></li>)}
+          <p class="mt-1 text-sm text-ink-500">{m.areas.length} {m.areas.length === 1 ? 'city' : 'cities'}</p>
+          <ul class="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {m.areas.map((a) => <li><a href={`/areas/${a.slug}`} class="group flex items-center justify-between rounded-md border border-line px-4 py-3 text-base font-medium text-forest-900 transition duration-fast hover:border-forest-400 hover:bg-forest-50"><span>{a.name}</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" class="text-orange-600 transition duration-fast group-hover:translate-x-0.5" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></a></li>)}
           </ul>
         </div>
       ))}
     </div>
-    <p class="container-site mt-10 text-center text-base text-ink-700">Not listed? <a href="/book" class="link">Enter your address</a> — we're adding routes as we grow.</p>
-  </section>
+    <p class="mt-10 text-center text-lg text-ink-700">Not listed? <a href="/book" class="link">Enter your address</a> — we're adding routes as we grow.</p>
+  </Section>
   <CloseCta source="areas-close" />
 </Site>

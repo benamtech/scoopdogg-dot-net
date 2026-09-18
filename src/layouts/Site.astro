@@ -7,6 +7,7 @@
 import Base from './Base.astro';
 import Header from '../components/site/Header.astro';
 import Footer from '../components/site/Footer.astro';
+import { headlineOffer } from '../lib/catalog';
 
 export interface Props {
   title: string;
@@ -29,8 +30,8 @@ const { mobileCta = true, ...base } = Astro.props;
   <Footer />
   {mobileCta && (
     <div class="pointer-events-none fixed inset-x-0 bottom-0 z-30 translate-y-full p-3 transition duration-base ease-brand sm:hidden" data-mobile-cta aria-hidden="true">
-      <div class="pointer-events-auto flex items-center gap-3 rounded-lg border border-line bg-paper/95 p-2 pl-4 shadow-lg backdrop-blur">
-        <p class="flex-1 text-sm leading-tight text-ink-700"><span class="font-semibold text-forest-800">First month half off.</span> No contract.</p>
+      <div class="tone-forest pointer-events-auto flex items-center gap-3 rounded-lg bg-tone-bg p-2 pl-4 shadow-lg">
+        <p class="flex-1 text-sm leading-tight text-white">{headlineOffer && <span class="font-semibold text-amber-400">{headlineOffer.name}.</span>} No contract.</p>
         <a href="/book" class="btn-primary btn-sm" tabindex="-1" data-cta="mobile-bar">See my price</a>
       </div>
     </div>

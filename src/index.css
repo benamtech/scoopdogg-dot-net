@@ -6,16 +6,69 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * THE THREE SURFACES (Ben, 2026-09-16). A band sets one of these and everything inside it that
+ * uses a `tone-*` colour follows. Channels are space-separated RGB so Tailwind's opacity
+ * modifiers work (`border-tone-rule/40`). Contrast for every pair: tests/contrast.test.ts.
+ *
+ *   white   black text on white. The default, and most of the site.
+ *   forest  white text on the brand green (11.08:1). Any size.
+ *   orange  white text on the band orange (3.15:1). LARGE text only; small text sits on a
+ *           white card, or uses the dark-green accent (5.46:1).
+ *   tint    a whisper of green for app surfaces (booking, account). Not a marketing band.
+ */
+.tone-white, :root {
+  --tone-bg: 255 255 255;        /* paper */
+  --tone-fg: 58 66 62;           /* ink-700 */
+  --tone-heading: 15 42 31;      /* forest-900 */
+  --tone-muted: 91 102 96;       /* ink-500, 5.98:1 */
+  --tone-accent: 36 89 63;       /* forest-600, 8.15:1 */
+  --tone-rule: 227 232 228;      /* line */
+}
+.tone-tint {
+  --tone-bg: 243 247 244;        /* forest-50 */
+  --tone-fg: 58 66 62;
+  --tone-heading: 15 42 31;
+  --tone-muted: 91 102 96;       /* 5.53:1 on forest-50 */
+  --tone-accent: 36 89 63;
+  --tone-rule: 201 221 208;      /* forest-200 */
+}
+.tone-forest {
+  --tone-bg: 27 67 50;           /* forest-700, the brand green */
+  --tone-fg: 232 240 235;        /* forest-100 */
+  --tone-heading: 255 255 255;
+  --tone-muted: 201 221 208;     /* forest-200, 7.77:1 */
+  --tone-accent: 247 182 80;     /* amber-400, 6.21:1 */
+  --tone-rule: 255 255 255;      /* use at /15 */
+}
+.tone-orange {
+  --tone-bg: 221 118 7;          /* orange-600 */
+  --tone-fg: 255 255 255;        /* large text only */
+  --tone-heading: 255 255 255;
+  --tone-muted: 255 255 255;     /* large text only */
+  --tone-accent: 11 31 22;       /* forest-950, 5.46:1: the only small text allowed on orange */
+  --tone-rule: 255 255 255;
+}
+.tone-deep {
+  --tone-bg: 15 42 31;           /* forest-900: the footer */
+  --tone-fg: 201 221 208;        /* 10.75:1 */
+  --tone-heading: 255 255 255;
+  --tone-muted: 149 184 162;     /* forest-300, 7.04:1 */
+  --tone-accent: 247 182 80;
+  --tone-rule: 255 255 255;
+}
+
 @layer base {
   html {
     font-family: theme('fontFamily.sans');
-    background-color: theme('colors.cream');
+    background-color: theme('colors.paper');
     color: theme('colors.ink.900');
     /* 16px, not 18px: the old 18px root inflated every rem on the site by 12.5%. */
     font-size: 16px;
     line-height: 1.65;
     -webkit-text-size-adjust: 100%;
     text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
   }
 
   h1, h2, h3 {
@@ -31,6 +84,7 @@
     outline-offset: 2px;
     border-radius: 4px;
   }
+  .tone-orange :focus-visible { outline-color: theme('colors.forest.950'); }
 
   * { -webkit-tap-highlight-color: transparent; }
 
@@ -49,23 +103,38 @@
 @layer components {
   .container-site { @apply mx-auto w-full max-w-site px-5 sm:px-8; }
 
-  .eyebrow { @apply text-micro font-semibold uppercase text-forest-500; }
+  /* A small label with a short rule before it. Colour follows the surface. */
+  .eyebrow {
+    @apply inline-flex items-center gap-3 text-micro font-semibold uppercase text-tone-accent;
+  }
+  .eyebrow::before { content: ''; @apply h-0.5 w-6 shrink-0 rounded-full bg-orange-600; }
+  .tone-orange .eyebrow::before { @apply bg-forest-950; }
+  .tone-forest .eyebrow::before, .tone-deep .eyebrow::before { @apply bg-amber-400; }
+  .eyebrow-plain::before { display: none; }
+  /* Kept for the admin and the React islands that still pass it. */
   .eyebrow-on-dark { @apply text-micro font-semibold uppercase text-amber-400; }
 
   .btn {
     @apply inline-flex items-center justify-center gap-2 rounded-md px-6 py-3.5 text-base font-semibold
       transition duration-fast ease-brand focus-visible:shadow-focus disabled:cursor-not-allowed disabled:opacity-60;
   }
+  /* The one action colour. Amber with dark green text: 7.22:1. */
   .btn-primary { @apply btn bg-amber-500 text-forest-900 shadow-xs hover:bg-amber-600 active:translate-y-px; }
-  .btn-secondary { @apply btn bg-forest-700 text-white hover:bg-forest-800 active:translate-y-px; }
-  .btn-ghost { @apply btn border border-line-strong bg-paper text-forest-800 hover:border-forest-400 hover:bg-forest-50; }
+  /* For the orange band and for a second action on white. */
+  .btn-forest { @apply btn bg-forest-700 text-white hover:bg-forest-800 active:translate-y-px; }
+  .btn-secondary { @apply btn-forest; }
+  .btn-white { @apply btn bg-paper text-forest-800 shadow-sm hover:bg-forest-50 active:translate-y-px; }
+  /* Outline that follows the surface. */
+  .btn-ghost { @apply btn border border-tone-heading/25 bg-transparent text-tone-heading hover:border-tone-heading/60 hover:bg-tone-heading/5; }
   .btn-ghost-dark { @apply btn border border-white/25 bg-white/5 text-white hover:bg-white/10; }
   .btn-lg { @apply px-7 py-4 text-lg; }
   .btn-sm { @apply px-4 py-2.5 text-sm; }
 
-  .link { @apply font-medium text-forest-600 underline decoration-forest-300 underline-offset-4 hover:decoration-forest-600; }
+  .link { @apply font-medium text-tone-heading underline decoration-tone-accent/50 decoration-2 underline-offset-4 hover:decoration-tone-accent; }
 
-  .card { @apply rounded-lg border border-line bg-paper shadow-sm; }
+  /* A white card: the way small text lives on a coloured band. */
+  .card { @apply rounded-lg border border-line bg-paper text-ink-700 shadow-sm; }
+  .card-lift { @apply card transition duration-base ease-brand hover:-translate-y-0.5 hover:border-forest-300 hover:shadow-md; }
 
   .field-label { @apply mb-1.5 block text-sm font-medium text-ink-700; }
   .field {
@@ -73,15 +142,16 @@
       placeholder:text-ink-400 transition duration-fast focus:border-forest-500 focus:outline-none focus:ring-4 focus:ring-forest-100;
   }
 
-  .prose-sd h2 { @apply mb-4 mt-12 font-serif text-h3 text-forest-800; }
-  .prose-sd h3 { @apply mb-3 mt-8 text-xl font-semibold text-forest-800; }
+  .prose-sd h2 { @apply mb-4 mt-12 font-serif text-h3 text-forest-900; }
+  .prose-sd h3 { @apply mb-3 mt-8 text-xl font-semibold text-forest-900; }
   .prose-sd p { @apply mb-5 text-lg text-ink-700; }
-  .prose-sd ul { @apply mb-6 list-disc space-y-2 pl-6 text-lg text-ink-700; }
-  .prose-sd ol { @apply mb-6 list-decimal space-y-2 pl-6 text-lg text-ink-700; }
-  .prose-sd a { @apply link; }
+  .prose-sd ul { @apply mb-6 list-disc space-y-2 pl-6 text-lg text-ink-700 marker:text-orange-600; }
+  .prose-sd ol { @apply mb-6 list-decimal space-y-2 pl-6 text-lg text-ink-700 marker:font-semibold marker:text-forest-700; }
+  .prose-sd a:not(.chip) { @apply link; }
   .prose-sd strong { @apply font-semibold text-ink-900; }
+  .prose-sd blockquote { @apply my-8 border-l-4 border-orange-600 pl-6 font-serif text-xl text-forest-900; }
   .prose-sd table { @apply mb-6 w-full border-collapse text-left text-base; }
-  .prose-sd th { @apply border-b border-line-strong py-2 pr-4 font-semibold text-forest-800; }
+  .prose-sd th { @apply border-b border-line-strong py-2 pr-4 font-semibold text-forest-900; }
   .prose-sd td { @apply border-b border-line py-2 pr-4 text-ink-700; }
 }
 

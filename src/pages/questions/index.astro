@@ -1,0 +1,40 @@
+---
+/** Every question page, grouped by topic, each with the first sentence of its answer. */
+import Site from '../../layouts/Site.astro';
+import PageHero from '../../components/site/PageHero.astro';
+import Section from '../../components/site/Section.astro';
+import CloseCta from '../../components/site/CloseCta.astro';
+import { questions, TOPICS } from '../../lib/questions';
+import { SITE_URL } from '../../lib/constants';
+const all = questions();
+const groups = TOPICS.map((t) => ({ topic: t, items: all.filter((q) => q.topic === t) })).filter((g) => g.items.length);
+const first = (s: string) => s.split(/(?<=[.?!])\s/)[0];
+const jsonLd = {
+  '@context': 'https://schema.org', '@type': 'CollectionPage', name: 'Scoop Dogg: questions and answers',
+  mainEntity: { '@type': 'ItemList', itemListElement: all.map((q, i) => ({ '@type': 'ListItem', position: i + 1, name: q.q, url: `${SITE_URL}/questions/${q.slug}` })) },
+};
+---
+<Site title="Questions About Dog Poop Pickup, Prices and Plans | Scoop Dogg" description={`${all.length} straight answers about weekly dog poop pickup, turf care, prices, plans and visits, from Scoop Dogg in Ventura and Santa Barbara counties.`} canonicalPath="/questions" jsonLd={jsonLd}>
+  <PageHero eyebrow="Questions" title="Straight answers, with real prices" lede="Every answer here comes from our own price list and policies, so it is the same answer you get when you book." />
+  <Section tone="white">
+    <nav aria-label="Topics" class="mb-12 flex flex-wrap gap-2.5">
+      {groups.map((g) => <a href={`#${g.topic.toLowerCase().replace(/[^a-z]+/g, '-')}`} class="rounded-full border border-line-strong px-4 py-2 text-base font-medium text-forest-900 hover:border-forest-500 hover:bg-forest-50">{g.topic} <span class="text-ink-500">{g.items.length}</span></a>)}
+    </nav>
+    <div class="space-y-16">
+      {groups.map((g) => (
+        <section id={g.topic.toLowerCase().replace(/[^a-z]+/g, '-')} aria-labelledby={`t-${g.topic.toLowerCase().replace(/[^a-z]+/g, '-')}`}>
+          <h2 id={`t-${g.topic.toLowerCase().replace(/[^a-z]+/g, '-')}`} class="border-b border-line pb-4 text-h2 text-forest-900">{g.topic}</h2>
+          <ul class="mt-6 grid gap-4 md:grid-cols-2">
+            {g.items.map((q) => (
+              <li><a href={`/questions/${q.slug}`} class="card-lift group flex h-full flex-col p-6">
+                <span class="text-lg font-semibold text-forest-900 group-hover:text-forest-600">{q.q}</span>
+                <span class="mt-2 text-base text-ink-700">{first(q.answer)}</span>
+              </a></li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </div>
+  </Section>
+  <CloseCta source="questions-close" />
+</Site>

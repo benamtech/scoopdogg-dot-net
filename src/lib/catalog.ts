@@ -84,6 +84,16 @@ export const packages = data.packages;
 export const offers = data.offers;
 export const pulledAt = data.pulled_at;
 
+/** The offer the site leads with: the active, unconditional offer on weekly scooping. Every
+ *  "first month half off" on a page reads this row, so switching the offer off removes the
+ *  claim everywhere at the next build rather than leaving it in the header (S19). */
+export const headlineOffer = data.offers.find(
+  (o) => o.status === 'active' && o.applies_to_slugs.includes('weekly-pooper-scooper-service') && !(o.requires_slugs ?? []).length,
+) ?? null;
+
+/** True when the value comes from a settings row, false when a page would use a code fallback. */
+export const hasSetting = (key: string) => data.settings[key] !== undefined && data.settings[key] !== null;
+
 export function setting<T>(key: string, fallback: T): T {
   const v = data.settings[key];
   return (v === undefined || v === null ? fallback : (v as T));

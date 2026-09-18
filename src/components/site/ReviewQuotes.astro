@@ -1,33 +1,36 @@
 ---
 /**
- * Real Google reviews, quoted. The count is the number of rows we hold; a star rating is
- * shown only when `reviews.google_rating` is set with a source (S20). The old site said
- * 19 in one place and 27 in another.
+ * Real Google reviews, quoted, on white cards — so they read on any band (white, forest or
+ * orange) and the words, not a star badge, carry the proof (R6 §A5: a bare 5.0 is weak proof;
+ * the text and the count are what readers trust). The count is the number of rows we hold; a
+ * star rating is shown only when `reviews.google_rating` is set with a source (S20).
  */
 import { reviews, reviewSummary } from '../../lib/catalog';
-export interface Props { limit?: number; dark?: boolean; ids?: string[] }
-const { limit = 3, dark = false, ids } = Astro.props;
+import Stars from './Stars.astro';
+export interface Props { limit?: number; ids?: string[]; footer?: boolean }
+const { limit = 3, ids, footer = true } = Astro.props;
 const list = (ids ? ids.map((id) => reviews.find((r) => r.id === id)).filter(Boolean) : reviews.filter((r) => r.featured)).slice(0, limit) as typeof reviews;
 const initials = (n: string) => n.split(' ').map((p) => p[0]).slice(0, 2).join('');
 ---
-<div class={`grid gap-4 ${limit >= 3 ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
+<div class={`-mx-5 flex snap-x snap-mandatory gap-4 overflow-x-auto px-5 pb-3 sm:-mx-8 sm:px-8 md:mx-0 md:grid md:overflow-visible md:px-0 md:pb-0 lg:gap-5 ${limit >= 3 ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
   {list.map((r) => (
-    <figure class={`flex flex-col rounded-lg p-6 ${dark ? 'bg-forest-800 ring-1 ring-white/10' : 'border border-line bg-paper shadow-sm'}`}>
-      <svg width="28" height="22" viewBox="0 0 28 22" aria-hidden="true" class={dark ? 'text-amber-400' : 'text-amber-500'}><path fill="currentColor" d="M0 22V13.2C0 5.9 3.9 1.5 11.2 0l1.3 2.6C8.3 4 6.4 6.6 6.2 10.2H11V22H0Zm16 0V13.2C16 5.9 19.9 1.5 27.2 0l1.3 2.6c-4.2 1.4-6.1 4-6.3 7.6H27V22H16Z" /></svg>
-      <blockquote class={`mt-4 flex-1 text-base ${dark ? 'text-forest-100' : 'text-ink-700'}`}>{r.quote}</blockquote>
-      <figcaption class="mt-6 flex items-center gap-3">
-        <span class={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold ${dark ? 'bg-forest-700 text-white' : 'bg-forest-100 text-forest-800'}`}>{initials(r.author_name)}</span>
-        <span class="flex flex-col">
-          <span class={`text-base font-semibold ${dark ? 'text-white' : 'text-forest-900'}`}>{r.author_name}</span>
-          <span class={`text-sm ${dark ? 'text-forest-300' : 'text-ink-500'}`}>Google review{r.reviewed_on ? ` · ${r.reviewed_on}` : ''}</span>
+    <figure class="tone-white flex w-[85%] shrink-0 snap-center flex-col md:w-auto rounded-xl bg-paper p-6 shadow-md ring-1 ring-black/5 sm:p-7">
+      <Stars rating={5} size={16} />
+      <blockquote class="mt-4 flex-1 text-base text-ink-700">“{r.quote}”</blockquote>
+      <figcaption class="mt-6 flex items-center gap-3 border-t border-line pt-5">
+        <span class="flex h-10 w-10 items-center justify-center rounded-full bg-forest-700 text-sm font-semibold text-white" aria-hidden="true">{initials(r.author_name)}</span>
+        <span class="flex flex-col leading-tight">
+          <span class="text-base font-semibold text-forest-900">{r.author_name}</span>
+          <span class="text-sm text-ink-500">Google review{r.reviewed_on ? ` · ${r.reviewed_on}` : ''}</span>
         </span>
       </figcaption>
     </figure>
   ))}
 </div>
-<p class={`mt-6 text-base ${dark ? 'text-forest-200' : 'text-ink-500'}`}>
-  {reviewSummary.rating ? `${reviewSummary.rating.toFixed(1)} on Google · ` : ''}
-  <a href="/reviews" class={dark ? 'font-semibold text-white underline decoration-white/30 underline-offset-4 hover:decoration-white' : 'link'}>Read all {reviewSummary.count} reviews</a>
-  <span aria-hidden="true"> · </span>
-  <a href={reviewSummary.profileUrl} rel="noopener" class={dark ? 'text-forest-200 underline decoration-white/20 underline-offset-4 hover:text-white' : 'link'}>See them on Google</a>
-</p>
+{footer && (
+  <p class="mt-8 flex flex-wrap items-center gap-x-4 gap-y-2 text-base text-tone-fg">
+    {reviewSummary.rating && <span class="font-semibold text-tone-heading">{reviewSummary.rating.toFixed(1)} on Google</span>}
+    <a href="/reviews" class="link">Read all {reviewSummary.count} reviews</a>
+    <a href={reviewSummary.profileUrl} rel="noopener" class="link">See them on Google</a>
+  </p>
+)}
