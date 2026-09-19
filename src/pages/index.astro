@@ -63,6 +63,8 @@ import enclosureAfter from '../assets/photos/enclosure-after.jpg';
 // these are them, and every one goes through `astro:assets` so it ships resized as WebP rather
 // than as the full PNG the live site serves.
 import artShovel from '../assets/art/dogs-with-shovel.png';
+import artShovelOne from '../assets/art/dog-with-shovel.png';
+import artJumping from '../assets/art/dog-jumping.png';
 import artDeodorizer from '../assets/art/dog-spraying-turf-deodorizer.png';
 import artMower from '../assets/art/dog-with-lawn-mower.png';
 import artWeedwacker from '../assets/art/dog-with-weedwacker.png';
@@ -73,7 +75,7 @@ import artCatTree from '../assets/art/transp-cat-character-cleaning-cat-tree.png
 
 const scoop = packagesForService('weekly-pooper-scooper-service');
 const from = scoop.length ? Math.min(...scoop.map((p) => p.monthly_price_cents)) : null;
-const perVisit = from ? Math.round(from / (52 / 12)) : null;
+const perVisit = from ? Math.round(from / (52 / 12) / 100) * 100 : null;
 const startDays = setting<number>('schedule.new_customer_start_days', 3);
 const region = regionSentence();
 const offer = headlineOffer?.name;
@@ -111,8 +113,8 @@ const GROUPS: { title: string; lede?: string; cols?: 2 | 3; cards: CardSpec[] }[
     lede: 'The weekly service, and the one-off that gets a yard back to zero.',
     cards: [
       { slug: 'weekly-pooper-scooper-service', sub: 'Weekly scooping — billed monthly', cta: 'Get weekly service', art: artShovel, artAlt: 'Two Scoop Dogg dogs holding scooping tools', badge: 'Most booked', featured: true },
-      { slug: 'one-time-dog-poop-cleanup', sub: 'One-time catch-up clean', cta: 'Book a one-time clean' },
-      { slug: 'dog-run-cleanups', sub: 'Runs, kennels and side yards', cta: 'Book a run cleanup' },
+      { slug: 'one-time-dog-poop-cleanup', sub: 'One-time catch-up clean', cta: 'Book a one-time clean', art: artShovelOne, artAlt: 'A Scoop Dogg dog with a shovel' },
+      { slug: 'dog-run-cleanups', sub: 'Runs, kennels and side yards', cta: 'Book a run cleanup', art: artJumping, artAlt: 'Two Scoop Dogg dogs jumping in a clean yard' },
     ],
   },
   {
@@ -121,7 +123,7 @@ const GROUPS: { title: string; lede?: string; cols?: 2 | 3; cards: CardSpec[] }[
     cards: [
       { slug: 'yard-deep-clean', sub: 'One-time deep clean & restoration', cta: 'Book a deep clean', art: artMower, artAlt: 'A Scoop Dogg dog with a lawn mower' },
       { slug: 'artificial-turf-deodorizing', sub: 'Enzyme treatment for odour', cta: 'Book deodorizing', art: artDeodorizer, artAlt: 'A Scoop Dogg dog spraying turf deodorizer' },
-      { slug: 'weekly-turf-maintenance', sub: 'Ongoing sweeping & deodorizing', cta: 'Get turf maintenance', badge: 'New' },
+      { slug: 'weekly-turf-maintenance', sub: 'Ongoing sweeping & deodorizing', cta: 'Get turf maintenance', badge: 'New', art: artWeedwacker, artAlt: 'A Scoop Dogg dog with a weedwacker' },
     ],
   },
   {
@@ -146,7 +148,7 @@ const GROUPS: { title: string; lede?: string; cols?: 2 | 3; cards: CardSpec[] }[
     cards: [
       { slug: 'kitty-litter-exchange', sub: 'Litter boxes, emptied and refilled', cta: 'Add litter exchange', art: artLitter, artAlt: 'A Scoop Dogg cat cleaning a litter box' },
       { slug: 'cat-tree-cleaning', sub: 'Cat trees, deep cleaned', cta: 'Book cat tree cleaning', art: artCatTree, artAlt: 'A Scoop Dogg cat cleaning a cat tree' },
-      { slug: 'kitty-litter-robot-cleaning', sub: 'Litter-Robot strip and clean', cta: 'Book a Litter-Robot clean', art: artWeedwacker, artAlt: 'A Scoop Dogg dog with a weedwacker' },
+      { slug: 'kitty-litter-robot-cleaning', sub: 'Litter-Robot strip and clean', cta: 'Book a Litter-Robot clean', art: artLitter, artAlt: 'A Scoop Dogg cat beside a litter box' },
     ],
   },
 ];
@@ -243,7 +245,8 @@ const check = 'M5 12l5 5 9-10';
     phone={business.phone}
     phoneHref={business.phoneHref}
     rating={reviewSummary.rating}
-    reviewCount={reviewSummary.googleCount ?? reviewSummary.count}
+    reviewCount={reviewSummary.googleCount}
+    quoteCount={reviewSummary.count}
     offer={offer ?? null}
   />
 

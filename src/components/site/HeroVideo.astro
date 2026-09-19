@@ -57,11 +57,14 @@ export interface Props {
   phone: string;
   phoneHref: string;
   rating: number | null;
+  /** `reviews.google_count` — Josue's real total. NULL until he enters it in the admin. */
   reviewCount: number | null;
+  /** How many review quotes we actually hold and can show. Always true, never a claim. */
+  quoteCount: number;
   /** The half-off line, or whatever `offers` currently says. Null renders nothing. */
   offer: string | null;
 }
-const { fromCents, perVisitCents, serviceRegion, phone, phoneHref, rating, reviewCount, offer } = Astro.props;
+const { fromCents, perVisitCents, serviceRegion, phone, phoneHref, rating, reviewCount, quoteCount, offer } = Astro.props;
 const money = (c: number) => `$${(c / 100).toFixed(c % 100 ? 2 : 0)}`;
 ---
 {/*
@@ -133,10 +136,15 @@ const money = (c: number) => `$${(c / 100).toFixed(c % 100 ? 2 : 0)}`;
       <div class="mt-9"><AddressForm heroAnchor source="home-hero" label="Where's your yard?" /></div>
 
       <div class="mt-7 flex flex-wrap items-center gap-x-6 gap-y-3 text-base text-forest-100">
-        {rating && reviewCount && (
+        {rating && (
           <a href="/reviews" class="inline-flex items-center gap-2 text-forest-100 hover:text-white">
             <Stars rating={rating} size={16} />
-            <span><strong class="font-semibold text-white">{rating.toFixed(1)}</strong> · {reviewCount} Google reviews</span>
+            {/* ONE COUNT, FROM ONE ROW. "18 Google reviews" was 18 quotes we hold, not 18
+                reviews Josue has — the live page said 19 in one place and 27 in another while
+                the database held 18, and this is the same overclaim in the loudest position on
+                the site. Until `reviews.google_count` is filled in the admin, the page says
+                what it can prove. */}
+            <span><strong class="font-semibold text-white">{rating.toFixed(1)}</strong> · {reviewCount ? `${reviewCount} Google reviews` : `${quoteCount} reviews`}</span>
           </a>
         )}
         <a href={phoneHref} class="inline-flex items-center gap-2 rounded-full border border-white/35 px-5 py-2.5 font-medium text-white transition hover:bg-white/10">
