@@ -16,6 +16,12 @@ export async function loadCatalog(): Promise<Catalog & { areas: AreaRow[]; setti
   const packages = await q<Catalog['packages'][number]>(`select id, slug, service_slug, tier_id, name, short_label, frequency, visits_per_month::float as visits_per_month, monthly_price_cents, derivation, source, version, featured, sort_order from packages where status = 'active' order by sort_order`);
   const offers = await q<Catalog['offers'][number]>(`select id, name, kind, value, applies_to_slugs, requires_slugs, status from offers where status = 'active'`);
   const areas = await q<AreaRow>(`select slug, name, bookable, market, service_weekdays from service_areas where status = 'active' order by sort_order`);
-  const rows = await q<{ key: string; value: unknown }>(`select key, value from settings where key like 'schedule.%' or key like 'booking.%' or key like 'business.%' or key like 'billing.%' or key like 'notify.%'`);
+  // A FILTER IS A SILENT ALLOWLIST. `subscription.%` and `visit.%` were missing until
+  // 2026-09-19, so every server read of `subscription.pause_max_weeks` or
+  // `subscription.auto_resume_after_pause` returned undefined and fell back to a
+  // literal: the read compiles, the key exists in the database, and the value never
+  // arrives. gates/settings-have-readers.mjs checks every key the server asks for
+  // against this line.
+  const rows = await q<{ key: string; value: unknown }>(`select key, value from settings where key like 'schedule.%' or key like 'booking.%' or key like 'business.%' or key like 'billing.%' or key like 'notify.%' or key like 'subscription.%' or key like 'visit.%'`);
   return { services, tiers, packages, offers, areas, settings: new Map(rows.map((r) => [r.key, r.value])) };
 }

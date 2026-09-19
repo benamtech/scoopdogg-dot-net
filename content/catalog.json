@@ -1,5 +1,5 @@
 {
-  "pulled_at": "2026-09-19T22:31:21.107Z",
+  "pulled_at": "2026-09-19T23:17:19.312Z",
   "source": "database",
   "services": [
     {
@@ -2321,6 +2321,7 @@
     "visit.skip_charge_policy": "no_charge",
     "subscription.cancel_notice_hours": 0,
     "subscription.pause_max_weeks": 12,
+    "subscription.auto_resume_after_pause": true,
     "billing.package_prices_confirmed": true,
     "booking.lanes_enabled": "prepay,payafter",
     "booking.payafter_charge_offset_days": 1,

@@ -50,7 +50,7 @@ const PUBLIC_SETTINGS = [
   'booking.lanes_enabled', 'booking.payafter_charge_offset_days', 'booking.onetime_enabled',
   'growth.review_request_after_visits',
   'billing.monthly_factor', 'billing.package_prices_confirmed',
-  'subscription.cancel_notice_hours', 'subscription.pause_max_weeks', 'visit.skip_charge_policy',
+  'subscription.cancel_notice_hours', 'subscription.pause_max_weeks', 'subscription.auto_resume_after_pause', 'visit.skip_charge_policy',
   'visit.require_completion_photo', 'service_area.outside_area_behaviour',
   'reviews.google_rating', 'reviews.google_count', 'reviews.google_profile_url',
   'trust.insured_confirmed', 'trust.background_checked_confirmed', 'trust.guarantee_text',

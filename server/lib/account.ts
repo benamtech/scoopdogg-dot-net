@@ -93,6 +93,23 @@ async function ownSubscription(customerId: string, subscriptionId: string) {
 const mode = (s: { livemode: boolean }): StripeMode => (s.livemode ? 'live' : 'test');
 
 export async function skipVisit(customerId: string, visitId: string) {
+  /*
+   * `visit.skip_charge_policy` has said `no_charge` since the settings were seeded and NOTHING
+   * READ IT until 2026-09-19 — a policy row with no reader is not a policy, it is a note.
+   *
+   * `no_charge` is the only value this code implements, and skipping has always been free, so
+   * reading the row changes nothing today. What it changes is the day somebody sets it to
+   * anything else: the skip is refused with a sentence rather than silently staying free, and
+   * whoever set it finds out immediately instead of discovering months of unbilled skips.
+   *
+   * THE OPEN QUESTION THIS DOES NOT ANSWER, and it is Josue's: skipping is unlimited. A
+   * customer can skip every visit indefinitely and the yard reaches the same state a pause
+   * reaches, with no pause event to price it against. The catch-up rule cannot see that path.
+   */
+  const policy = String((await loadCatalog()).settings.get('visit.skip_charge_policy') ?? 'no_charge');
+  if (policy !== 'no_charge') {
+    throw new AccountError('Skipping a visit is not available on your plan right now. Please get in touch and we will sort it out.', 409);
+  }
   const { rows } = await db().query(
     `update visits v set state = 'skipped', customer_note = 'Skipped by customer', updated_at = now()
        from subscriptions s where v.id = $1 and v.subscription_id = s.id and s.customer_id = $2
@@ -140,7 +157,12 @@ export async function unskipVisit(customerId: string, visitId: string) {
 export async function pausePlan(customerId: string, subscriptionId: string, weeks: number) {
   const s = await ownSubscription(customerId, subscriptionId);
   if (s.state !== 'active') throw new AccountError('Only an active plan can be paused.', 409);
-  const w = Math.max(1, Math.min(12, Math.trunc(weeks)));
+  // THE CEILING IS A ROW. `subscription.pause_max_weeks` is what src/lib/questions.ts already
+  // tells a customer on the public question page; this line used to be a literal 12 beside it.
+  // They agreed by coincidence, so editing the row would have made the site state a limit the
+  // server did not keep - the same shape as a price in prose.
+  const maxWeeks = Number((await loadCatalog()).settings.get('subscription.pause_max_weeks') ?? 12);
+  const w = Math.max(1, Math.min(Number.isFinite(maxWeeks) && maxWeeks > 0 ? maxWeeks : 12, Math.trunc(weeks)));
   const until = new Date(Date.now() + w * 7 * 86_400_000);
   const catchUp = await catchUpForPause(w, s.service_slug);
   if (s.stripe_subscription_id) {
@@ -243,6 +265,11 @@ export async function resumePlan(customerId: string, subscriptionId: string) {
  * billed.
  */
 export async function expireDuePauses(customerId?: string) {
+  // `subscription.auto_resume_after_pause` has been `true` since the settings were seeded and
+  // had NO READER until 2026-09-19 - it described this behaviour before the behaviour existed.
+  // Off, a pause runs until the customer presses Resume, which is a real choice for a route
+  // business and is why the row is a row.
+  if ((await loadCatalog()).settings.get('subscription.auto_resume_after_pause') === false) return 0;
   const { rows } = await db().query(
     `select * from subscriptions
       where state = 'paused' and paused_until is not null and paused_until <= current_date
