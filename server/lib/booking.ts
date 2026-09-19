@@ -20,6 +20,9 @@ import { sendEmail } from './notify.js';
 import { appendEvent } from './events.js';
 import { loadCatalog } from './catalog-db.js';
 import { currentMode, resolve, priceForPackage, couponForOffer, connection, probeAccount, stripeFor, type StripeMode } from './stripe.js';
+// The charge itself belongs to money.ts, which is the ONE file allowed to create one. This file
+// decides WHAT is being sold; it does not decide what AMTECH takes. gates/one-money-door.mjs.
+import { startSubscription } from './money.js';
 import { openSessionForCustomer } from './customer-auth.js';
 import { quoteBooking, startDates, formatCents, weekdayName } from '../../src/shared/pricing.js';
 import type { ApiResponse } from './http.js';
@@ -191,7 +194,7 @@ export async function createBooking(input: BookingInput, base: string) {
   }
 
   // ---- Stripe: a Customer, the package Price, the offer Coupon, and a Checkout Session ----
-  const { stripe, account, feeBps } = await resolve(mode);
+  const { stripe, account } = await resolve(mode);
   const stripeCustomerId = await stripeCustomer(stripe, account, mode, customerId, input);
   const { priceId, productId } = await priceForPackage(mode, { ...quote.package });
   const offer = quote.appliedOffers[0];
@@ -201,23 +204,18 @@ export async function createBooking(input: BookingInput, base: string) {
   for (const l of quote.lines.filter((x) => x.kind === 'extra')) {
     lineItems.push({ quantity: 1, price_data: { currency: 'usd', unit_amount: l.cents, product_data: { name: l.label } } });
   }
-  const session = await stripe.checkout.sessions.create({
-    mode: 'subscription',
-    customer: stripeCustomerId,
-    line_items: lineItems,
-    ...(couponId ? { discounts: [{ coupon: couponId }] } : { allow_promotion_codes: false }),
-    subscription_data: {
-      application_fee_percent: feeBps / 100,
-      description: `${quote.package.name} · starts ${chosen.label}`,
-      metadata: { booking_id: subscriptionId, customer_id: customerId, package_slug: quote.package.slug },
-    },
-    metadata: { booking_id: subscriptionId },
-    custom_text: {
-      submit: { message: `Starts ${chosen.label}. Your plan renews monthly — cancel anytime from your Scoop Dogg account.` },
-    },
-    success_url: `${base}/book/complete?session_id={CHECKOUT_SESSION_ID}&booking=${subscriptionId}`,
-    cancel_url: `${base}/book?resume=${subscriptionId}`,
-  }, { stripeAccount: account, idempotencyKey: `checkout-${input.idempotency_key}` });
+  const session = await startSubscription({
+    mode,
+    customerId: stripeCustomerId,
+    lineItems,
+    couponId,
+    description: `${quote.package.name} · starts ${chosen.label}`,
+    metadata: { booking_id: subscriptionId, customer_id: customerId, package_slug: quote.package.slug },
+    submitMessage: `Starts ${chosen.label}. Your plan renews monthly — cancel anytime from your Scoop Dogg account.`,
+    successUrl: `${base}/book/complete?session_id={CHECKOUT_SESSION_ID}&booking=${subscriptionId}`,
+    cancelUrl: `${base}/book?resume=${subscriptionId}`,
+    idempotencyKey: `checkout-${input.idempotency_key}`,
+  });
 
   await db().query(
     `update subscriptions set stripe_customer_id = $2, account_id = $3,
