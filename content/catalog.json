@@ -1,5 +1,5 @@
 {
-  "pulled_at": "2026-09-19T06:20:24.932Z",
+  "pulled_at": "2026-09-19T06:53:54.753Z",
   "source": "database",
   "services": [
     {
@@ -2188,6 +2188,39 @@
       "sort_order": 180
     }
   ],
+  "postal_codes": {
+    "90263": "malibu",
+    "90265": "malibu",
+    "91301": "agoura-hills",
+    "91320": "newbury-park",
+    "91360": "thousand-oaks",
+    "91361": "westlake-village",
+    "91362": "thousand-oaks",
+    "93001": "ventura",
+    "93003": "ventura",
+    "93004": "ventura",
+    "93010": "camarillo",
+    "93012": "camarillo",
+    "93013": "carpinteria",
+    "93015": "fillmore",
+    "93021": "moorpark",
+    "93022": "oak-view",
+    "93023": "ojai",
+    "93030": "oxnard",
+    "93033": "oxnard",
+    "93035": "oxnard",
+    "93036": "oxnard",
+    "93060": "santa-paula",
+    "93063": "simi-valley",
+    "93065": "simi-valley",
+    "93101": "santa-barbara",
+    "93103": "santa-barbara",
+    "93105": "santa-barbara",
+    "93108": "santa-barbara",
+    "93109": "santa-barbara",
+    "93110": "santa-barbara",
+    "93111": "santa-barbara"
+  },
   "settings": {
     "business.name": "Scoop Dogg",
     "business.timezone": "America/Los_Angeles",
@@ -2216,6 +2249,10 @@
     "subscription.cancel_notice_hours": 0,
     "subscription.pause_max_weeks": 12,
     "billing.package_prices_confirmed": true,
+    "booking.lanes_enabled": "prepay,payafter",
+    "booking.payafter_charge_offset_days": 1,
+    "booking.onetime_enabled": true,
+    "growth.review_request_after_visits": 3,
     "schedule.day_capacity": 20,
     "booking.start_window_days": 14,
     "booking.initial_cleanup_policy": "offer_optional",

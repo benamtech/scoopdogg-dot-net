@@ -44,6 +44,11 @@ const PUBLIC_SETTINGS = [
   'schedule.service_days', 'schedule.day_start', 'schedule.day_end', 'schedule.new_customer_start_days',
   'schedule.visit_window_hours', 'schedule.day_capacity',
   'booking.start_window_days', 'booking.initial_cleanup_policy', 'booking.card_required',
+  // Added with the two payment lanes (P16 §5) and the one-time path (P16 §3). A key the funnel
+  // reads and this list does not publish is a feature that silently does not exist on the built
+  // site - which is exactly what happened to lane B until gates/funnel-events.mjs walked it.
+  'booking.lanes_enabled', 'booking.payafter_charge_offset_days', 'booking.onetime_enabled',
+  'growth.review_request_after_visits',
   'billing.monthly_factor', 'billing.package_prices_confirmed',
   'subscription.cancel_notice_hours', 'subscription.pause_max_weeks', 'visit.skip_charge_policy',
   'visit.require_completion_photo', 'service_area.outside_area_behaviour',
@@ -74,11 +79,20 @@ try {
          from service_areas where status = 'active' order by sort_order`);
   const reviews = await q(`select id, author_name, author_badge, quote, rating, source, source_url, reviewed_on, featured, sort_order
          from reviews order by sort_order`);
+  // THE ZIP MAP IS GENERATED, NEVER TYPED. It replaces ZIP_CITY in BookingFlow.tsx, which was 30
+  // pairs from memory with no provenance and no server reader (P16 §2). One writer - migration
+  // 020, from the Census file - and one reader, this build step, so the browser's map and the
+  // server's answer cannot disagree. Only SERVED codes ship: a ZIP we know and do not serve is a
+  // sentence the server says, not a row a page needs.
+  const postal_codes = await q(`select z.postal_code, z.area_slug from area_postal_codes z
+         join service_areas a on a.slug = z.area_slug
+        where a.bookable and a.status = 'active' order by z.postal_code`);
   const settings = await q(`select key, value from settings where key = any($1::text[])`, [PUBLIC_SETTINGS]);
   catalog = {
     pulled_at: new Date().toISOString(),
     source: 'database',
     services, tiers, packages, offers, areas, reviews,
+    postal_codes: Object.fromEntries(postal_codes.map((r) => [r.postal_code, r.area_slug])),
     settings: Object.fromEntries(settings.map((r) => [r.key, r.value])),
   };
 } catch (e) {
@@ -91,4 +105,5 @@ await c.end();
 
 writeFileSync(OUT, JSON.stringify(catalog, null, 2) + '\n');
 console.log(`[catalog] ${catalog.services.length} services, ${catalog.tiers.length} tiers, ${catalog.packages.length} packages, ` +
-  `${catalog.offers.length} offers, ${catalog.areas.length} areas, ${catalog.reviews.length} reviews -> content/catalog.json`);
+  `${catalog.offers.length} offers, ${catalog.areas.length} areas, ${catalog.reviews.length} reviews, ` +
+  `${Object.keys(catalog.postal_codes).length} served ZIPs -> content/catalog.json`);

@@ -182,16 +182,27 @@ for (const [scheme, label] of [['tel', 'tel'], ['mailto', 'mailto']]) {
 //     green. A site that cannot take a booking is worse than the one it replaced.
 {
   const checks = [
-    // Copy updated for the 2026-09-16 booking flow; the invariant is unchanged: step one of
-    // booking and the city list are in the server HTML.
-    ['/book', ['Where is your yard?', 'Ventura'], 'booking flow step 1'],
+    // Copy updated for the 2026-09-19 ZIP-first flow (P16 §2); THE INVARIANT IS UNCHANGED and is
+    // the reason this gate exists: step one of booking, and the list of cities served, are in the
+    // SERVER HTML. The heading and the field moved from a street address to a ZIP; the city list
+    // stopped being a <select> inside the island and became text on the page. A reader with no
+    // JavaScript, and a crawler, still get both.
+    ['/book', ["Where's your yard?", 'id="bk-zip"', 'See my price', 'Ventura'], 'booking flow step 1'],
     ['/contact', ['<textarea', '<input'], 'contact form fields'],
     ['/', ['data-hero-cta', 'See my price', 'name="address"'], 'homepage address form (the first step of booking)'],
   ];
+  // Entities: an apostrophe is one character to a reader and six (`&#x27;`) in the markup, so a
+  // needle typed the way a person reads it never matches the bytes. gates/e2e.mjs learned the
+  // same thing measuring meta-description lengths; the rule is that a gate reads what a reader
+  // reads. Attribute needles (id="bk-zip") are unaffected by unescaping.
+  const readable = (h) => h
+    .replace(/&#x27;|&#39;/g, "'").replace(/&quot;|&#34;/g, '"')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n));
   for (const [route, needles, what] of checks) {
     const f = path.join(DIST, route === '/' ? '' : route, 'index.html');
     if (!existsSync(f)) { no('lead-path-renders', `${route} was not built`); continue; }
-    const h = readFileSync(f, 'utf8');
+    const h = readable(readFileSync(f, 'utf8'));
     const missing = needles.filter((n) => !h.includes(n));
     missing.length
       ? no('lead-path-renders', `${route} is missing ${what} (${missing.join(', ')})`)

@@ -70,10 +70,16 @@ const plan = [
   ['visits',           `delete from visits where subscription_id in
                           (select id from subscriptions where customer_id = any($1::uuid[]))`, ids],
   ['stripe_customers', `delete from stripe_customers where customer_id = any($1::uuid[])`, ids],
-  // customer_invites (018) references customers, properties AND subscriptions, so it has to go
-  // before all three or the customers delete fails on a foreign key. A table added to the schema
-  // without being added here turns this script from a cleanup into an error nobody expected.
+  // EVERY NEW TABLE THAT POINTS AT A CUSTOMER HAS TO BE NAMED HERE, child-first, or the
+  // customers delete fails on a foreign key and the cleanup stops halfway. Both of these were
+  // added on 2026-09-19 and both were found by a gate rather than by reading: customer_invites
+  // (018) references customers, properties and subscriptions; funnel_sessions (021) references
+  // subscriptions and service_areas.
   ['customer_invites', `delete from customer_invites where customer_id = any($1::uuid[])`, ids],
+  // A demo booking's funnel session is measurement of a customer who does not exist. It goes with
+  // the fixture rather than sitting in the growth board's denominator forever.
+  ['funnel_sessions', `delete from funnel_sessions where subscription_id in
+                         (select id from subscriptions where customer_id = any($1::uuid[]))`, ids],
   ['invoices (by sub)', `delete from invoices where subscription_id in (select id from subscriptions where customer_id = any($1::uuid[]))`, ids],
   ['subscriptions',    `delete from subscriptions where customer_id = any($1::uuid[])`, ids],
   ['properties',       `delete from properties where customer_id = any($1::uuid[])`, ids],
@@ -117,7 +123,11 @@ for (const [label, sql, params] of plan) {
   // bound each uuid as its own parameter - invisible with one demo customer, a crash with seven
   // (found 2026-09-16; the transaction rolled back and nothing was removed).
   const bind = sql.includes('$1::uuid[]') ? [params] : params;
-  const r = params.length ? await c.query(sql, bind) : await c.query(sql);
+  // BIND BY WHAT THE SQL ASKS FOR, not by whether the list happens to be empty. Skipping the
+  // parameters when there are no demo customers left sent `... = any($1::uuid[])` to Postgres
+  // with nothing bound, and a second run - or a first run on a clean database - died with
+  // "there is no parameter $1" instead of reporting that there was nothing to remove.
+  const r = await c.query(sql, bind);
   removed[label] = r.rowCount;
 }
 await c.query('commit');

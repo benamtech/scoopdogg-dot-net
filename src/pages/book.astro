@@ -2,7 +2,7 @@
 import Base from '../layouts/Base.astro';
 import Logo from '../components/site/Logo.astro';
 import BookingFlow from '../components/booking/BookingFlow';
-import { catalog, areas, services, business, markets, trust } from '../lib/catalog';
+import { catalog, areas, services, business, markets, trust, postalCodes, setting } from '../lib/catalog';
 import { DEMO_MODE } from '../lib/demo';
 
 // The booking gets a focused shell: the logo, a phone number and nothing else to click away to.
@@ -32,12 +32,33 @@ const slim = {
         areas={areas.filter((a) => a.bookable).map((a) => ({ slug: a.slug, name: a.name, market: a.market, bookable: a.bookable }))}
         marketLabels={marketLabels}
         services={services.map((s) => ({ slug: s.slug, name: s.name, what_includes: s.what_includes ?? [] }))}
+        zipMap={postalCodes}
+        lanesEnabled={setting('booking.lanes_enabled', 'prepay')}
         phone={business.phone}
         phoneHref={business.phoneHref}
         demo={DEMO_MODE}
         guarantee={trust.guarantee}
       />
     </div>
+    <!-- THE CITY LIST IS CONTENT, NOT A DROPDOWN. It used to be a <select> inside the funnel's
+         first step; asking for a ZIP instead (P16 §2) took sixteen city names out of the page,
+         and those names are how a reader checks coverage before typing and how a crawler learns
+         which places this business serves. So it is here, as text, linking to the pages that
+         answer for each city. -->
+    <section class="container-site mt-section-sm border-t border-line pt-12" aria-labelledby="where-we-work">
+      <h2 id="where-we-work" class="text-h3 text-forest-900">Where we work</h2>
+      <p class="mt-3 max-w-2xl text-base text-ink-700">
+        Weekly dog waste removal across Ventura County, the Conejo Valley, Malibu and the Santa Barbara
+        coast. Type your ZIP above and we'll tell you your day and your price — or if we're not on a
+        route near you yet, we'll say so and tell you when we are.
+      </p>
+      <ul class="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-base">
+        {areas.filter((a) => a.bookable).map((a) => (
+          <li><a href={`/areas/${a.slug}`} class="link">{a.name}</a></li>
+        ))}
+      </ul>
+    </section>
+
     <section class="container-site mt-section-sm border-t border-line pt-12" aria-labelledby="why-book">
       <h2 id="why-book" class="text-h3 text-forest-900">Why book online with Scoop Dogg</h2>
       <div class="mt-8 grid gap-8 text-base text-ink-700 md:grid-cols-3">

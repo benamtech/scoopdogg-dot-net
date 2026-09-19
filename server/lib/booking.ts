@@ -22,16 +22,25 @@ import { loadCatalog } from './catalog-db.js';
 import { currentMode, resolve, priceForPackage, couponForOffer, connection, probeAccount, stripeFor, type StripeMode } from './stripe.js';
 // The charge itself belongs to money.ts, which is the ONE file allowed to create one. This file
 // decides WHAT is being sold; it does not decide what AMTECH takes. gates/one-money-door.mjs.
-import { startSubscription } from './money.js';
+import { startSubscription, chargeOnce, feeCentsFor } from './money.js';
+import { resolveZip, sessionConverted } from './funnel.js';
 import { openSessionForCustomer } from './customer-auth.js';
-import { quoteBooking, startDates, formatCents, weekdayName } from '../../src/shared/pricing.js';
+import { quoteBooking, quoteOneTime, startDates, formatCents, weekdayName } from '../../src/shared/pricing.js';
 import type { ApiResponse } from './http.js';
 
 export type BookingInput = {
   address: string;
   city: string;
   postal_code?: string;
+  /** A recurring plan. Empty when this is a one-time job. */
   package_id: string;
+  /** A one-time job: the priced tier the customer chose (P16 §3). */
+  tier_id?: string;
+  /** P16 §5. 'prepay' charges the first month now; 'payafter' saves the card and charges the
+   *  day after visit one. Anything else is refused rather than guessed. */
+  lane?: 'prepay' | 'payafter';
+  /** The browser's funnel session, so the booking can be tied to the steps that led to it. */
+  session_id?: string;
   extra_tier_ids?: string[];
   with_package_ids?: string[];
   last_cleaned?: string | null;
@@ -63,6 +72,9 @@ export function parseInput(body: Record<string, unknown>): BookingInput {
     city: str(body.city, 80),
     postal_code: str(body.postal_code, 12),
     package_id: str(body.package_id, 60),
+    tier_id: str(body.tier_id, 60),
+    lane: body.lane === 'payafter' ? 'payafter' : 'prepay',
+    session_id: str(body.session_id, 60),
     extra_tier_ids: Array.isArray(body.extra_tier_ids) ? body.extra_tier_ids.map((x) => str(x, 60)).filter(Boolean).slice(0, 5) : [],
     with_package_ids: Array.isArray(body.with_package_ids) ? body.with_package_ids.map((x) => str(x, 60)).filter(Boolean).slice(0, 3) : [],
     last_cleaned: str(body.last_cleaned, 30) || null,
@@ -77,7 +89,7 @@ export function parseInput(body: Record<string, unknown>): BookingInput {
     idempotency_key: str(body.idempotency_key, 80),
   };
   if (!input.address || !input.city) throw new BookingError('address', 'Please enter your address.');
-  if (!input.package_id) throw new BookingError('package', 'Please choose a plan.');
+  if (!input.package_id && !input.tier_id) throw new BookingError('package', 'Please choose a plan.');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.start_date)) throw new BookingError('start_date', 'Please pick your start day.');
   if (!input.name || input.name.length < 2) throw new BookingError('name', 'Please enter your name.');
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(input.email)) throw new BookingError('email', 'Please enter a valid email address.');
@@ -86,14 +98,48 @@ export function parseInput(body: Record<string, unknown>): BookingInput {
   return input;
 }
 
-/** Everything the price step and the checkout both need, computed once, on the server. */
-export async function priceBooking(input: Pick<BookingInput, 'city' | 'package_id' | 'extra_tier_ids' | 'with_package_ids' | 'start_date'>) {
+/**
+ * Everything the price step and the checkout both need, computed once, on the server.
+ *
+ * THE ZIP IS THE FIRST QUESTION NOW (P16 §2), so the area may arrive either as a city slug or as
+ * five digits. A ZIP that resolves to a city we serve is the same answer as picking that city
+ * from a list; a ZIP that is known and not served is a different sentence from one we have never
+ * heard of, and both of those are refusals rather than a shrug.
+ */
+export async function priceBooking(input: Pick<BookingInput, 'city' | 'package_id' | 'extra_tier_ids' | 'with_package_ids' | 'start_date'> & { postal_code?: string; tier_id?: string }) {
   const catalog = await loadCatalog();
-  const area = catalog.areas.find((a) => a.slug === input.city);
+  let slug = input.city;
+  if (!slug && input.postal_code) {
+    const z = await resolveZip(input.postal_code);
+    if (!z.known) throw new BookingError('zip_unknown', `We don't recognise ${input.postal_code}. Check it, or leave your address and we'll come back to you.`, 422);
+    if (!z.served) throw new BookingError('zip_unserved', `We're not on a route in ${input.postal_code} yet. Leave your address and we'll tell you the week we are.`, 422);
+    slug = z.area_slug;
+  }
+  const area = catalog.areas.find((a) => a.slug === slug);
   if (!area || !area.bookable) throw new BookingError('area', 'We are not on a route there yet.', 422);
+
+  // A one-time job is priced from its own tier and has no package, no offer and no monthly
+  // anything. It still gets start dates, because it still has to be driven to.
+  if (input.tier_id && !input.package_id) {
+    const one = quoteOneTime(catalog, input.tier_id);
+    if (!one.ok) {
+      throw new BookingError(one.reason, one.reason === 'requires_quote' || one.reason === 'from_price'
+        ? 'That one needs a quick look first — we will confirm the price with you.'
+        : 'Please choose what you need again.');
+    }
+    return { catalog, area, quote: null, oneTime: one, dates: await startDatesFor(catalog, area) };
+  }
+
   const quote = quoteBooking(catalog, { packageId: input.package_id, extraTierIds: input.extra_tier_ids, withPackageIds: input.with_package_ids });
   if (!quote.ok) throw new BookingError(quote.reason, quote.reason === 'extra_requires_quote' ? 'That add-on needs a quick quote first.' : 'Please choose your plan again.');
 
+  return { catalog, area, quote, oneTime: null, dates: await startDatesFor(catalog, area) };
+}
+
+type LoadedCatalog = Awaited<ReturnType<typeof loadCatalog>>;
+
+/** The days a customer may pick, from the area's route days, the capacity and what is booked. */
+async function startDatesFor(catalog: LoadedCatalog, area: LoadedCatalog['areas'][number]) {
   const serviceDays = (catalog.settings.get('schedule.service_days') as number[]) ?? [0, 1, 2, 3, 4, 5, 6];
   const leadDays = Number(catalog.settings.get('schedule.new_customer_start_days') ?? 3);
   const windowDays = Number(catalog.settings.get('booking.start_window_days') ?? 14);
@@ -102,11 +148,10 @@ export async function priceBooking(input: Pick<BookingInput, 'city' | 'package_i
     `select scheduled_for::text as d, count(*)::int n from visits
       where scheduled_for between current_date and current_date + $1::int and state not in ('cancelled','skipped')
       group by 1`, [leadDays + windowDays]);
-  const dates = startDates({
+  return startDates({
     today: todayLA(), areaWeekdays: area.service_weekdays ?? [], serviceDays, leadDays, windowDays, dayCapacity: capacity,
     taken: Object.fromEntries(taken.map((r: { d: string; n: number }) => [r.d, r.n])), max: 6,
   });
-  return { catalog, area, quote, dates };
 }
 
 type Priced = Awaited<ReturnType<typeof priceBooking>>;
@@ -121,10 +166,11 @@ async function paymentsReady(mode: StripeMode): Promise<boolean> {
 
 export async function createBooking(input: BookingInput, base: string) {
   const priced = await priceBooking(input);
-  const { quote, area, dates } = priced;
-  if (!quote.ok) throw new BookingError('price', 'Please choose your plan again.');
+  const { area, dates, oneTime } = priced;
+  const quote = priced.quote;
   const chosen = dates.find((d) => d.date === input.start_date);
   if (!chosen || chosen.full) throw new BookingError('start_date', 'That day just filled up. Please pick another.', 409);
+  if (!quote && !oneTime) throw new BookingError('price', 'Please choose your plan again.');
 
   // Idempotent on the browser's key: a double-click or a retry returns the same booking.
   const { rows: prior } = await db().query(
@@ -134,6 +180,21 @@ export async function createBooking(input: BookingInput, base: string) {
 
   const mode = await currentMode();
   const ready = await paymentsReady(mode);
+
+  // LANE B ONLY EXISTS WHEN THE SETTINGS SAY SO, and only for a recurring plan: a one-time job
+  // has no second month to trial into. `booking.lanes_enabled` is a row (migration 018).
+  const lanesEnabled = String((await loadCatalog()).settings.get('booking.lanes_enabled') ?? 'prepay');
+  const payAfter = Boolean(quote) && input.lane === 'payafter' && lanesEnabled.includes('payafter');
+  const offsetDays = Number((await loadCatalog()).settings.get('booking.payafter_charge_offset_days') ?? 1);
+  // The DATE, never "later". Days from today to the day after the first visit, which is the
+  // number Stripe wants and the date the customer is shown - computed once, from one place.
+  const trialDays = payAfter
+    ? Math.max(1, Math.round((Date.parse(`${chosen.date}T12:00:00Z`) - Date.parse(`${todayLA()}T12:00:00Z`)) / 86_400_000) + offsetDays)
+    : 0;
+  const firstChargeOn = payAfter
+    ? new Date(Date.parse(`${todayLA()}T12:00:00Z`) + trialDays * 86_400_000).toISOString().slice(0, 10)
+    : null;
+
   const client = await db().connect();
   let customerId: string, propertyId: string, subscriptionId: string;
   try {
@@ -152,32 +213,52 @@ export async function createBooking(input: BookingInput, base: string) {
         [input.name, input.phone, input.email, input.dog_names ? `Dogs: ${input.dog_names}` : '']);
       customerId = rows[0].id;
     }
-    const dogsMatch = /^(\d+)/.exec(quote.package.short_label);
+    // num_dogs is NULL when nobody asked - a turf or deep-clean customer has no dog count, and
+    // writing 1 to satisfy a constraint would be inventing a fact (migration 019).
+    const dogsMatch = quote ? /^(\d+)/.exec(quote.package.short_label) : null;
     const { rows: prop } = await client.query(
       `insert into properties (customer_id, address, city, postal_code, num_dogs, gate_code, access_notes)
        values ($1,$2,$3,$4,$5,$6,$7) returning id`,
       [customerId, input.address, area.name, input.postal_code || null, dogsMatch ? Number(dogsMatch[1]) : null, input.gate_code || null, input.access_notes || '']);
     propertyId = prop[0].id;
-    const extras = quote.lines.filter((l) => l.kind === 'extra').map((l) => ({ tier_id: l.ref, label: l.label, price_cents: l.cents }));
-    const offer = quote.appliedOffers[0];
+
+    const extras = quote ? quote.lines.filter((l) => l.kind === 'extra').map((l) => ({ tier_id: l.ref, label: l.label, price_cents: l.cents })) : [];
+    const offer = quote ? quote.appliedOffers[0] : undefined;
+    const priceCents = quote ? quote.package.monthly_price_cents : oneTime!.cents;
+    const state = ready ? 'deposit_pending' : 'draft';
+    // trialing is a real payment_state now (migration 022) and it is what lane B is.
+    const paymentState = !ready ? 'none' : payAfter ? 'trialing' : 'pending';
+
     const { rows: sub } = await client.query(
       `insert into subscriptions (customer_id, property_id, service_slug, state, price_cents, price_basis, price_quantity,
                                   price_tier_label, priced_at, frequency, service_weekday, starts_on, package_id, package_version,
                                   monthly_price_cents, livemode, area_slug, extras, discount, booking_answers, source, payment_state)
        values ($1,$2,$3,$4,$5,null,null,$6,now(),$7,$8,$9,$10,$11,$12,$13,$14,$15::jsonb,$16::jsonb,$17::jsonb,'online',$18)
        returning id`,
-      [customerId, propertyId, quote.package.service_slug, ready ? 'deposit_pending' : 'draft',
-       quote.package.monthly_price_cents, quote.package.short_label, quote.package.frequency, chosen.weekday, chosen.date,
-       quote.package.id, quote.package.version, quote.package.monthly_price_cents, mode === 'live', area.slug,
+      [customerId, propertyId, quote ? quote.package.service_slug : oneTime!.service.slug, state,
+       priceCents, quote ? quote.package.short_label : oneTime!.tier.label,
+       quote ? quote.package.frequency : 'one_time', chosen.weekday, chosen.date,
+       quote ? quote.package.id : null, quote ? quote.package.version : null,
+       quote ? quote.package.monthly_price_cents : null, mode === 'live', area.slug,
        JSON.stringify(extras),
-       offer ? JSON.stringify({ offer_id: offer.id, name: offer.name, percent_off: offer.percent_off, first_charge_cents: quote.firstChargeCents }) : null,
-       JSON.stringify({ idempotency_key: input.idempotency_key, last_cleaned: input.last_cleaned, source: input.source, dog_names: input.dog_names }),
-       ready ? 'pending' : 'none']);
+       offer ? JSON.stringify({ offer_id: offer.id, name: offer.name, percent_off: offer.percent_off, first_charge_cents: quote!.firstChargeCents }) : null,
+       JSON.stringify({ idempotency_key: input.idempotency_key, last_cleaned: input.last_cleaned, source: input.source,
+                        dog_names: input.dog_names, session_id: input.session_id || null, lane: oneTime ? 'onetime' : payAfter ? 'payafter' : 'prepay',
+                        first_charge_on: firstChargeOn, tier_id: oneTime ? oneTime.tier.id : null }),
+       paymentState]);
     subscriptionId = sub[0].id;
     await appendEvent(client, {
-      subjectKind: 'subscription', subjectId: subscriptionId, type: 'booking.created', to: ready ? 'deposit_pending' : 'draft',
+      subjectKind: 'subscription', subjectId: subscriptionId, type: 'booking.created', to: state,
       actorKind: 'customer', actorId: customerId,
-      payload: { package: quote.package.slug, first_charge_cents: quote.firstChargeCents, starts_on: chosen.date, mode, payments_ready: ready },
+      payload: {
+        package: quote ? quote.package.slug : oneTime!.tier.id,
+        service: quote ? quote.package.service_slug : oneTime!.service.slug,
+        shape: quote ? 'recurring' : 'one_time',
+        lane: oneTime ? 'onetime' : payAfter ? 'payafter' : 'prepay',
+        first_charge_cents: quote ? quote.firstChargeCents : oneTime!.cents,
+        first_charge_on: firstChargeOn, starts_on: chosen.date, mode, payments_ready: ready,
+        session_id: input.session_id || null,
+      },
     });
     await client.query('commit');
   } catch (e) {
@@ -187,35 +268,57 @@ export async function createBooking(input: BookingInput, base: string) {
     client.release();
   }
 
+  if (input.session_id) await sessionConverted(input.session_id, subscriptionId).catch(() => {});
+
   if (!ready) {
-    await notifyOwner('booking_owner', `Booking request: ${input.name} — ${quote.package.name}`, input, quote, chosen.label,
+    await notifyOwner('booking_owner', `Booking request: ${input.name} — ${quote ? quote.package.name : oneTime!.label}`, input, quote, chosen.label,
       'Online payments are not connected in this mode yet, so this booking was saved without payment. Confirm it with the customer.');
     return { mode: 'request' as const, booking_id: subscriptionId, start_label: chosen.label };
   }
 
-  // ---- Stripe: a Customer, the package Price, the offer Coupon, and a Checkout Session ----
+  // ---- Stripe: a Customer, then whichever of the three shapes this is --------------------
   const { stripe, account } = await resolve(mode);
   const stripeCustomerId = await stripeCustomer(stripe, account, mode, customerId, input);
-  const { priceId, productId } = await priceForPackage(mode, { ...quote.package });
-  const offer = quote.appliedOffers[0];
-  const couponId = offer ? await couponForOffer(mode, { id: offer.id, name: offer.name, value: offer.percent_off }, [productId]) : null;
 
-  const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [{ price: priceId, quantity: 1 }];
-  for (const l of quote.lines.filter((x) => x.kind === 'extra')) {
-    lineItems.push({ quantity: 1, price_data: { currency: 'usd', unit_amount: l.cents, product_data: { name: l.label } } });
+  let session;
+  if (oneTime) {
+    // A one-time job pays with `application_fee_amount`, because application_fee_percent reaches
+    // subscription invoices and nothing else (P17 §1). money.ts is still the only door.
+    session = await chargeOnce({
+      mode,
+      customerId: stripeCustomerId,
+      amountCents: oneTime.cents,
+      lineItems: [{ quantity: 1, price_data: { currency: 'usd', unit_amount: oneTime.cents, product_data: { name: oneTime.label } } }],
+      metadata: { booking_id: subscriptionId, customer_id: customerId, tier_id: oneTime.tier.id, shape: 'one_time' },
+      submitMessage: `We'll be there ${chosen.label}.`,
+      successUrl: `${base}/book/complete?session_id={CHECKOUT_SESSION_ID}&booking=${subscriptionId}`,
+      cancelUrl: `${base}/book?resume=${subscriptionId}`,
+      idempotencyKey: `onetime-${input.idempotency_key}`,
+    });
+  } else {
+    const { priceId, productId } = await priceForPackage(mode, { ...quote!.package });
+    const offer = quote!.appliedOffers[0];
+    const couponId = offer ? await couponForOffer(mode, { id: offer.id, name: offer.name, value: offer.percent_off }, [productId]) : null;
+    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [{ price: priceId, quantity: 1 }];
+    for (const l of quote!.lines.filter((x) => x.kind === 'extra')) {
+      lineItems.push({ quantity: 1, price_data: { currency: 'usd', unit_amount: l.cents, product_data: { name: l.label } } });
+    }
+    session = await startSubscription({
+      mode,
+      customerId: stripeCustomerId,
+      lineItems,
+      couponId,
+      description: `${quote!.package.name} · starts ${chosen.label}`,
+      metadata: { booking_id: subscriptionId, customer_id: customerId, package_slug: quote!.package.slug, lane: payAfter ? 'payafter' : 'prepay' },
+      submitMessage: payAfter
+        ? `Nothing is charged today. Your first payment is ${niceDate(firstChargeOn!)}, after your first visit on ${chosen.label}. Cancel anytime from your account.`
+        : `Starts ${chosen.label}. Your plan renews monthly — cancel anytime from your Scoop Dogg account.`,
+      successUrl: `${base}/book/complete?session_id={CHECKOUT_SESSION_ID}&booking=${subscriptionId}`,
+      cancelUrl: `${base}/book?resume=${subscriptionId}`,
+      idempotencyKey: `checkout-${input.idempotency_key}`,
+      trialPeriodDays: payAfter ? trialDays : null,
+    });
   }
-  const session = await startSubscription({
-    mode,
-    customerId: stripeCustomerId,
-    lineItems,
-    couponId,
-    description: `${quote.package.name} · starts ${chosen.label}`,
-    metadata: { booking_id: subscriptionId, customer_id: customerId, package_slug: quote.package.slug },
-    submitMessage: `Starts ${chosen.label}. Your plan renews monthly — cancel anytime from your Scoop Dogg account.`,
-    successUrl: `${base}/book/complete?session_id={CHECKOUT_SESSION_ID}&booking=${subscriptionId}`,
-    cancelUrl: `${base}/book?resume=${subscriptionId}`,
-    idempotencyKey: `checkout-${input.idempotency_key}`,
-  });
 
   await db().query(
     `update subscriptions set stripe_customer_id = $2, account_id = $3,
@@ -223,6 +326,9 @@ export async function createBooking(input: BookingInput, base: string) {
       where id = $1`, [subscriptionId, stripeCustomerId, account, session.id, session.url]);
   return { mode: 'checkout' as const, url: session.url as string, booking_id: subscriptionId };
 }
+
+const niceDate = (d: string) =>
+  new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' });
 
 async function stripeCustomer(stripe: Stripe, account: string, mode: StripeMode, customerId: string, input: BookingInput) {
   const { rows } = await db().query(
@@ -257,40 +363,67 @@ export async function completeBooking(bookingId: string, sessionId: string | nul
     const stripe = stripeFor(mode);
     const sid = sessionId ?? sub.booking_answers?.checkout_session;
     if (!sid) throw new BookingError('no_session', 'That booking has no payment yet.', 409);
-    const session = await stripe.checkout.sessions.retrieve(sid, { expand: ['subscription', 'invoice'] }, { stripeAccount: sub.account_id });
+    const oneTime = sub.frequency === 'one_time';
+    const session = await stripe.checkout.sessions.retrieve(
+      sid, { expand: oneTime ? ['payment_intent'] : ['subscription', 'invoice'] }, { stripeAccount: sub.account_id });
     if (session.metadata?.booking_id !== bookingId) throw new BookingError('mismatch', 'That payment does not match this booking.', 409);
+    // `no_payment_required` is lane B: the card was collected and nothing was charged, which is
+    // the whole promise. Treating it as unpaid would refuse the customer their own booking.
     if (session.status !== 'complete' || !['paid', 'no_payment_required'].includes(session.payment_status)) {
       throw new BookingError('unpaid', 'Your payment has not gone through yet.', 402);
     }
-    const stripeSub = session.subscription as Stripe.Subscription;
-    const invoiceId = typeof stripeSub.latest_invoice === 'string' ? stripeSub.latest_invoice : stripeSub.latest_invoice?.id;
+
+    const stripeSub = oneTime ? null : (session.subscription as Stripe.Subscription);
+    const trialing = Boolean(stripeSub && stripeSub.status === 'trialing');
+    const invoiceId = stripeSub
+      ? (typeof stripeSub.latest_invoice === 'string' ? stripeSub.latest_invoice : stripeSub.latest_invoice?.id)
+      : null;
     const invoice = invoiceId ? await stripe.invoices.retrieve(invoiceId, {}, { stripeAccount: sub.account_id }) : null;
-    const periodEnd = stripeSub.items?.data?.[0]?.current_period_end ?? null;
+    const periodEnd = stripeSub?.items?.data?.[0]?.current_period_end ?? null;
+    const intent = oneTime ? (session.payment_intent as Stripe.PaymentIntent | null) : null;
 
     const client = await db().connect();
     try {
       await client.query('begin');
       const { rowCount } = await client.query(
-        `update subscriptions set state = 'active', payment_state = 'ok', stripe_subscription_id = $2,
+        `update subscriptions set state = 'active', payment_state = $4, stripe_subscription_id = $2,
                 current_period_end = to_timestamp($3), updated_at = now()
-          where id = $1 and state <> 'active'`, [bookingId, stripeSub.id, periodEnd]);
+          where id = $1 and state <> 'active'`,
+        [bookingId, stripeSub?.id ?? null, periodEnd, trialing ? 'trialing' : 'ok']);
       if (rowCount) {
-        const fee = Math.round((invoice?.amount_paid ?? session.amount_total ?? 0) * (Number(stripeSub.application_fee_percent ?? 0) / 100));
-        const { rows: inv } = await client.query(
-          `insert into invoices (customer_id, subscription_id, period_start, period_end, subtotal_cents, platform_fee_cents, total_cents,
-                                 state, issued_at, paid_at, stripe_invoice_id, collection_method, livemode, account_id, hosted_invoice_url)
-           values ($1,$2,$3::date,to_timestamp($4)::date,$5,$6,$7,'paid',now(),now(),$8,'auto',$9,$10,$11)
-           on conflict (stripe_invoice_id) where stripe_invoice_id is not null do update set state = 'paid' returning id`,
-          [sub.customer_id, bookingId, sub.starts_on, periodEnd, invoice?.subtotal ?? session.amount_subtotal ?? 0, fee,
-           invoice?.amount_paid ?? session.amount_total ?? 0, invoice?.id ?? null, sub.livemode, sub.account_id, invoice?.hosted_invoice_url ?? null]);
-        await client.query(
-          `insert into payments (customer_id, invoice_id, kind, amount_cents, currency, stripe_payment_id, stripe_account_id, platform_fee_cents, state, livemode)
-           values ($1,$2,'charge',$3,'usd',$4,$5,$6,'succeeded',$7) on conflict do nothing`,
-          [sub.customer_id, inv[0].id, invoice?.amount_paid ?? session.amount_total ?? 0, invoice?.id ?? session.id, sub.account_id, fee, sub.livemode]);
-        await generateVisits(client, bookingId, sub.property_id, sub.starts_on, periodEnd);
+        // MONEY ROWS ONLY WHERE MONEY MOVED. A trial collects a card and charges nothing, so
+        // writing a zero invoice and a zero payment would put a payment in the books that never
+        // happened - and the growth board reads those rows.
+        const paidCents = oneTime ? (intent?.amount_received ?? session.amount_total ?? 0)
+                                  : (invoice?.amount_paid ?? session.amount_total ?? 0);
+        const moved = !trialing && paidCents > 0;
+        if (moved) {
+          const fee = oneTime
+            ? (intent?.application_fee_amount ?? await feeCentsFor(paidCents, mode))
+            : Math.round(paidCents * (Number(stripeSub?.application_fee_percent ?? 0) / 100));
+          const { rows: inv } = await client.query(
+            `insert into invoices (customer_id, subscription_id, period_start, period_end, subtotal_cents, platform_fee_cents, total_cents,
+                                   state, issued_at, paid_at, stripe_invoice_id, collection_method, livemode, account_id, hosted_invoice_url)
+             values ($1,$2,$3::date,$4,$5,$6,$7,'paid',now(),now(),$8,'auto',$9,$10,$11)
+             on conflict (stripe_invoice_id) where stripe_invoice_id is not null do update set state = 'paid' returning id`,
+            [sub.customer_id, bookingId, sub.starts_on, periodEnd ? new Date(periodEnd * 1000).toISOString().slice(0, 10) : sub.starts_on,
+             invoice?.subtotal ?? session.amount_subtotal ?? paidCents, fee, paidCents,
+             invoice?.id ?? null, sub.livemode, sub.account_id, invoice?.hosted_invoice_url ?? null]);
+          await client.query(
+            `insert into payments (customer_id, invoice_id, kind, amount_cents, currency, stripe_payment_id, stripe_account_id, platform_fee_cents, state, livemode)
+             values ($1,$2,'charge',$3,'usd',$4,$5,$6,'succeeded',$7) on conflict do nothing`,
+            [sub.customer_id, inv[0].id, paidCents, invoice?.id ?? intent?.id ?? session.id, sub.account_id, fee, sub.livemode]);
+        }
+        await generateVisits(client, bookingId, sub.property_id, sub.starts_on, periodEnd, oneTime);
         await appendEvent(client, {
-          subjectKind: 'subscription', subjectId: bookingId, type: 'subscription.activated', from: sub.state, to: 'active',
-          actorKind: 'system', payload: { stripe_subscription: stripeSub.id, invoice: invoice?.id ?? null, amount_paid: invoice?.amount_paid ?? session.amount_total },
+          subjectKind: 'subscription', subjectId: bookingId,
+          type: oneTime ? 'onetime.charged' : trialing ? 'booking.trial_started' : 'subscription.activated',
+          from: sub.state, to: 'active', actorKind: 'system',
+          payload: {
+            stripe_subscription: stripeSub?.id ?? null, invoice: invoice?.id ?? null,
+            payment_intent: intent?.id ?? null, amount_paid: paidCents,
+            trialing, first_charge_on: sub.booking_answers?.first_charge_on ?? null,
+          },
         });
       }
       await client.query('commit');
@@ -309,18 +442,27 @@ export async function completeBooking(bookingId: string, sessionId: string | nul
   return {
     booking_id: bookingId,
     name: sub.customer_name,
-    package: sub.package_name,
+    package: sub.package_name ?? sub.price_tier_label,
     next_visit: next[0]?.d ?? sub.starts_on,
     weekday: weekdayName(sub.service_weekday),
+    one_time: sub.frequency === 'one_time',
+    first_charge_on: sub.booking_answers?.first_charge_on ?? null,
   };
 }
 
-/** Weekly visits from the start day through the paid period (at least five). Idempotent. */
-async function generateVisits(client: { query: (q: string, p: unknown[]) => Promise<unknown> }, subscriptionId: string, propertyId: string, startsOn: string | Date, periodEnd: number | null) {
+/**
+ * Weekly visits from the start day through the paid period (at least five). Idempotent.
+ *
+ * A ONE-TIME JOB IS ONE VISIT. It is a `subscriptions` row with frequency 'one_time' (P16 §3), so
+ * scheduling, the crew's day and the proof photo all work on the row they already work on - but
+ * generating ten weekly visits for a deep clean would put a crew on a route nobody booked.
+ */
+async function generateVisits(client: { query: (q: string, p: unknown[]) => Promise<unknown> }, subscriptionId: string, propertyId: string, startsOn: string | Date, periodEnd: number | null, oneTime = false) {
   const start = new Date(typeof startsOn === 'string' ? `${startsOn}T12:00:00Z` : startsOn);
   const end = periodEnd ? new Date(periodEnd * 1000) : new Date(start.getTime() + 35 * 86_400_000);
-  for (let i = 0, d = new Date(start); i < 10; i++, d = new Date(d.getTime() + 7 * 86_400_000)) {
-    if (i >= 5 && d > end) break;
+  const count = oneTime ? 1 : 10;
+  for (let i = 0, d = new Date(start); i < count; i++, d = new Date(d.getTime() + 7 * 86_400_000)) {
+    if (!oneTime && i >= 5 && d > end) break;
     await client.query(
       `insert into visits (subscription_id, property_id, scheduled_for, state, chargeable) values ($1,$2,$3,'scheduled',false)
        on conflict do nothing`, [subscriptionId, propertyId, d.toISOString().slice(0, 10)]);
@@ -338,32 +480,53 @@ const shell = (title: string, body: string) => `<div style="font-family:system-u
 
 async function sendWelcome(bookingId: string) {
   const { rows } = await db().query(
-    `select s.starts_on::text as starts_on, s.service_weekday, s.monthly_price_cents, s.discount, s.extras, c.name, c.email, c.phone,
+    `select s.starts_on::text as starts_on, s.service_weekday, s.monthly_price_cents, s.price_cents, s.frequency,
+            s.discount, s.extras, s.payment_state, s.booking_answers, c.name, c.email, c.phone,
             p.address, p.city, pk.name as package_name
        from subscriptions s join customers c on c.id = s.customer_id join properties p on p.id = s.property_id
        left join packages pk on pk.id = s.package_id where s.id = $1`, [bookingId]);
   const b = rows[0];
   if (!b) return;
-  const first = b.discount?.first_charge_cents ?? b.monthly_price_cents;
-  const startLabel = new Date(`${b.starts_on}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' });
+  const oneTime = b.frequency === 'one_time';
+  const trialing = b.payment_state === 'trialing';
+  const firstChargeOn: string | null = b.booking_answers?.first_charge_on ?? null;
+  const startLabel = niceDate(b.starts_on);
+  const paidToday = trialing ? 0 : (b.discount?.first_charge_cents ?? b.price_cents ?? b.monthly_price_cents ?? 0);
+
+  // LANE B SAYS THE DATE, NEVER "LATER" (P16 §5). A trial the customer cannot see is a surprise
+  // charge, and a surprise charge is a chargeback with a story attached.
+  const moneyRows = oneTime
+    ? `<tr><td style="padding:10px 16px;color:#5B6660">Paid today</td><td style="padding:10px 16px">${formatCents(paidToday, { forceDecimals: paidToday % 100 !== 0 })}</td></tr>`
+    : trialing
+      ? `<tr><td style="padding:10px 16px;color:#5B6660">Paid today</td><td style="padding:10px 16px"><strong>Nothing</strong></td></tr>
+         <tr><td style="padding:10px 16px;color:#5B6660">First payment</td><td style="padding:10px 16px;font-weight:600">${firstChargeOn ? niceDate(firstChargeOn) : 'after your first visit'}</td></tr>
+         <tr><td style="padding:10px 16px;color:#5B6660">Then monthly</td><td style="padding:10px 16px">${formatCents(b.monthly_price_cents)}</td></tr>`
+      : `<tr><td style="padding:10px 16px;color:#5B6660">Paid today</td><td style="padding:10px 16px">${formatCents(paidToday, { forceDecimals: paidToday % 100 !== 0 })}</td></tr>
+         <tr><td style="padding:10px 16px;color:#5B6660">Then monthly</td><td style="padding:10px 16px">${formatCents(b.monthly_price_cents)}</td></tr>`;
+
+  const opening = oneTime
+    ? `<p style="font-size:16px;line-height:1.6">Thanks for choosing Scoop Dogg. We'll be there on <strong>${startLabel}</strong>.</p>`
+    : `<p style="font-size:16px;line-height:1.6">Thanks for choosing Scoop Dogg. Your first visit is <strong>${startLabel}</strong>, and after that we'll be there every <strong>${weekdayName(b.service_weekday)}</strong>.</p>`;
+
   await sendEmail({
     purpose: 'booking_welcome',
     recipients: { explicit: [b.email] },
     fromName: 'Scoop Dogg',
-    subject: `You're booked — first visit ${startLabel}`,
+    subject: oneTime ? `You're booked — ${startLabel}` : `You're booked — first visit ${startLabel}`,
     html: shell(`You're booked, ${String(b.name).split(' ')[0]}.`, `
-      <p style="font-size:16px;line-height:1.6">Thanks for choosing Scoop Dogg. Your first visit is <strong>${startLabel}</strong>, and after that we'll be there every <strong>${weekdayName(b.service_weekday)}</strong>.</p>
+      ${opening}
       <table style="width:100%;border-collapse:collapse;background:#F3F7F4;border-radius:12px;margin:20px 0">
-        <tr><td style="padding:10px 16px;color:#5B6660">Plan</td><td style="padding:10px 16px;font-weight:600">${b.package_name ?? ''}</td></tr>
+        <tr><td style="padding:10px 16px;color:#5B6660">${oneTime ? 'Job' : 'Plan'}</td><td style="padding:10px 16px;font-weight:600">${b.package_name ?? ''}</td></tr>
         <tr><td style="padding:10px 16px;color:#5B6660">Address</td><td style="padding:10px 16px">${b.address}, ${b.city}</td></tr>
-        <tr><td style="padding:10px 16px;color:#5B6660">Paid today</td><td style="padding:10px 16px">${formatCents(first, { forceDecimals: first % 100 !== 0 })}</td></tr>
-        <tr><td style="padding:10px 16px;color:#5B6660">Then monthly</td><td style="padding:10px 16px">${formatCents(b.monthly_price_cents)}</td></tr>
+        ${moneyRows}
       </table>
-      <p style="font-size:16px;line-height:1.6">You can skip a week, pause or cancel anytime from your account.</p>
+      ${oneTime ? '' : '<p style="font-size:16px;line-height:1.6">You can skip a week, pause or cancel anytime from your account.</p>'}
       <p><a href="${process.env.PUBLIC_SITE_URL ?? 'https://scoopdogg.vercel.app'}/account" style="display:inline-block;background:#F4A024;color:#0F2A1F;font-weight:600;padding:12px 20px;border-radius:10px;text-decoration:none">Go to your account</a></p>`),
   });
-  await notifyOwner('booking_owner', `New customer: ${b.name} — ${b.package_name}`,
-    { name: b.name, email: b.email, phone: b.phone, address: b.address, city: b.city } as BookingInput, null, startLabel, 'Paid online. First month collected.');
+  await notifyOwner('booking_owner', `New customer: ${b.name} — ${b.package_name ?? 'one-time job'}`,
+    { name: b.name, email: b.email, phone: b.phone, address: b.address, city: b.city } as BookingInput, null, startLabel,
+    trialing ? `Card saved, nothing charged yet. First payment ${firstChargeOn ? niceDate(firstChargeOn) : 'after visit one'}.`
+             : oneTime ? 'Paid online. One-time job.' : 'Paid online. First month collected.');
 }
 
 async function notifyOwner(purpose: 'booking_owner' | 'waitlist_owner', subject: string, input: Partial<BookingInput>, quote: Priced['quote'] | null, startLabel: string | null, note: string) {

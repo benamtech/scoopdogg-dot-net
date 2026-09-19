@@ -3,6 +3,11 @@
  * The first step of booking, on any page. A plain GET form to /book, so it works before
  * JavaScript loads and with JavaScript off (R5 §2: the market puts a zip or an address box
  * on the first screen; LawnStarter's whole hero is this one field).
+ *
+ * IT ASKS FOR A ZIP NOW (P16 §2). Five digits is the shortest question that can be answered with
+ * a price, and the funnel resolves it against rows with a source on them rather than against a
+ * constant. The field still accepts a pasted street address - the booking island parses the ZIP
+ * back out of it - because nobody should be punished for typing what they expected to type.
  */
 export interface Props {
   size?: 'lg' | 'md';
@@ -22,7 +27,7 @@ export interface Props {
   /** Always one field above one button: for sidebars too narrow for a row. */
   stack?: boolean;
 }
-const { size = 'lg', service, city, label = 'Where is your yard?', cta = 'See my price', heroAnchor = false, source = 'address-form', hideLabel = false, note, flat = false, stack = false } = Astro.props;
+const { size = 'lg', service, city, label = "Where's your yard?", cta = 'See my price', heroAnchor = false, source = 'address-form', hideLabel = false, note, flat = false, stack = false } = Astro.props;
 const uid = `addr-${Math.random().toString(36).slice(2, 8)}`;
 ---
 <form action="/book" method="get" class="w-full max-w-xl" data-address-form data-source={source} {...(heroAnchor ? { 'data-hero-cta': '' } : {})}>
@@ -35,10 +40,10 @@ const uid = `addr-${Math.random().toString(36).slice(2, 8)}`;
         name="address"
         type="text"
         inputmode="text"
-        autocomplete="street-address"
-        placeholder="Street address, city"
+        autocomplete="postal-code"
+        placeholder="ZIP code"
         required
-        minlength="4"
+        minlength="5"
         class={`w-full rounded-md border-0 bg-transparent py-3.5 pl-11 pr-3 text-ink-900 placeholder:text-ink-400 focus:outline-none focus:ring-0 ${size === 'lg' ? 'text-lg' : 'text-base'}`}
       />
     </div>

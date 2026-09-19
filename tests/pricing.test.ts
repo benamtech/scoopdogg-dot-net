@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  tierForQuantity, formatTierPrice, quoteBooking, startDates, offersFor,
+  tierForQuantity, formatTierPrice, quoteBooking, quoteOneTime, bookableServices, startDates, offersFor,
   type Catalog, type Service, type Tier, type Package, type Offer,
 } from '../src/shared/pricing.ts';
 
@@ -98,4 +98,57 @@ test('start dates follow the city days, skip full days, and fall back to service
   assert.deepEqual(tue.map((d) => [d.date, d.full]), [['2026-09-22', true], ['2026-09-25', false], ['2026-09-29', false]]);
   const any = startDates({ today: '2026-09-16', areaWeekdays: [], serviceDays: [1, 3], leadDays: 3, windowDays: 7, dayCapacity: 20, max: 4 });
   assert.deepEqual(any.map((d) => d.weekday), [1, 3]);
+});
+
+// ---------------------------------------------------------------------------------------
+// One-time work (P16 §3): the second and third of the three shapes.
+// ---------------------------------------------------------------------------------------
+
+test('a priced one-time tier quotes at its own price', () => {
+  const q = quoteOneTime(catalog, 'y1');
+  assert.equal(q.ok, true);
+  if (q.ok) {
+    assert.equal(q.cents, 9900);
+    assert.ok(q.label.includes('y1'));
+  }
+});
+
+test('a quote tier refuses to become a checkout', () => {
+  const q = quoteOneTime(catalog, 'y3');
+  assert.equal(q.ok, false);
+  if (!q.ok) assert.equal(q.reason, 'requires_quote');
+});
+
+test('a "from" price never reaches a checkout either', () => {
+  // gates/from-price-never-final.mjs makes the same promise about pages. A checkout is the most
+  // final a number ever gets, so the resolver refuses before anyone is charged a floor.
+  // The fixture's 'from' tier belongs to a service the fixture never declares, so declare it:
+  // the rule being pinned is about the PRICE, not about a missing service.
+  const c: Catalog = { ...catalog, services: [...catalog.services, svc('weekly-yard-maintenance', 'sqft')] };
+  const q = quoteOneTime(c, 'from');
+  assert.equal(q.ok, false);
+  if (!q.ok) assert.equal(q.reason, 'from_price');
+});
+
+test('an unknown tier is refused rather than priced at zero', () => {
+  const q = quoteOneTime(catalog, 'no-such-tier');
+  assert.equal(q.ok, false);
+  if (!q.ok) assert.equal(q.reason, 'unknown_tier');
+});
+
+test('every service in the catalog has a shape the funnel can render', () => {
+  const shapes = bookableServices(catalog);
+  assert.equal(shapes.length, catalog.services.length);
+  assert.equal(shapes.find((s) => s.service.slug === scoop.slug)?.shape, 'recurring');
+  assert.equal(shapes.find((s) => s.service.slug === yardDeep.slug)?.shape, 'one_time');
+  // The cheapest number a card may advertise comes from the same place the booking charges.
+  assert.equal(shapes.find((s) => s.service.slug === yardDeep.slug)?.fromCents, 9900);
+  assert.equal(shapes.find((s) => s.service.slug === scoop.slug)?.fromCents, 8700);
+});
+
+test('a service with only quote tiers is still offered, as a quote', () => {
+  const quoteOnly = svc('cat-tree-cleaning', 'units');
+  const c: Catalog = { ...catalog, services: [...catalog.services, quoteOnly],
+    tiers: [...catalog.tiers, tier('ct1', quoteOnly.slug, null, null, null)] };
+  assert.equal(bookableServices(c).find((s) => s.service.slug === quoteOnly.slug)?.shape, 'quote');
 });

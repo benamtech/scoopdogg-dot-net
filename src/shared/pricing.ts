@@ -216,6 +216,51 @@ export function quoteBooking(catalog: Catalog, input: BookingInput): Quote {
 }
 
 // ---------------------------------------------------------------------------------------
+// One-time work (P16 §3). Eleven services, three shapes: a recurring plan is a package, a
+// one-time job is a TIER with a price, and anything priced "from" or custom is a quote.
+//
+// A one-time job is still a `subscriptions` row - frequency 'one_time', one visit - because
+// scheduling, proof and the customer's account all already work on that row. What it is NOT is a
+// second pricing path: the same tier rows the service pages read are the ones charged, and
+// `requires_quote` or a "from" price sends the customer to the request lane rather than to a
+// checkout that would quote a number nobody stands behind.
+// ---------------------------------------------------------------------------------------
+
+export type OneTimeQuote =
+  | { ok: true; service: Service; tier: Tier; cents: number; label: string }
+  | { ok: false; reason: 'unknown_tier' | 'requires_quote' | 'from_price' };
+
+export function quoteOneTime(catalog: Catalog, tierId: string): OneTimeQuote {
+  const tier = catalog.tiers.find((t) => t.id === tierId);
+  if (!tier) return { ok: false, reason: 'unknown_tier' };
+  const service = catalog.services.find((s) => s.slug === tier.service_slug);
+  if (!service) return { ok: false, reason: 'unknown_tier' };
+  const p = tierPrice(tier);
+  if (p.kind === 'quote') return { ok: false, reason: 'requires_quote' };
+  // A floor presented as a final number is the one thing gates/from-price-never-final.mjs exists
+  // to stop, and a checkout is the most final a number ever gets.
+  if (p.kind === 'from') return { ok: false, reason: 'from_price' };
+  return { ok: true, service, tier, cents: p.cents, label: `${service.name} · ${tier.label}` };
+}
+
+/** Every service that can be booked, in the shape it books in. The funnel renders from this. */
+export function bookableServices(catalog: Catalog): Array<{
+  service: Service; shape: 'recurring' | 'one_time' | 'quote'; fromCents: number | null;
+}> {
+  return catalog.services.map((service) => {
+    const packages = packagesFor(catalog, service.slug);
+    if (packages.length) {
+      return { service, shape: 'recurring' as const, fromCents: Math.min(...packages.map((p) => p.monthly_price_cents)) };
+    }
+    const priced = catalog.tiers.filter((t) => t.service_slug === service.slug && tierPrice(t).kind === 'price');
+    if (priced.length) {
+      return { service, shape: 'one_time' as const, fromCents: Math.min(...priced.map((t) => t.price_cents as number)) };
+    }
+    return { service, shape: 'quote' as const, fromCents: null };
+  });
+}
+
+// ---------------------------------------------------------------------------------------
 // Service days (portal/P6): a city is served on named weekdays. Empty = no route yet, so
 // every day in schedule.service_days is offered rather than refusing a booking.
 // ---------------------------------------------------------------------------------------
