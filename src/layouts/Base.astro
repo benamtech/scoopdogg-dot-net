@@ -34,8 +34,39 @@ export interface Props {
 }
 
 const { title, description, canonicalPath, ogImage, jsonLd, noindex = false, bodyClass = '' } = Astro.props;
-/** The GA4 property, from a row. Empty renders no tag — see the block in <head>. */
-const measurementId = setting<string>('analytics.measurement_id', 'G-SNLVJNSP05');
+/**
+ * The GA4 property, from a row. Empty renders no tag at all.
+ *
+ * THE DEFAULT IS EMPTY, which means this site ships no third-party JavaScript. Measured
+ * 2026-09-19 with `scripts/measure-script-cost.mjs`, five samples per arm, same page and same
+ * minute with the tag's hosts blocked at the network layer so machine noise lands on both:
+ *
+ *     page             script (tag on)   script (tag off)   JS downloaded
+ *     /                     214ms              15ms          172KB -> 0
+ *     /areas/ventura        245ms               5ms          172KB -> 0
+ *     /pricing              252ms               7ms          172KB -> 0
+ *
+ * ~240ms of main-thread script and ONE HUNDRED PER CENT of the JavaScript on a content page.
+ * Total task duration on /areas/ventura halves, 458ms to 232ms. Unthrottled 240ms against
+ * Lighthouse's 4x CPU throttle is ~960ms, which is the 830ms Total Blocking Time measured on
+ * that page by a completely different route — two instruments, one answer.
+ *
+ * It was already deferred to first-interaction-or-idle in September and it is STILL the largest
+ * cost on every page. Deferring it further would move the Lighthouse number without moving
+ * anything a visitor experiences, which is gaming the only instrument this site has (R10 §1).
+ *
+ * P19 §2 decided the scoreboard before this: "net adds, sessions, conversion — the only
+ * scoreboard ... from `events` and the money rows — no analytics vendor, no third-party script,
+ * no cookie banner." Step 5 built that spine (`funnel_sessions`, the funnel events) and the
+ * growth board reads it. GA was inherited from the predecessor site and is now measuring
+ * something we measure ourselves, at the cost of every page's only JavaScript.
+ *
+ * TO PUT IT BACK, no deploy needed:  node scripts/set-setting.mjs analytics.measurement_id '"G-SNLVJNSP05"'
+ * The historical GA data is untouched either way — nothing is deleted, the tag just stops
+ * firing. This lands on the branch, so production keeps its tag until somebody promotes the
+ * commit; the promotion checklist in SPEC step 11 names it.
+ */
+const measurementId = setting<string>('analytics.measurement_id', '');
 // A demo build is never indexable, whatever the page asked for. A demo booking page in
 // Google's index outlives the demo.
 const isNoindex = noindex || DEMO_MODE;

@@ -19,7 +19,7 @@ const chrome = readdirSync(chromeDir).filter((d) => d.startsWith('chromium-')).s
 process.env.CHROME_PATH = path.join(chromeDir, chrome, 'chrome-linux64/chrome');
 mkdirSync('output/lighthouse', { recursive: true });
 const pages = ['/', '/pricing', '/services/weekly-pooper-scooper-service', '/areas/ventura', '/book'];
-let failed = 0;
+let failed = 0, unknown = 0;
 const summary = [];
 // Lighthouse's own guidance: one run is noise; take the median of several. Measured here on
 // 2026-09-16 - the same page scored 99 and 83 on consecutive single runs.
@@ -56,7 +56,23 @@ if (load1 > LOAD_LIMIT && !forced) {
   console.log('UNKNOWN 0/0');
   process.exit(2);
 }
-if (forced && load1 > LOAD_LIMIT) console.log('  --force: measuring anyway. Every number below is contaminated by other processes.');
+if (forced && load1 > LOAD_LIMIT) console.log('  --force: load is over the limit, so the SPREAD below decides whether to believe any of it.');
+
+/**
+ * THE SPREAD IS THE REAL INSTRUMENT, and the load average is only a cheap warning.
+ *
+ * Load average counts runnable processes; it does not know whether they will actually compete
+ * with Lighthouse. Deprioritising everything else (`renice 19`) leaves the load high and the
+ * contention gone, so the load check alone would refuse a run that is perfectly sound.
+ *
+ * Reproducibility is the thing that matters and it can be measured directly: three runs of the
+ * same page on a quiet machine agree within a few points. On this box under contention the same
+ * page scored 87, 84 and 74. So a page whose runs disagree by more than SPREAD_LIMIT is
+ * reported UNKNOWN rather than passed or failed — the number is not about the site.
+ *
+ * This is the same rule `demo-negative-control.mjs` follows: unknown is a third answer.
+ */
+const SPREAD_LIMIT = Number(process.env.LH_SPREAD_LIMIT ?? 8);
 for (const p of pages) {
   const runs = [];
   for (let i = 0; i < RUNS; i++) {
@@ -74,16 +90,28 @@ for (const p of pages) {
   }
   if (!runs.length) { failed++; console.log(`  FAIL  ${p} no Lighthouse run completed`); continue; }
   const m = Object.fromEntries(['perf', 'a11y', 'bp', 'seo', 'lcp', 'cls'].map((k) => [k, median(runs.map((r) => r[k]))]));
+  const perfs = runs.map((r) => r.perf);
+  const spread = Math.max(...perfs) - Math.min(...perfs);
+  const reproducible = runs.length >= 3 && spread <= SPREAD_LIMIT;
   const ok = m.perf >= 85 && m.a11y >= 95 && m.lcp < 2500 && m.cls < 0.1;
-  if (!ok) failed++;
-  summary.push({ page: p, ok, runs: runs.length, ...m });
-  console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${p.padEnd(42)} median of ${runs.length}: perf ${m.perf}  a11y ${m.a11y}  bp ${m.bp}  seo ${m.seo}  LCP ${m.lcp}ms  CLS ${m.cls}  (perf runs ${runs.map((r) => r.perf).join('/')})`);
+
+  let verdict;
+  if (!reproducible) { unknown++; verdict = 'UNKNOWN'; }
+  else if (ok) { verdict = 'PASS'; }
+  else { failed++; verdict = 'FAIL'; }
+
+  summary.push({ page: p, verdict, runs: runs.length, spread, ...m });
+  console.log(`  ${verdict.padEnd(7)} ${p.padEnd(42)} median of ${runs.length}: perf ${m.perf}  a11y ${m.a11y}  bp ${m.bp}  seo ${m.seo}  LCP ${m.lcp}ms  CLS ${m.cls}  (runs ${perfs.join('/')}, spread ${spread})`);
+  if (!reproducible) console.log(`          spread ${spread} > ${SPREAD_LIMIT}: these three runs disagree, so the number is about the machine. Not counted either way.`);
 }
 (await import('node:fs')).writeFileSync('output/lighthouse/receipt.json', JSON.stringify({
   ran_at: new Date().toISOString(), base, failed, summary,
   // A score without the machine's state beside it is not a measurement anybody can check later.
-  machine: { cores: CORES, load_at_start: Number(load1.toFixed(2)), load_at_finish: Number(os.loadavg()[0].toFixed(2)), forced },
+  machine: { cores: CORES, load_at_start: Number(load1.toFixed(2)), load_at_finish: Number(os.loadavg()[0].toFixed(2)), forced, spread_limit: SPREAD_LIMIT },
+  unknown,
 }, null, 2));
 console.log(`  machine at finish: load average ${os.loadavg()[0].toFixed(2)}`);
-console.log(failed ? `FAIL ${failed}/${pages.length}` : `PASS ${pages.length}/${pages.length}`);
-process.exit(failed ? 1 : 0);
+const measured = pages.length - unknown;
+if (unknown) console.log(`  ${unknown} of ${pages.length} page(s) could not be measured reproducibly on this machine.`);
+console.log(failed ? `FAIL ${failed}/${measured} measured` : unknown ? `UNKNOWN ${unknown}/${pages.length} unmeasurable, ${measured} passed` : `PASS ${pages.length}/${pages.length}`);
+process.exit(failed ? 1 : unknown ? 2 : 0);

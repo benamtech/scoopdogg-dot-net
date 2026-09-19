@@ -1,5 +1,5 @@
 {
-  "pulled_at": "2026-09-19T19:16:41.468Z",
+  "pulled_at": "2026-09-19T20:10:04.224Z",
   "source": "database",
   "services": [
     {
@@ -1179,7 +1179,10 @@
         "ojai",
         "carpinteria"
       ],
-      "service_weekdays": [],
+      "service_weekdays": [
+        2,
+        4
+      ],
       "meta_title": "Dog Poop Cleaning in Ventura, CA | Scoop Dogg",
       "meta_description": "Professional poop scooping in Ventura, CA. Serving Midtown, Ventura Harbor, and surrounding neighborhoods. Weekly & one-time service.",
       "intro": "Ventura is a vibrant coastal city where dogs and their owners love exploring the area near Ventura Harbor, walking the promenade by Ventura Pier, or hanging out around Pacific View Mall. Scoop Dogg keeps yards in Midtown and throughout Ventura clean so you can spend more time enjoying this beautiful community — not cleaning up after your pets.",
@@ -1230,7 +1233,10 @@
         "ventura",
         "santa-paula"
       ],
-      "service_weekdays": [],
+      "service_weekdays": [
+        1,
+        3
+      ],
       "meta_title": "Dog Poop Cleaning in Ojai, CA | Scoop Dogg",
       "meta_description": "Professional poop scooping in Ojai, CA. Serving Downtown Ojai, Ojai Valley, and Meiners Oaks. Weekly & one-time service.",
       "intro": "Ojai's serene Ojai Valley and the charming streets of Downtown Ojai make it one of Ventura County's most beloved communities. With acres of trails and open spaces nearby, dogs in Ojai get plenty of exercise — which means yards need regular attention. Scoop Dogg handles the mess in Meiners Oaks and throughout the valley so you can enjoy Ojai's peaceful lifestyle.",
@@ -1279,7 +1285,10 @@
         "ventura",
         "santa-paula"
       ],
-      "service_weekdays": [],
+      "service_weekdays": [
+        1,
+        3
+      ],
       "meta_title": "Dog Poop Cleaning in Oak View, CA | Scoop Dogg",
       "meta_description": "Professional poop scooping in Oak View, CA. Small community near Ojai. Weekly & one-time service.",
       "intro": "Oak View is a tight-knit community tucked just outside of Ojai, known for its rural feel and dog-friendly properties. Many homes here have generous yards and multiple pets, making regular waste removal especially important. Scoop Dogg provides dependable, friendly service to Oak View households so your outdoor space stays fresh year-round.",
@@ -1434,7 +1443,10 @@
         "ventura",
         "oxnard"
       ],
-      "service_weekdays": [],
+      "service_weekdays": [
+        1,
+        4
+      ],
       "meta_title": "Dog Poop Cleaning in Santa Paula, CA | Scoop Dogg",
       "meta_description": "Professional poop scooping in Santa Paula, CA. Serving Downtown Santa Paula and surrounding areas.",
       "intro": "Santa Paula is a charming agricultural city with deep roots in Ventura County's citrus heritage. Nestled in the Santa Clara River Valley, this friendly community has a strong sense of neighborhood pride — and Scoop Dogg helps keep it that way, one yard at a time. From Downtown Santa Paula to the surrounding residential areas, we're proud to serve this hardworking community.",
@@ -1537,7 +1549,10 @@
         "camarillo",
         "moorpark"
       ],
-      "service_weekdays": [],
+      "service_weekdays": [
+        2,
+        4
+      ],
       "meta_title": "Dog Poop Cleaning in Newbury Park, CA | Scoop Dogg",
       "meta_description": "Professional poop scooping in Newbury Park, CA. Serving Dos Vientos, Borchard Community Center area, and all neighborhoods.",
       "intro": "Newbury Park sits at the western edge of Thousand Oaks, with gorgeous master-planned neighborhoods like Dos Vientos and active community spaces near Borchard Community Center. Families with dogs love this area's wide streets and open parks — and Scoop Dogg makes sure their backyards are just as enjoyable as the parks they visit.",
@@ -1588,7 +1603,10 @@
         "simi-valley",
         "newbury-park"
       ],
-      "service_weekdays": [],
+      "service_weekdays": [
+        3,
+        5
+      ],
       "meta_title": "Dog Poop Cleaning in Moorpark, CA | Scoop Dogg",
       "meta_description": "Professional poop scooping in Moorpark, CA. Serving Moorpark College area, Country Club Estates, and all neighborhoods.",
       "intro": "Moorpark is a growing community known for Moorpark College, its friendly small-town feel, and well-kept residential neighborhoods like Country Club Estates. As more families settle in Moorpark and bring their dogs, keeping yards clean has become more important than ever. Scoop Dogg is proud to serve this community with reliable weekly and on-demand service.",
@@ -1690,7 +1708,10 @@
         "carpinteria",
         "ventura"
       ],
-      "service_weekdays": [],
+      "service_weekdays": [
+        2,
+        5
+      ],
       "meta_title": "Dog Poop Cleaning in Santa Barbara, CA | Scoop Dogg",
       "meta_description": "Professional poop scooping in Santa Barbara, CA. Serving State Street, The Mesa, Goleta area, and all neighborhoods.",
       "intro": "Santa Barbara is one of California's most iconic destinations, with stunning Spanish colonial architecture along State Street, the laid-back energy of The Mesa neighborhood, and proximity to the beaches and trails that dog owners in the area cherish. Scoop Dogg brings professional, no-hassle pet waste removal to Santa Barbara so you and your pup can fully enjoy everything this beautiful city has to offer.",
@@ -1740,7 +1761,10 @@
         "newbury-park",
         "moorpark"
       ],
-      "service_weekdays": [],
+      "service_weekdays": [
+        2,
+        4
+      ],
       "meta_title": "Dog Poop Cleaning in Westlake Village, CA | Scoop Dogg",
       "meta_description": "Professional poop scooping in Westlake Village, CA. Serving North Ranch, Westlake Lake, and all neighborhoods. Weekly & one-time service.",
       "intro": "Westlake Village is one of Southern California's most picturesque master-planned communities, with beautiful lakeside living, upscale neighborhoods in North Ranch, and tree-lined streets that dog owners love to walk. Scoop Dogg keeps yards in Westlake Village spotless so you can fully enjoy the outdoor lifestyle this stunning community offers.",
@@ -1841,7 +1865,10 @@
         "ojai",
         "ventura"
       ],
-      "service_weekdays": [],
+      "service_weekdays": [
+        1,
+        4
+      ],
       "meta_title": "Dog Poop Cleaning in Fillmore, CA | Scoop Dogg",
       "meta_description": "Professional poop scooping in Fillmore, CA. Serving Downtown Fillmore and surrounding residential areas. Weekly & one-time service.",
       "intro": "Fillmore is a proud agricultural community in the heart of Ventura County's Santa Clara River Valley, known for its small-town character, working ranches, and the iconic Fillmore & Western Railway. Dog owners here tend to have larger properties, multiple pets, and busy schedules — which is exactly why Scoop Dogg's reliable, no-fuss service is such a good fit for Fillmore families.",
@@ -1891,7 +1918,10 @@
         "thousand-oaks",
         "malibu"
       ],
-      "service_weekdays": [],
+      "service_weekdays": [
+        2,
+        4
+      ],
       "meta_title": "Dog Poop Cleaning in Agoura Hills, CA | Scoop Dogg",
       "meta_description": "Professional poop scooping in Agoura Hills, CA. Serving Morrison Ranch, Lake Lindero, and all neighborhoods. Weekly & one-time service.",
       "intro": "Agoura Hills is a scenic community nestled in the eastern Santa Monica Mountains, known for its equestrian heritage, the upscale Morrison Ranch neighborhood, and beautiful views throughout the Lake Lindero area. Dog owners here appreciate the perfect balance of suburban convenience and natural beauty — and Scoop Dogg keeps their yards spotless so they can fully enjoy both.",
@@ -1940,7 +1970,9 @@
         "santa-barbara",
         "ventura"
       ],
-      "service_weekdays": [],
+      "service_weekdays": [
+        2
+      ],
       "meta_title": "Dog Poop Cleaning in Carpinteria, CA | Scoop Dogg",
       "meta_description": "Professional poop scooping in Carpinteria, CA. Serving Carpinteria State Beach area and all neighborhoods.",
       "intro": "Carpinteria is a beloved beach town just south of Santa Barbara, famous for Carpinteria State Beach, the avocado festival, and its warm, welcoming community spirit. Dog owners here love the outdoor lifestyle — and Scoop Dogg makes sure their home bases stay just as clean as the beautiful beaches they visit. We're proud to serve Carpinteria's tight-knit neighborhoods.",
