@@ -40,9 +40,9 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, globSync } from 'no
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import pg from 'pg';
-import { loadEnv } from './_env.mjs';
+import { loadEnv } from '../scripts/_env.mjs';
 
-// See gates/_env.mjs: the gate owns its environment so the oracle measures the same run.
+// See scripts/_env.mjs: the gate owns its environment so the oracle measures the same run.
 console.log(`  env: ${JSON.stringify(loadEnv())}`);
 
 const DIST = 'dist';

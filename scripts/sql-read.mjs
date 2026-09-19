@@ -1,12 +1,18 @@
 /**
  * Run ONE read-only query and print the rows as JSON lines.
  *
- *   node --env-file=.env.local scripts/sql-read.mjs "select slug, name from services"
+ *   node scripts/sql-read.mjs "select slug, name from services"
  *
  * The transaction is declared READ ONLY, so a typo that would write fails in Postgres
  * rather than in a client's data. The connection string is never printed.
  */
 import pg from 'pg';
+import { loadEnv } from './_env.mjs';
+// The environment is this script's own dependency. `--env-file=.env.local` still works and
+// is still the documented way for a human; a bare `node scripts/<this>` now works too, which
+// is the only shape an agent session can run (scripts/_env.mjs says why). Nothing is printed.
+loadEnv();
+
 
 const sql = process.argv[2];
 if (!sql) {

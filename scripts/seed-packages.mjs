@@ -2,7 +2,7 @@
  * Derive monthly packages from the published rate card, and write the arithmetic beside
  * every number.
  *
- *   node --env-file=.env.local scripts/seed-packages.mjs [--dry-run]
+ *   node scripts/seed-packages.mjs [--dry-run]
  *
  * Ben, 2026-09-16: monthly packages for scooping and yard work, built "using ... all the
  * pricing info on the site". So nothing here invents a price. A package's monthly price is
@@ -18,6 +18,12 @@
  * price, which AGENTS.md rule 4 forbids.
  */
 import pg from 'pg';
+import { loadEnv } from './_env.mjs';
+// The environment is this script's own dependency. `--env-file=.env.local` still works and
+// is still the documented way for a human; a bare `node scripts/<this>` now works too, which
+// is the only shape an agent session can run (scripts/_env.mjs says why). Nothing is printed.
+loadEnv();
+
 
 const DRY = process.argv.includes('--dry-run');
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Dump the Neon database and prove the dump restores.
 //
-//   node --env-file=.env.local scripts/backup-db.mjs <out-dir>
+//   node scripts/backup-db.mjs <out-dir>
 //
 // Writes <out-dir>/neon.dump (pg_dump custom format), <out-dir>/counts-source.json and
 // <out-dir>/restore-receipt.json. The restore goes into a throwaway Postgres container that
@@ -18,11 +18,17 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import pg from 'pg';
+import { loadEnv } from './_env.mjs';
+// The environment is this script's own dependency. `--env-file=.env.local` still works and
+// is still the documented way for a human; a bare `node scripts/<this>` now works too, which
+// is the only shape an agent session can run (scripts/_env.mjs says why). Nothing is printed.
+loadEnv();
+
 
 const IMAGE = 'postgres:18-alpine';
 const out = process.argv[2];
 if (!out) {
-  console.error('usage: node --env-file=.env.local scripts/backup-db.mjs <out-dir>');
+  console.error('usage: node scripts/backup-db.mjs <out-dir>');
   process.exit(2);
 }
 mkdirSync(out, { recursive: true });

@@ -1,7 +1,7 @@
 /**
  * Read the catalog out of the database and write content/catalog.json, as a build step.
  *
- *   node --env-file=.env.local scripts/pull-catalog.mjs
+ *   node scripts/pull-catalog.mjs
  *
  * WHY. The audit found the catalog stored twice and the site reading the copy the admin
  * could not edit: 11 services, 34 tiers and 16 areas seeded into the database, while every
@@ -17,6 +17,12 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import pg from 'pg';
+import { loadEnv } from './_env.mjs';
+// The environment is this script's own dependency. `--env-file=.env.local` still works and
+// is still the documented way for a human; a bare `node scripts/<this>` now works too, which
+// is the only shape an agent session can run (scripts/_env.mjs says why). Nothing is printed.
+loadEnv();
+
 
 const OUT = path.resolve('content/catalog.json');
 const url = process.env.DATABASE_URL || process.env.POSTGRES_URL;

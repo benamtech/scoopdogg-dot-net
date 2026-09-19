@@ -1,8 +1,8 @@
 /**
  * Remove exactly what scripts/demo-seed.mjs wrote, and prove that is all it removed.
  *
- *   node --env-file=.env.local scripts/demo-clear.mjs            # remove the demo rows
- *   node --env-file=.env.local scripts/demo-clear.mjs --dry-run  # say what would go
+ *   node scripts/demo-clear.mjs            # remove the demo rows
+ *   node scripts/demo-clear.mjs --dry-run  # say what would go
  *
  * EVERY DELETE IS SCOPED BY THE MARK. A demo customer's name begins with DEMO—, and
  * everything else the seed wrote hangs off one of those customers or off a marked lead.
@@ -19,6 +19,12 @@
  * disabling a tamper-evidence trigger to tidy up; the seed stops writing history instead.
  */
 import pg from 'pg';
+import { loadEnv } from './_env.mjs';
+// The environment is this script's own dependency. `--env-file=.env.local` still works and
+// is still the documented way for a human; a bare `node scripts/<this>` now works too, which
+// is the only shape an agent session can run (scripts/_env.mjs says why). Nothing is printed.
+loadEnv();
+
 
 const MARK = 'DEMO—';
 const like = MARK + '%';
@@ -26,7 +32,7 @@ const dry = process.argv.includes('--dry-run');
 
 const url = process.env.DATABASE_URL || process.env.POSTGRES_URL;
 if (!url) {
-  console.error('DATABASE_URL is not set. Run with: node --env-file=.env.local scripts/demo-clear.mjs');
+  console.error('DATABASE_URL is not set. Run with: node scripts/demo-clear.mjs');
   process.exit(1);
 }
 const host = (() => { try { return new URL(url).host.split('.').slice(-3).join('.'); } catch { return 'unknown'; } })();

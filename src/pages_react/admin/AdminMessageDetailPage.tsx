@@ -45,7 +45,7 @@ export default function AdminMessageDetailPage() {
         // The endpoint marks an unread message read as a side effect of opening it, so
         // the client does not need a second call to do it.
         const { message: data } = await adminApi.message(id);
-        setMsg({ ...(data as never), status: data.status === 'unread' ? 'read' : data.status } as never);
+        setMsg({ ...data, status: data.status === 'unread' ? 'read' : data.status });
       } catch { /* handled by ProtectedRoute */ }
       setLoading(false);
     };

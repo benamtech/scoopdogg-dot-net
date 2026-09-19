@@ -6,10 +6,10 @@
  *   node scripts/stripe-admin.mjs link    --mode test          # prints a hosted onboarding URL
  *   node scripts/stripe-admin.mjs publish --mode test          # packages -> versioned Prices
  *
- * Keys are loaded by gates/_env.mjs and never printed. Nothing here runs in live mode
+ * Keys are loaded by scripts/_env.mjs and never printed. Nothing here runs in live mode
  * without `--mode live` typed out.
  */
-import { loadEnv } from '../gates/_env.mjs';
+import { loadEnv } from './_env.mjs';
 import { compileServer } from '../gates/_compile.mjs';
 import path from 'node:path';
 

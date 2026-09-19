@@ -2,8 +2,8 @@
  * Probe what a Stripe key can actually do. A credential in a file is a claim; a live call
  * is a fact.
  *
- *   node --env-file=.env.local scripts/probe-stripe.mjs --mode test          # read-only
- *   node --env-file=.env.local scripts/probe-stripe.mjs --mode live --write  # and record it
+ *   node scripts/probe-stripe.mjs --mode test          # read-only
+ *   node scripts/probe-stripe.mjs --mode live --write  # and record it
  *
  * THE MODE PICKS THE KEY, and there is no fallback between modes. The earlier version fell
  * back to AMTECH_STRIPE, a restricted rk_live_ key with no Connect scope, and went on

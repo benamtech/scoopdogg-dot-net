@@ -11,7 +11,7 @@ import http from 'node:http';
 import { gzipSync } from 'node:zlib';
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { loadEnv } from '../gates/_env.mjs';
+import { loadEnv } from './_env.mjs';
 import { compileServer } from '../gates/_compile.mjs';
 
 process.env.SD_FORCE_DEMO = '1';

@@ -29,10 +29,10 @@
  */
 import pg from 'pg';
 import { compileServer, cleanupCompile } from './_compile.mjs';
-import { loadEnv, isResendKey } from './_env.mjs';
+import { loadEnv, isResendKey } from '../scripts/_env.mjs';
 
 // The gate resolves its own environment, so it measures the same thing whether it is run
-// by hand with --env-file or as a bare command by the oracle. See gates/_env.mjs.
+// by hand with --env-file or as a bare command by the oracle. See scripts/_env.mjs.
 console.log(`  env: ${JSON.stringify(loadEnv())}`);
 
 const MARK = 'DEMO—no-leak-gate';

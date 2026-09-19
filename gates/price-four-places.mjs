@@ -12,7 +12,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import pg from 'pg';
-import { loadEnv } from './_env.mjs';
+import { loadEnv } from '../scripts/_env.mjs';
 import { compileServer } from './_compile.mjs';
 
 loadEnv();

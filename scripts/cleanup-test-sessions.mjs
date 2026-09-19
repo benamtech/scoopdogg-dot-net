@@ -2,7 +2,7 @@
  * Revoke sessions opened by an automated test. Test state does not live in a client's
  * database.
  *
- *   E2E_MARK=... node --env-file=.env.local scripts/cleanup-test-sessions.mjs
+ *   E2E_MARK=... node scripts/cleanup-test-sessions.mjs
  *
  * SCOPED, and it was not before. This script used to delete every session whose actor kind
  * was an admin or a superadmin, with no other condition at all -
@@ -16,6 +16,12 @@
  * cleanup that does not know what it created can only guess.
  */
 import pg from 'pg';
+import { loadEnv } from './_env.mjs';
+// The environment is this script's own dependency. `--env-file=.env.local` still works and
+// is still the documented way for a human; a bare `node scripts/<this>` now works too, which
+// is the only shape an agent session can run (scripts/_env.mjs says why). Nothing is printed.
+loadEnv();
+
 
 const mark = process.env.E2E_MARK;
 if (!mark) {

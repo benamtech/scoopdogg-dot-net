@@ -5,20 +5,28 @@
  *   node gates/brand-tokens.mjs
  *
  * Scope is the rebuilt surfaces (src/pages, src/layouts, src/components/{site,booking,account},
- * src/lib/catalog.ts). The legacy React pages and admin are listed separately as debt, counted
- * but not failed, so the number can only go down.
+ * src/lib/catalog.ts). The legacy React admin is listed separately as debt, counted but not
+ * failed, so the number can only go down. 2026-09-18: the dead half of that tree - App.tsx,
+ * components/home, Nav, Footer, BookingWidget and every non-admin pages_react page - was
+ * deleted once nothing imported it, which is most of the debt gone. What is left is the admin
+ * island, which is live code and waits for its own rewrite (P18 §4).
  *
  * NEGATIVE CONTROL built in: the gate plants a violation in memory and requires the detector to
  * find it, so a regex that matches nothing cannot pass.
  */
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 
-const walk = (d) => readdirSync(d).flatMap((f) => { const p = path.join(d, f); return statSync(p).isDirectory() ? walk(p) : [p]; });
+// A path that is gone contributes nothing. The first version threw ENOENT the day the legacy
+// tree it was tracking was finally deleted, so doing the thing the gate wanted broke the gate.
+const walk = (d) => (existsSync(d)
+  ? readdirSync(d).flatMap((f) => { const p = path.join(d, f); return statSync(p).isDirectory() ? walk(p) : [p]; })
+  : []);
+const keep = (f) => existsSync(f);
 const SCOPE = ['src/pages', 'src/layouts', 'src/components/site', 'src/components/booking', 'src/components/account']
-  .flatMap(walk).concat(['src/lib/catalog.ts'])
+  .flatMap(walk).concat(['src/lib/catalog.ts'].filter(keep))
   .filter((f) => /\.(astro|tsx|ts)$/.test(f) && !f.includes('src/pages/admin'));
-const LEGACY = ['src/pages_react', 'src/components/home', 'src/components/admin'].flatMap(walk).concat(['src/components/Nav.tsx', 'src/components/Footer.tsx', 'src/components/BookingWidget.tsx']).filter((f) => /\.(tsx|ts)$/.test(f));
+const LEGACY = ['src/pages_react', 'src/components/home', 'src/components/admin'].flatMap(walk).concat(['src/components/Nav.tsx', 'src/components/Footer.tsx', 'src/components/BookingWidget.tsx'].filter(keep)).filter((f) => /\.(tsx|ts)$/.test(f));
 
 // Class-string violations only: a hex inside an SVG path or an email template is not a token leak.
 const HEX_CLASS = /\b(?:text|bg|border|ring|from|to|via|fill|stroke|shadow|outline|decoration)-\[#[0-9a-fA-F]{3,8}\]/g;

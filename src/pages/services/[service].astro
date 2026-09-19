@@ -44,7 +44,7 @@ const jsonLd = [
     areaServed: [{ '@type': 'AdministrativeArea', name: 'Ventura County, CA' }, { '@type': 'AdministrativeArea', name: 'Santa Barbara County, CA' }],
     offers: pkgs.length
       ? pkgs.map((p) => ({ '@type': 'Offer', name: p.name, priceSpecification: { '@type': 'UnitPriceSpecification', price: (p.monthly_price_cents / 100).toFixed(2), priceCurrency: 'USD', unitText: 'MON' } }))
-      : tiers.filter((t) => t.price_cents && !t.price_is_from).map((t) => ({ '@type': 'Offer', name: t.label, price: (t.price_cents! / 100).toFixed(2), priceCurrency: 'USD' })),
+      : tiers.filter((t) => t.price_cents && !t.price_is_from).map((t) => ({ '@type': 'Offer', name: t.label, price: ((t.price_cents ?? 0) / 100).toFixed(2), priceCurrency: 'USD' })),
   },
   ...(s.faqs?.length ? [{ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: s.faqs.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) }] : []),
 ];

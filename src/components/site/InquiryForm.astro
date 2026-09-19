@@ -5,7 +5,7 @@
  * mailto link; with it, it submits in place and confirms.
  */
 import { business } from '../../lib/catalog';
-export interface Props { subject: string; fields?: { name: string; label: string; type?: string; required?: boolean; textarea?: boolean; options?: string[] }[]; cta?: string; note?: string; title?: string; lede?: string }
+export interface Props { subject: string; fields?: { name: string; label: string; type?: 'text' | 'email' | 'tel' | 'url' | 'number' | 'date'; required?: boolean; textarea?: boolean; options?: string[] }[]; cta?: string; note?: string; title?: string; lede?: string }
 const { subject, cta = 'Send', note, fields = [], title, lede } = Astro.props;
 const id = `inq-${subject.toLowerCase().replace(/[^a-z]+/g, '-')}`;
 ---

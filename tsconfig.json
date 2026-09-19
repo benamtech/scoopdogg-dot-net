@@ -1,7 +1,21 @@
 {
-  "files": [],
-  "references": [
-    { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" }
-  ]
+  "$schema": "https://json.schemastore.org/tsconfig",
+  // ONE project, extending Astro's own base. The predecessor was the Vite template's
+  // `{ files: [], references: [...] }`, which `astro check` reads as a project that contains
+  // no files: it fell back to defaults, never loaded `.astro/types.d.ts`, and therefore typed
+  // every `import mascot from '../assets/art/x.png'` as a plain string. Thirteen of the twenty
+  // errors that appeared the first time this gate could run were that one line.
+  "extends": "astro/tsconfigs/strict",
+  "compilerOptions": {
+    // The React islands (admin, booking, account) are compiled by @astrojs/react.
+    "jsx": "react-jsx",
+    "jsxImportSource": "react",
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    // src/lib/demo.ts imports content/demo.json, which the build writes as step one.
+    "resolveJsonModule": true
+  },
+  "include": [".astro/types.d.ts", "src/**/*", "server/**/*", "api/**/*"],
+  "exclude": ["dist", "node_modules", ".gate-build", "output"]
 }

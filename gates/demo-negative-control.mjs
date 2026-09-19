@@ -37,9 +37,9 @@
  */
 import pg from 'pg';
 import { compileServer, cleanupCompile } from './_compile.mjs';
-import { loadEnv, isResendKey } from './_env.mjs';
+import { loadEnv, isResendKey } from '../scripts/_env.mjs';
 
-// See gates/_env.mjs: the gate owns its environment so the oracle measures the same run.
+// See scripts/_env.mjs: the gate owns its environment so the oracle measures the same run.
 console.log(`  env: ${JSON.stringify(loadEnv())}`);
 
 const MARK = 'DEMO—negative-control';

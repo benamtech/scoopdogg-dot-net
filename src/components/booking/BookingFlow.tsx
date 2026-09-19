@@ -7,7 +7,7 @@
  * lesson: client:load controlled inputs erase pre-hydration typing).
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { quoteBooking, formatCents, tierPrice, type Catalog, type Package, type Tier } from '../../shared/pricing';
+import { quoteBooking, formatCents, tierPrice, type Catalog, type Tier } from '../../shared/pricing';
 
 type Area = { slug: string; name: string; market: string; bookable: boolean };
 type ServiceInfo = { slug: string; name: string; what_includes: string[] };

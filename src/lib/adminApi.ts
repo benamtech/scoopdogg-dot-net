@@ -1,3 +1,4 @@
+import type { MessageStatus } from './types';
 /**
  * The admin's only way to reach data. Every call goes to /api/admin/*, which runs on the
  * server and holds the sole database credential. The browser has none — that is the
@@ -14,7 +15,7 @@ export interface Lead {
 }
 export interface Message {
   id: string; name: string; email: string; phone: string; subject: string;
-  message: string; status: string; created_at: string;
+  message: string; status: MessageStatus; created_at: string;
 }
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {

@@ -2,10 +2,10 @@
  * Put a demonstrable business into the database, entirely made of rows that can be taken
  * back out again.
  *
- *   node --env-file=.env.local scripts/demo-seed.mjs --rehearse   # ONE row, round trip, receipt
- *   node --env-file=.env.local scripts/demo-seed.mjs --one-row    # ONE row, leave it there
- *   node --env-file=.env.local scripts/demo-seed.mjs              # the full fixture set
- *   node --env-file=.env.local scripts/demo-seed.mjs --status      # what is already seeded
+ *   node scripts/demo-seed.mjs --rehearse   # ONE row, round trip, receipt
+ *   node scripts/demo-seed.mjs --one-row    # ONE row, leave it there
+ *   node scripts/demo-seed.mjs              # the full fixture set
+ *   node scripts/demo-seed.mjs --status      # what is already seeded
  *
  * WHY THIS EXISTS. Before it, the only way to create test data on this system was to submit
  * a real form, which emails the owner. Every acceptance step is "Ben tried it", so every
@@ -31,6 +31,12 @@ import { randomUUID } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import pg from 'pg';
+import { loadEnv } from './_env.mjs';
+// The environment is this script's own dependency. `--env-file=.env.local` still works and
+// is still the documented way for a human; a bare `node scripts/<this>` now works too, which
+// is the only shape an agent session can run (scripts/_env.mjs says why). Nothing is printed.
+loadEnv();
+
 
 export const MARK = 'DEMO—';
 
@@ -38,7 +44,7 @@ const args = process.argv.slice(2);
 const has = (f) => args.includes(f);
 const url = process.env.DATABASE_URL || process.env.POSTGRES_URL;
 if (!url) {
-  console.error('DATABASE_URL is not set. Run with: node --env-file=.env.local scripts/demo-seed.mjs');
+  console.error('DATABASE_URL is not set. Run with: node scripts/demo-seed.mjs');
   process.exit(1);
 }
 const host = (() => { try { return new URL(url).host.split('.').slice(-3).join('.'); } catch { return 'unknown'; } })();
@@ -322,7 +328,7 @@ const receipt = await (async () => {
               `${after.demo_leads} leads, ${after.demo_contact_messages} contact message(s)`);
   console.log(`  ${untouched ? 'real rows untouched' : 'WARNING: a real-row count moved'} — ` +
               `${after.real_leads} real leads, ${after.real_customers} real customers`);
-  console.log(`  undo: node --env-file=.env.local scripts/demo-clear.mjs`);
+  console.log(`  undo: node scripts/demo-clear.mjs`);
   return untouched;
 })();
 

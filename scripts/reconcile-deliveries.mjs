@@ -15,6 +15,12 @@
  * unresolved, and applying the same event twice leaves the same row.
  */
 import { compileServer, cleanupCompile } from '../gates/_compile.mjs';
+import { loadEnv } from './_env.mjs';
+// The environment is this script's own dependency. `--env-file=.env.local` still works and
+// is still the documented way for a human; a bare `node scripts/<this>` now works too, which
+// is the only shape an agent session can run (scripts/_env.mjs says why). Nothing is printed.
+loadEnv();
+
 
 const url = process.env.DATABASE_URL || process.env.POSTGRES_URL;
 if (!url) {

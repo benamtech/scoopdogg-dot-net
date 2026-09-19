@@ -18,7 +18,7 @@
 import { chromium } from 'playwright';
 import pg from 'pg';
 import { readFileSync } from 'node:fs';
-import { loadEnv } from './_env.mjs';
+import { loadEnv } from '../scripts/_env.mjs';
 import { quoteBooking, formatCents } from '../.gate-build/src/shared/pricing.js';
 
 loadEnv();
