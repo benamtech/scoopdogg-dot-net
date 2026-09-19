@@ -7,7 +7,7 @@
  */
 import type Stripe from 'stripe';
 import { db } from '../server/lib/db.js';
-import { stripeFor, type StripeMode } from '../server/lib/stripe.js';
+import { stripeFor, probeAccount, type StripeMode } from '../server/lib/stripe.js';
 import { completeBooking } from '../server/lib/booking.js';
 import { appendEvent } from '../server/lib/events.js';
 import { sendJson, safeError, type ApiRequest, type ApiResponse } from '../server/lib/http.js';
@@ -63,6 +63,49 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         }
       }
     }
+    // THE CONNECTED ACCOUNT'S OWN STATUS (P18 §1.3). The admin re-reads Stripe on every load of
+    // the Payments screen, but nobody is looking at that screen the afternoon a document expires
+    // and card_payments goes to 'inactive'. This is what notices in between. v2 accounts emit v1
+    // `account.updated` on the Connected-accounts scope for merchant-configuration changes, which
+    // is why a v1 snapshot endpoint can carry it at all.
+    if (event.type === 'account.updated') {
+      const fresh = await probeAccount(mode).catch(() => null);
+      console.log(`[stripe-webhook] account.updated ${event.account ?? ''} -> card_payments=${fresh?.card_payments ?? 'unread'} ready=${fresh?.ready ?? 'unread'}`);
+    }
+
+    // LANE B, THREE DAYS OUT. Stripe sends this before it charges a trialing subscription. We
+    // record it against the subscription rather than emailing from here: the customer already
+    // knows the date (it is on the review screen, in the welcome mail and in their account), and
+    // a second reminder belongs to the lifecycle loop in step 9, through notify.ts.
+    if (event.type === 'customer.subscription.trial_will_end') {
+      const s = obj as unknown as Stripe.Subscription;
+      const { rows } = await db().query(`select id from subscriptions where stripe_subscription_id = $1`, [s.id]);
+      if (rows[0]) {
+        await appendEvent(db(), {
+          subjectKind: 'subscription', subjectId: rows[0].id, type: 'booking.trial_will_end',
+          actorKind: 'system', payload: { trial_end: s.trial_end, has_payment_method: Boolean(s.default_payment_method) },
+        });
+      }
+    }
+
+    // The trial converted: Stripe charged the first invoice and the subscription left 'trialing'.
+    // invoice.paid writes the money rows; this is what moves OUR state off trialing, because a
+    // row that says trialing forever would tell the customer's account screen the wrong story.
+    if (event.type === 'customer.subscription.updated') {
+      const s = obj as unknown as Stripe.Subscription;
+      if (s.status === 'active') {
+        const { rows } = await db().query(
+          `update subscriptions set payment_state = 'ok', updated_at = now()
+            where stripe_subscription_id = $1 and payment_state = 'trialing' returning id`, [s.id]);
+        if (rows[0]) {
+          await appendEvent(db(), {
+            subjectKind: 'subscription', subjectId: rows[0].id, type: 'booking.trial_charged',
+            from: 'trialing', to: 'ok', actorKind: 'system', payload: { stripe_subscription: s.id },
+          });
+        }
+      }
+    }
+
     if (event.type === 'customer.subscription.deleted') {
       const s = obj as unknown as Stripe.Subscription;
       const { rows } = await db().query(

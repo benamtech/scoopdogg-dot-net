@@ -233,6 +233,17 @@ export async function couponForOffer(mode: StripeMode, offer: { id: string; name
 // header, direct charges, application fee). Live mode never uses this: Josue's account is the
 // V2 full-dashboard account created by createConnectedAccount() and onboarded by him.
 // ---------------------------------------------------------------------------------------
+/**
+ * MEASURED 2026-09-19, AND IT DOES NOT GET ALL THE WAY. This makes an account and takes
+ * card_payments from 'restricted' to 'pending', but Stripe then asks for
+ * `identity.individual.documents.primary_verification` (an uploaded ID) and an `external_account`
+ * (a bank account) before it will go 'active'. Supplying the identity block again as an update
+ * changes nothing. So a scripted fixture CANNOT currently reach a chargeable test account.
+ *
+ * The cheap way to PASS(paid) is therefore the product's own button: one human completes Stripe's
+ * hosted onboarding on the test account once, in a browser, using Stripe's test values. That is
+ * the same flow Josue will use, which makes it worth more as evidence than a fixture anyway.
+ */
 export async function createTestFixtureAccount(by: string) {
   const stripe = stripeFor('test');
   // Accounts v1 creation is refused on this platform ("Stripe no longer recommends Accounts
@@ -258,7 +269,13 @@ export async function createTestFixtureAccount(by: string) {
     },
     defaults: {
       currency: 'usd',
-      responsibilities: { fees_collector: 'stripe', losses_collector: 'application' },
+      // A dashboard-less account is PLATFORM-controlled, so the platform collects both. Asking
+      // for fees_collector 'stripe' on it is the contradiction Stripe answers with
+      // `account_controller_unsupported_configuration` (measured 2026-09-19). Josue's real
+      // account is dashboard 'full' with Stripe collecting; this fixture exists to exercise the
+      // same CHARGE path - Checkout on a connected account with an application fee - not to
+      // mirror his account's controller.
+      responsibilities: { fees_collector: 'application', losses_collector: 'application' },
       profile: { business_url: 'https://scoopdogg.net', doing_business_as: 'Scoop Dogg', product_description: 'Weekly dog waste removal' },
     },
     configuration: {
