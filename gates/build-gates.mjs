@@ -430,5 +430,49 @@ for (const [scheme, label] of [['tel', 'tel'], ['mailto', 'mailto']]) {
   }
 }
 
+// N. the serverless bundle can resolve what it ships.
+//
+// `src/shared` is loaded three ways and each resolver wants a different specifier: Node's own
+// type-stripper (`node --test tests/*.test.ts`) resolves the literal one and will NOT rewrite
+// `.js` to `.ts`; Vite resolves either; the emitted serverless JS needs `.js`. The convention
+// that satisfies all three is `.ts` in the source plus `rewriteRelativeImportExtensions` in the
+// compiler. Either half alone is broken, and one half was missing.
+//
+// gates/_compile.mjs passes the flag on its command line, so every gate was green while the
+// DEPLOYMENT - which reads tsconfig.json - shipped `src/shared/consent.js` importing
+// `./pricing.ts`, a file not in the bundle. Every function that imported it exited 1, and
+// /api/booking/price and /api/booking/track answered 500 for nine hours on 2026-09-19.
+//
+// This checks the PAIR, because that is the invariant. Banning the `.ts` specifier instead
+// would break `npm test`, which is the trap the first attempt at this gate fell into.
+{
+  const sources = [
+    ...globSync('src/shared/**/*.ts'),
+    ...globSync('server/**/*.ts'),
+    ...globSync('api/**/*.ts'),
+  ];
+  const tsSpecifiers = [];
+  for (const f of sources) {
+    for (const m of readFileSync(f, 'utf8').matchAll(/(?:from|import)\s*\(?\s*['"](\.[^'"]*\.ts)['"]/g)) {
+      tsSpecifiers.push(`${f} -> ${m[1]}`);
+    }
+  }
+  // Comments are stripped so the prose above a setting cannot satisfy the check.
+  const tsconfig = readFileSync('tsconfig.json', 'utf8').replace(/^\s*\/\/.*$/gm, '');
+  const rewrites = /"rewriteRelativeImportExtensions"\s*:\s*true/.test(tsconfig)
+    && /"allowImportingTsExtensions"\s*:\s*true/.test(tsconfig);
+
+  if (!tsSpecifiers.length) {
+    ok('serverless-import-specifiers', `${sources.length} server-side sources, no .ts specifiers to rewrite`);
+  } else if (rewrites) {
+    ok('serverless-import-specifiers', `${tsSpecifiers.length} .ts specifier(s), and tsconfig.json rewrites them on emit`);
+  } else {
+    no('serverless-import-specifiers',
+      `${tsSpecifiers.length} .ts import specifier(s) and tsconfig.json does NOT set `
+      + `allowImportingTsExtensions + rewriteRelativeImportExtensions, so the emitted JS will keep them `
+      + `and the function will exit 1 on Vercel: ${tsSpecifiers.join('; ')}`);
+  }
+}
+
 console.log(`\nRESULT: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

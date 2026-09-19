@@ -29,6 +29,13 @@
  * a false statement about what the customer is agreeing to. `renewalTerms()` refuses that case
  * rather than producing a harmless-looking sentence for it.
  */
+// `.ts`, deliberately, and gates/_compile.mjs says why: this module is loaded three ways and
+// each resolver wants something different. Node's own type-stripper (`node --test tests/*.ts`)
+// resolves the literal specifier and will NOT rewrite `.js` to `.ts`; Vite resolves either;
+// the serverless compile rewrites `.ts` to `.js` on the way out. What has to be true for the
+// last of those is `rewriteRelativeImportExtensions` in tsconfig.json - it was missing until
+// 2026-09-19, so the emitted consent.js kept this specifier verbatim and every function that
+// imported it exited 1 on Vercel. gates/build-gates.mjs pins the pair.
 import { formatCents } from './pricing.ts';
 
 export type ConsentLane = 'prepay' | 'payafter';

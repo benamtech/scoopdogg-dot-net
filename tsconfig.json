@@ -14,7 +14,19 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     // src/lib/demo.ts imports content/demo.json, which the build writes as step one.
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    // THE SERVERLESS BUILD USES THIS FILE AND gates/_compile.mjs DOES NOT, which is how the
+    // funnel came to be dead on a deployment while twenty gates were green (2026-09-19).
+    //
+    // src/shared is loaded three ways and each resolver wants a different specifier: Node's
+    // type-stripper (`node --test tests/*.test.ts`) resolves the literal one and will not
+    // rewrite `.js` to `.ts`; Vite resolves either; the emitted serverless JS needs `.js`.
+    // So the source says `./pricing.ts` and the compiler rewrites it on the way out. The gate
+    // compile passed these two on the command line; Vercel reads them from here, and without
+    // them `src/shared/consent.js` shipped importing `./pricing.ts` - a file that is not in
+    // the bundle - so /api/booking/price and /api/booking/track answered 500.
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true
   },
   "include": [".astro/types.d.ts", "src/**/*", "server/**/*", "api/**/*"],
   "exclude": ["dist", "node_modules", ".gate-build", "output"]
