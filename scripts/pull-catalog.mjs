@@ -62,10 +62,10 @@ try {
               meta_title, meta_description, h1, intro, what_includes, who_its_for, faqs, related_slugs
          from services where status = 'active' order by sort_order`);
   const tiers = await q(`select id, service_slug, label, min_qty, max_qty, price_cents, price_suffix, requires_quote,
-              price_is_from, sort_order
+              price_is_from, est_minutes, sort_order
          from service_tiers order by service_slug, sort_order`);
   const packages = await q(`select id, slug, service_slug, tier_id, name, short_label, frequency, visits_per_month::float as visits_per_month,
-              monthly_price_cents, derivation, source, version, featured, sort_order
+              monthly_price_cents, derivation, source, confirmed_at, badge, version, featured, sort_order
          from packages where status = 'active' order by sort_order`);
   const offers = await q(`select id, name, description, kind, value, applies_to_slugs, requires_slugs, status
          from offers where status = 'active' order by name`);

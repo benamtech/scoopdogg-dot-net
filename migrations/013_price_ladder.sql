@@ -18,6 +18,8 @@
 -- rehearse: select count(*) = 1 from packages where badge is not null
 -- rehearse: select count(*) = 0 from service_tiers where est_minutes is null and price_cents is not null
 -- rehearse: select count(*) = 0 from packages where confirmed_at is null
+-- rehearse: select count(*) = 0 from packages where source <> 'confirmed'
+-- rehearse: select count(*) = 10 from packages where version = 2
 
 begin;
 
@@ -66,10 +68,14 @@ comment on column packages.badge is
 update packages set badge = null;
 update packages set badge = 'Most requested' where slug = 'scoop-weekly-1-dog';
 
--- 3. The weekly ladder: round tens, priced off the floor. Version bump = new Stripe Price.
-update packages set monthly_price_cents = v.cents, version = version + 1,
-       derivation = 'floor:$85/hr on-site at est_minutes, rounded to $10', source = 'claude:cmo 2026-09-18',
-       confirmed_by = 'claude:cmo', confirmed_at = now(), updated_at = now()
+-- 3. The weekly ladder: round tens, priced off the floor.
+--    THE VERSION BUMP IS NOT WRITTEN HERE. `packages_version`, the before-update trigger from
+--    011, raises version whenever monthly_price_cents changes, and it overwrites anything this
+--    statement sets. Writing `version = version + 1` here as well reads like a second bump and
+--    is dead text - one writer, and it is the trigger.
+update packages set monthly_price_cents = v.cents,
+       derivation = 'floor:$85/hr on-site at est_minutes, rounded to $10', source = 'confirmed',
+       confirmed_by = 'claude:cmo 2026-09-18', confirmed_at = now(), updated_at = now()
   from (values ('scoop-weekly-1-dog', 9000), ('scoop-weekly-2-dogs', 11000),
                ('scoop-weekly-3-dogs', 13000), ('scoop-weekly-4-plus-dogs', 15000)) as v(slug, cents)
  where packages.slug = v.slug;
@@ -101,10 +107,10 @@ update service_tiers set price_cents = v.cents from (values
  where service_tiers.service_slug = v.service_slug and service_tiers.label = v.label;
 
 -- The two recurring services whose per-visit price moved keep monthly = per-visit x 52/12, rounded
--- to $10, and take the same version bump so their Stripe Price is reissued.
-update packages set monthly_price_cents = v.cents, version = version + 1,
-       derivation = 'floor:$85/hr on-site at est_minutes, rounded to $10', source = 'claude:cmo 2026-09-18',
-       confirmed_by = 'claude:cmo', confirmed_at = now(), updated_at = now()
+-- to $10. The same trigger bumps their version, so their Stripe Price is reissued.
+update packages set monthly_price_cents = v.cents,
+       derivation = 'floor:$85/hr on-site at est_minutes, rounded to $10', source = 'confirmed',
+       confirmed_by = 'claude:cmo 2026-09-18', confirmed_at = now(), updated_at = now()
   from (values ('turf-weekly-small-area', 15000), ('turf-weekly-medium-area', 22000),
                ('yard-weekly-small-yard', 30000), ('yard-weekly-medium-yard', 48000),
                ('litter-weekly-1-litter-box', 7000), ('litter-weekly-2-litter-boxes', 10000)) as v(slug, cents)

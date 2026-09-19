@@ -144,7 +144,7 @@ export const ARTICLES: ArticleData[] = [
         heading: 'When Weekly Cleanup Makes More Sense Than DIY',
         paragraphs: [
           'Most dog owners start by handling cleanup themselves. It works for a while — until it doesn\'t. The pattern is predictable: you skip a weekend because you\'re busy, then it rains, then it\'s hot, then you\'re behind by two weeks and the backyard smells.',
-          'The math on professional service is straightforward. At $15/week for one dog, you\'re paying roughly $2.14/day for a consistently clean yard. Compare that to the actual cost of DIY: dedicated bags, a scooper tool that needs replacing, 15-20 minutes per session (more for multiple dogs), disposal logistics, and the reality that most people eventually fall behind.',
+          'The math on professional service is straightforward. Weekly service is one predictable monthly price, set by how many dogs you have, and the current figure is on the service page. Compare that to the actual cost of DIY: dedicated bags, a scooper tool that needs replacing, 15-20 minutes per session (more for multiple dogs), disposal logistics, and the reality that most people eventually fall behind.',
           'Weekly service also catches issues early. We notice drainage problems, fence damage, turf wear patterns, and health concerns (like changes in stool consistency) before they become bigger problems. Several of our clients have caught early signs of dog illness because we flagged unusual waste.',
         ],
         bullets: [
@@ -155,7 +155,7 @@ export const ARTICLES: ArticleData[] = [
           'Cancel or pause anytime — no contracts, no commitment',
         ],
         internalLinks: [
-          { to: '/services/weekly-pooper-scooper-service', label: 'Weekly Service — Starting at $15/week' },
+          { to: '/services/weekly-pooper-scooper-service', label: 'Weekly Service — priced by how many dogs you have' },
           { to: '/services/one-time-dog-poop-cleanup', label: 'One-Time Cleanup for Backlogs' },
         ],
       },
@@ -200,7 +200,7 @@ export const ARTICLES: ArticleData[] = [
       },
       {
         q: 'Is professional dog waste removal worth it?',
-        a: 'At $15/week for one dog, it costs roughly $2/day for a consistently clean yard with professional disposal. Most homeowners find the convenience, consistency, and elimination of disposal logistics makes it an easy decision.',
+        a: 'A weekly plan is one predictable monthly price, set by how many dogs you have, and you see it on the service page before you book. Most homeowners find the convenience, consistency, and elimination of disposal logistics makes it an easy decision.',
       },
       {
         q: 'What happens to the waste after you pick it up?',

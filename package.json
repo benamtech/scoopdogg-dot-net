@@ -9,7 +9,7 @@
     "build:only": "node scripts/pull-catalog.mjs && node scripts/pull-demo-state.mjs && astro build",
     "build:bare": "astro build",
     "preview": "astro preview",
-    "gates": "node gates/build-gates.mjs && node gates/question-pages.mjs && node gates/brand-tokens.mjs",
+    "gates": "node gates/build-gates.mjs && node gates/question-pages.mjs && node gates/brand-tokens.mjs && node gates/no-price-in-prose.mjs",
     "gates:db": "bash gates/schema-guards.sh",
     "typecheck": "astro check",
     "seed:catalog": "node --experimental-strip-types scripts/build-catalog-seed.mjs",

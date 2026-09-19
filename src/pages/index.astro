@@ -45,10 +45,13 @@ const scoop = packagesForService('weekly-pooper-scooper-service');
 const from = scoop.length ? Math.min(...scoop.map((p) => p.monthly_price_cents)) : null;
 const startDays = setting<number>('schedule.new_customer_start_days', 3);
 const region = regionSentence();
+// The meta description gets the short region. regionSentence() adds ", including Malibu and
+// the Conejo Valley" - forty characters that read well in a paragraph and push the description
+// past 200, which is where a search result starts being truncated mid-sentence.
 const offer = headlineOffer?.name;
 
 const title = 'Weekly Dog Poop Cleanup in Ventura & Santa Barbara Counties | Scoop Dogg';
-const description = `Weekly dog poop pickup across ${region}, on the same day every week${from ? ` — from ${formatCents(from)} a month` : ''}. See your price in a minute.${offer ? ` ${offer}.` : ''} No contract.`;
+const description = `Weekly dog poop pickup across ${serviceRegion}, on the same day every week${from ? ` — from ${formatCents(from)} a month` : ''}. See your price in a minute.${offer ? ` ${offer}.` : ''} No contract.`;
 
 const featured = reviews.find((r) => r.featured) ?? reviews[0];
 const cardReviews = reviews.filter((r) => r.featured && r.id !== featured?.id).slice(0, 3).map((r) => r.id);

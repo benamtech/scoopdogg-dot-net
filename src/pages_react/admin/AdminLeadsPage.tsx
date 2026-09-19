@@ -6,7 +6,7 @@ import { serviceLabel } from '../../lib/serviceLabel';
 import type { Lead } from '../../lib/types';
 import StatusBadge from '../../components/admin/StatusBadge';
 import AdminLayout from '../../components/admin/AdminLayout';
-import { CITIES } from '../../lib/cities';
+import { areas } from '../../lib/catalog';
 
 type SortField = 'name' | 'city' | 'service_slug' | 'status' | 'created_at';
 type SortDir = 'asc' | 'desc';
@@ -107,7 +107,7 @@ export default function AdminLeadsPage() {
           className="px-3 md:px-4 py-2 md:py-2.5 border border-sage-light rounded-lg md:rounded-xl text-sm focus:outline-none focus:border-forest transition-colors bg-white text-dark"
         >
           <option value="">All Cities</option>
-          {CITIES.map((c) => (
+          {areas.map((c) => (
             <option key={c.slug} value={c.name}>{c.name}</option>
           ))}
         </select>

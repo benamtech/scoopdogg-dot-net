@@ -3,8 +3,11 @@
 -- amount (lookup keys are <slug>_v<version> and Prices are immutable).
 begin;
 
-update packages set monthly_price_cents = v.cents, version = version + 1,
-       derivation = 'weekly x 52/12', source = 'revert-013', confirmed_by = null, confirmed_at = null, updated_at = now()
+-- `source` is check-constrained to ('derived_from_published','confirmed'); 'revert-013' is not
+-- one of them, and the version bump is the packages_version trigger's, not ours.
+update packages set monthly_price_cents = v.cents,
+       derivation = 'weekly x 52/12', source = 'derived_from_published',
+       confirmed_by = null, confirmed_at = null, updated_at = now()
   from (values ('scoop-weekly-1-dog', 6500), ('scoop-weekly-2-dogs', 8700),
                ('scoop-weekly-3-dogs', 10000), ('scoop-weekly-4-plus-dogs', 10800),
                ('turf-weekly-small-area', 15200), ('turf-weekly-medium-area', 21700),

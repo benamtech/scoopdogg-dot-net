@@ -1,5 +1,5 @@
 {
-  "pulled_at": "2026-09-19T00:51:19.220Z",
+  "pulled_at": "2026-09-19T03:32:52.700Z",
   "source": "database",
   "services": [
     {
@@ -12,9 +12,9 @@
       "pricing_note": "No sign-up fees. Cancel or pause anytime.",
       "sort_order": 10,
       "meta_title": "Weekly Pooper Scooper Service in Ventura County | Scoop Dogg",
-      "meta_description": "Scheduled weekly dog poop cleaning starting at $15/visit. We scoop, bag, and haul off all waste. Cancel anytime. Serving 15 cities in Ventura County.",
+      "meta_description": "Scheduled weekly dog poop cleaning in Ventura & Santa Barbara Counties. We scoop, bag and haul off all waste, priced by how many dogs you have. Cancel anytime.",
       "h1": "Weekly Pooper Scooper Service in Ventura County",
-      "intro": "Our most popular service. We show up on the same day every week, walk your entire yard, scoop every pile, bag it, and haul it off your property. You never need to be home. Skip a week, pause for vacation, or cancel anytime. Most customers start at $15/week for one dog and never look back.",
+      "intro": "Our most popular service. We show up on the same day every week, walk your entire yard, scoop every pile, bag it, and haul it off your property. You never need to be home. Skip a week, pause for vacation, or cancel anytime. Plans are priced by how many dogs you have, and you see the price before you book.",
       "what_includes": [
         "Full property walk — every corner, behind planters, under decks",
         "All waste scooped, double-bagged, and removed from your property",
@@ -61,7 +61,7 @@
       "pricing_note": "Final pricing confirmed after booking based on yard size and buildup level.",
       "sort_order": 20,
       "meta_title": "One-Time Dog Poop Cleanup in Ventura County | Scoop Dogg",
-      "meta_description": "Full yard poop cleanup for overgrown or neglected yards. Perfect for moving, hosting, or getting back to zero. Starting at $99. Serving Ventura County.",
+      "meta_description": "Full yard poop cleanup for overgrown or neglected yards. Perfect for moving, hosting, or getting back to zero. Priced by how much has built up. Ventura & Santa Barbara Counties.",
       "h1": "One-Time Dog Poop Cleanup in Ventura County",
       "intro": "Sometimes yards get away from you. Maybe you just moved in, maybe it has been a few months, or maybe you are hosting this weekend and need a reset. Our one-time cleanup tackles the full backlog — we walk the entire property, scoop every pile no matter how old, and haul it all away. One visit, clean slate.",
       "what_includes": [
@@ -110,7 +110,7 @@
       "pricing_note": "Add to weekly service or book standalone. Often paired with a Turf Deep Clean for maximum results.",
       "sort_order": 30,
       "meta_title": "Artificial Turf Deodorizing in Ventura County | Scoop Dogg",
-      "meta_description": "Enzyme-based turf deodorizing that eliminates pet urine odor from artificial grass, gravel, and concrete. Pet-safe, 100% natural. Starting at $20. Ventura County.",
+      "meta_description": "Enzyme-based turf deodorizing that eliminates pet urine odor from artificial grass, gravel and concrete. Pet-safe, 100% natural, and priced by the size of the area.",
       "h1": "Artificial Turf Deodorizing in Ventura County",
       "intro": "Artificial turf looks great — until your dogs use it as a bathroom. Urine seeps into the infill and backing, creating persistent odor that water alone cannot fix. Our enzyme-based deodorizing treatment breaks down the bacteria causing the smell at a molecular level. It works on turf, gravel, concrete, patios, and natural grass. 100% pet-safe — dogs can use the yard immediately after application.",
       "what_includes": [
@@ -159,7 +159,7 @@
       "pricing_note": "Often combined with ongoing weekly service + enzyme deodorizing for long-term results.",
       "sort_order": 40,
       "meta_title": "Yard & Turf Deep Clean in Ventura County | Scoop Dogg",
-      "meta_description": "Full turf and yard deep clean: brush, vacuum, pressure wash, and heavy deodorizer. Ideal for seasonal resets and new homeowners. Starting at $99. Ventura County.",
+      "meta_description": "Full turf and yard deep clean: brush, vacuum, pressure wash and heavy deodorizer. Ideal for seasonal resets and new homeowners. Priced by the size of the area.",
       "h1": "Yard & Turf Deep Clean in Ventura County",
       "intro": "A full reset for your outdoor surface. We deep-brush the turf to loosen embedded debris, vacuum the infill, pressure wash the surface, and apply a heavy-duty deodorizer and sanitizer. This is not a quick spray — it is a thorough restoration that leaves your turf looking and smelling like the day it was installed. Recommended 2-3 times per year or when you are inheriting a yard from a previous owner.",
       "what_includes": [
@@ -208,7 +208,7 @@
       "pricing_note": "Best results when paired with a deep clean 2-3 times per year. First month half off when combined with weekly poop scooping.",
       "sort_order": 50,
       "meta_title": "Weekly Turf Maintenance Service in Ventura County | Scoop Dogg",
-      "meta_description": "Ongoing artificial turf sweeping and deodorizing in Ventura County. We use the SwipeSmith turf sweeper for leaf, debris, and pet hair removal plus enzyme treatment. Starting at $35/visit.",
+      "meta_description": "Ongoing artificial turf sweeping and deodorizing. We use the SwipeSmith turf sweeper for leaf, debris and pet hair removal plus enzyme treatment. Priced by the size of the area.",
       "h1": "Weekly Turf Maintenance in Ventura County",
       "intro": "After a deep clean, your turf needs regular upkeep to stay fresh. We come back weekly with the SwipeSmith artificial turf sweeper to pick up leaves, twigs, pet hair, and debris that collect between visits. Each visit includes an enzyme deodorizer application to keep odor at zero. This is the ongoing maintenance that keeps your turf looking and smelling like it did on installation day.",
       "what_includes": [
@@ -507,10 +507,11 @@
       "label": "Small area (under 200 sq ft)",
       "min_qty": null,
       "max_qty": 200,
-      "price_cents": 2000,
+      "price_cents": 3000,
       "price_suffix": "",
       "requires_quote": false,
       "price_is_from": false,
+      "est_minutes": 20,
       "sort_order": 10
     },
     {
@@ -519,10 +520,11 @@
       "label": "Medium area (200-500 sq ft)",
       "min_qty": 200,
       "max_qty": 500,
-      "price_cents": 3500,
+      "price_cents": 4500,
       "price_suffix": "",
       "requires_quote": false,
       "price_is_from": false,
+      "est_minutes": 30,
       "sort_order": 20
     },
     {
@@ -531,10 +533,11 @@
       "label": "Large area (500+ sq ft)",
       "min_qty": 500,
       "max_qty": null,
-      "price_cents": 5000,
+      "price_cents": 7000,
       "price_suffix": "",
       "requires_quote": false,
       "price_is_from": true,
+      "est_minutes": 45,
       "sort_order": 30
     },
     {
@@ -543,10 +546,11 @@
       "label": "Small tree (1-2 levels)",
       "min_qty": 1,
       "max_qty": 2,
-      "price_cents": 2500,
+      "price_cents": 3000,
       "price_suffix": "",
       "requires_quote": false,
       "price_is_from": false,
+      "est_minutes": 20,
       "sort_order": 10
     },
     {
@@ -555,10 +559,11 @@
       "label": "Large tree (3+ levels)",
       "min_qty": 3,
       "max_qty": null,
-      "price_cents": 4500,
+      "price_cents": 5000,
       "price_suffix": "",
       "requires_quote": false,
       "price_is_from": false,
+      "est_minutes": 35,
       "sort_order": 20
     },
     {
@@ -571,6 +576,7 @@
       "price_suffix": "",
       "requires_quote": true,
       "price_is_from": false,
+      "est_minutes": 60,
       "sort_order": 30
     },
     {
@@ -583,6 +589,7 @@
       "price_suffix": "",
       "requires_quote": false,
       "price_is_from": false,
+      "est_minutes": 30,
       "sort_order": 10
     },
     {
@@ -591,10 +598,11 @@
       "label": "Medium run (100-300 sq ft)",
       "min_qty": 100,
       "max_qty": 300,
-      "price_cents": 7900,
+      "price_cents": 8900,
       "price_suffix": "",
       "requires_quote": false,
       "price_is_from": false,
+      "est_minutes": 60,
       "sort_order": 20
     },
     {
@@ -607,6 +615,7 @@
       "price_suffix": "",
       "requires_quote": true,
       "price_is_from": false,
+      "est_minutes": 90,
       "sort_order": 30
     },
     {
@@ -615,10 +624,11 @@
       "label": "1 litter box",
       "min_qty": 1,
       "max_qty": 1,
-      "price_cents": 1500,
+      "price_cents": 1600,
       "price_suffix": "/visit",
       "requires_quote": false,
       "price_is_from": false,
+      "est_minutes": 10,
       "sort_order": 10
     },
     {
@@ -627,10 +637,11 @@
       "label": "2 litter boxes",
       "min_qty": 2,
       "max_qty": 2,
-      "price_cents": 2200,
+      "price_cents": 2300,
       "price_suffix": "/visit",
       "requires_quote": false,
       "price_is_from": false,
+      "est_minutes": 15,
       "sort_order": 20
     },
     {
@@ -643,6 +654,7 @@
       "price_suffix": "",
       "requires_quote": true,
       "price_is_from": false,
+      "est_minutes": 25,
       "sort_order": 30
     },
     {
@@ -655,6 +667,7 @@
       "price_suffix": "",
       "requires_quote": false,
       "price_is_from": false,
+      "est_minutes": 30,
       "sort_order": 10
     },
     {
@@ -667,6 +680,7 @@
       "price_suffix": "",
       "requires_quote": false,
       "price_is_from": false,
+      "est_minutes": 50,
       "sort_order": 20
     },
     {
@@ -679,6 +693,7 @@
       "price_suffix": "",
       "requires_quote": true,
       "price_is_from": false,
+      "est_minutes": 75,
       "sort_order": 30
     },
     {
@@ -691,6 +706,7 @@
       "price_suffix": "",
       "requires_quote": false,
       "price_is_from": false,
+      "est_minutes": 45,
       "sort_order": 10
     },
     {
@@ -703,6 +719,7 @@
       "price_suffix": "",
       "requires_quote": false,
       "price_is_from": false,
+      "est_minutes": 90,
       "sort_order": 20
     },
     {
@@ -715,6 +732,7 @@
       "price_suffix": "",
       "requires_quote": true,
       "price_is_from": false,
+      "est_minutes": 150,
       "sort_order": 30
     },
     {
@@ -723,10 +741,11 @@
       "label": "Small patio or run (under 200 sq ft)",
       "min_qty": null,
       "max_qty": 200,
-      "price_cents": 5900,
+      "price_cents": 6900,
       "price_suffix": "",
       "requires_quote": false,
       "price_is_from": false,
+      "est_minutes": 45,
       "sort_order": 10
     },
     {
@@ -735,10 +754,11 @@
       "label": "Medium area (200-500 sq ft)",
       "min_qty": 200,
       "max_qty": 500,
-      "price_cents": 9900,
+      "price_cents": 10900,
       "price_suffix": "",
       "requires_quote": false,
       "price_is_from": false,
+      "est_minutes": 75,
       "sort_order": 20
     },
     {
@@ -751,6 +771,7 @@
       "price_suffix": "",
       "requires_quote": true,
       "price_is_from": false,
+      "est_minutes": 120,
       "sort_order": 30
     },
     {
@@ -759,10 +780,11 @@
       "label": "1 dog",
       "min_qty": 1,
       "max_qty": 1,
-      "price_cents": 1500,
+      "price_cents": 2100,
       "price_suffix": "/week",
       "requires_quote": false,
       "price_is_from": false,
+      "est_minutes": 15,
       "sort_order": 10
     },
     {
@@ -771,10 +793,11 @@
       "label": "2 dogs",
       "min_qty": 2,
       "max_qty": 2,
-      "price_cents": 2000,
+      "price_cents": 2500,
       "price_suffix": "/week",
       "requires_quote": false,
       "price_is_from": false,
+      "est_minutes": 18,
       "sort_order": 20
     },
     {
@@ -783,10 +806,11 @@
       "label": "3 dogs",
       "min_qty": 3,
       "max_qty": 3,
-      "price_cents": 2300,
+      "price_cents": 3000,
       "price_suffix": "/week",
       "requires_quote": false,
       "price_is_from": false,
+      "est_minutes": 21,
       "sort_order": 30
     },
     {
@@ -795,10 +819,11 @@
       "label": "4+ dogs",
       "min_qty": 4,
       "max_qty": null,
-      "price_cents": 2500,
+      "price_cents": 3500,
       "price_suffix": "/week",
       "requires_quote": false,
       "price_is_from": false,
+      "est_minutes": 25,
       "sort_order": 40
     },
     {
@@ -811,6 +836,7 @@
       "price_suffix": "/visit",
       "requires_quote": false,
       "price_is_from": false,
+      "est_minutes": 20,
       "sort_order": 10
     },
     {
@@ -823,6 +849,7 @@
       "price_suffix": "/visit",
       "requires_quote": false,
       "price_is_from": false,
+      "est_minutes": 30,
       "sort_order": 20
     },
     {
@@ -835,6 +862,7 @@
       "price_suffix": "",
       "requires_quote": true,
       "price_is_from": false,
+      "est_minutes": 45,
       "sort_order": 30
     },
     {
@@ -843,10 +871,11 @@
       "label": "Small yard (basic mow & edge)",
       "min_qty": null,
       "max_qty": null,
-      "price_cents": 4000,
+      "price_cents": 7000,
       "price_suffix": "/visit",
       "requires_quote": false,
       "price_is_from": true,
+      "est_minutes": 45,
       "sort_order": 10
     },
     {
@@ -855,10 +884,11 @@
       "label": "Medium yard (mow, edge, trim)",
       "min_qty": null,
       "max_qty": null,
-      "price_cents": 6500,
+      "price_cents": 11000,
       "price_suffix": "/visit",
       "requires_quote": false,
       "price_is_from": true,
+      "est_minutes": 75,
       "sort_order": 20
     },
     {
@@ -871,6 +901,7 @@
       "price_suffix": "",
       "requires_quote": true,
       "price_is_from": false,
+      "est_minutes": 120,
       "sort_order": 30
     },
     {
@@ -879,10 +910,11 @@
       "label": "Standard turf area (under 500 sq ft)",
       "min_qty": null,
       "max_qty": 500,
-      "price_cents": 9900,
+      "price_cents": 17900,
       "price_suffix": "",
       "requires_quote": false,
       "price_is_from": false,
+      "est_minutes": 120,
       "sort_order": 10
     },
     {
@@ -891,10 +923,11 @@
       "label": "Large turf area (500-1000 sq ft)",
       "min_qty": 500,
       "max_qty": 1000,
-      "price_cents": 14900,
+      "price_cents": 26900,
       "price_suffix": "",
       "requires_quote": false,
       "price_is_from": false,
+      "est_minutes": 180,
       "sort_order": 20
     },
     {
@@ -907,6 +940,7 @@
       "price_suffix": "",
       "requires_quote": true,
       "price_is_from": false,
+      "est_minutes": 240,
       "sort_order": 30
     }
   ],
@@ -920,10 +954,12 @@
       "short_label": "1 dog",
       "frequency": "weekly",
       "visits_per_month": 4.33,
-      "monthly_price_cents": 6500,
-      "derivation": "$15/week published x 52 visits / 12 months (4.33) = $65.00 -> $65/month",
-      "source": "derived_from_published",
-      "version": 1,
+      "monthly_price_cents": 9000,
+      "derivation": "floor:$85/hr on-site at est_minutes, rounded to $10",
+      "source": "confirmed",
+      "confirmed_at": "2026-09-19T03:01:11.284Z",
+      "badge": "Most requested",
+      "version": 2,
       "featured": false,
       "sort_order": 10
     },
@@ -936,10 +972,12 @@
       "short_label": "2 dogs",
       "frequency": "weekly",
       "visits_per_month": 4.33,
-      "monthly_price_cents": 8700,
-      "derivation": "$20/week published x 52 visits / 12 months (4.33) = $86.67 -> $87/month",
-      "source": "derived_from_published",
-      "version": 1,
+      "monthly_price_cents": 11000,
+      "derivation": "floor:$85/hr on-site at est_minutes, rounded to $10",
+      "source": "confirmed",
+      "confirmed_at": "2026-09-19T03:01:11.284Z",
+      "badge": null,
+      "version": 2,
       "featured": true,
       "sort_order": 20
     },
@@ -952,10 +990,12 @@
       "short_label": "3 dogs",
       "frequency": "weekly",
       "visits_per_month": 4.33,
-      "monthly_price_cents": 10000,
-      "derivation": "$23/week published x 52 visits / 12 months (4.33) = $99.67 -> $100/month",
-      "source": "derived_from_published",
-      "version": 1,
+      "monthly_price_cents": 13000,
+      "derivation": "floor:$85/hr on-site at est_minutes, rounded to $10",
+      "source": "confirmed",
+      "confirmed_at": "2026-09-19T03:01:11.284Z",
+      "badge": null,
+      "version": 2,
       "featured": false,
       "sort_order": 30
     },
@@ -968,10 +1008,12 @@
       "short_label": "4+ dogs",
       "frequency": "weekly",
       "visits_per_month": 4.33,
-      "monthly_price_cents": 10800,
-      "derivation": "$25/week published x 52 visits / 12 months (4.33) = $108.33 -> $108/month",
-      "source": "derived_from_published",
-      "version": 1,
+      "monthly_price_cents": 15000,
+      "derivation": "floor:$85/hr on-site at est_minutes, rounded to $10",
+      "source": "confirmed",
+      "confirmed_at": "2026-09-19T03:01:11.284Z",
+      "badge": null,
+      "version": 2,
       "featured": false,
       "sort_order": 40
     },
@@ -984,10 +1026,12 @@
       "short_label": "Small area",
       "frequency": "weekly",
       "visits_per_month": 4.33,
-      "monthly_price_cents": 15200,
-      "derivation": "$35/visit published x 52 visits / 12 months (4.33) = $151.67 -> $152/month",
-      "source": "derived_from_published",
-      "version": 1,
+      "monthly_price_cents": 15000,
+      "derivation": "floor:$85/hr on-site at est_minutes, rounded to $10",
+      "source": "confirmed",
+      "confirmed_at": "2026-09-19T03:01:11.284Z",
+      "badge": null,
+      "version": 2,
       "featured": false,
       "sort_order": 110
     },
@@ -1000,10 +1044,12 @@
       "short_label": "Medium area",
       "frequency": "weekly",
       "visits_per_month": 4.33,
-      "monthly_price_cents": 21700,
-      "derivation": "$50/visit published x 52 visits / 12 months (4.33) = $216.67 -> $217/month",
-      "source": "derived_from_published",
-      "version": 1,
+      "monthly_price_cents": 22000,
+      "derivation": "floor:$85/hr on-site at est_minutes, rounded to $10",
+      "source": "confirmed",
+      "confirmed_at": "2026-09-19T03:01:11.284Z",
+      "badge": null,
+      "version": 2,
       "featured": false,
       "sort_order": 120
     },
@@ -1016,10 +1062,12 @@
       "short_label": "Small yard",
       "frequency": "weekly",
       "visits_per_month": 4.33,
-      "monthly_price_cents": 17300,
-      "derivation": "From $40/visit published x 52 visits / 12 months (4.33) = $173.33 -> $173/month. The published price is a FLOOR (\"from\"), so this monthly number is a decision, not arithmetic.",
-      "source": "derived_from_published",
-      "version": 1,
+      "monthly_price_cents": 30000,
+      "derivation": "floor:$85/hr on-site at est_minutes, rounded to $10",
+      "source": "confirmed",
+      "confirmed_at": "2026-09-19T03:01:11.284Z",
+      "badge": null,
+      "version": 2,
       "featured": false,
       "sort_order": 210
     },
@@ -1032,10 +1080,12 @@
       "short_label": "Medium yard",
       "frequency": "weekly",
       "visits_per_month": 4.33,
-      "monthly_price_cents": 28200,
-      "derivation": "From $65/visit published x 52 visits / 12 months (4.33) = $281.67 -> $282/month. The published price is a FLOOR (\"from\"), so this monthly number is a decision, not arithmetic.",
-      "source": "derived_from_published",
-      "version": 1,
+      "monthly_price_cents": 48000,
+      "derivation": "floor:$85/hr on-site at est_minutes, rounded to $10",
+      "source": "confirmed",
+      "confirmed_at": "2026-09-19T03:01:11.284Z",
+      "badge": null,
+      "version": 2,
       "featured": false,
       "sort_order": 220
     },
@@ -1048,10 +1098,12 @@
       "short_label": "1 litter box",
       "frequency": "weekly",
       "visits_per_month": 4.33,
-      "monthly_price_cents": 6500,
-      "derivation": "$15/visit published x 52 visits / 12 months (4.33) = $65.00 -> $65/month",
-      "source": "derived_from_published",
-      "version": 1,
+      "monthly_price_cents": 7000,
+      "derivation": "floor:$85/hr on-site at est_minutes, rounded to $10",
+      "source": "confirmed",
+      "confirmed_at": "2026-09-19T03:01:11.284Z",
+      "badge": null,
+      "version": 2,
       "featured": false,
       "sort_order": 310
     },
@@ -1064,10 +1116,12 @@
       "short_label": "2 litter boxes",
       "frequency": "weekly",
       "visits_per_month": 4.33,
-      "monthly_price_cents": 9500,
-      "derivation": "$22/visit published x 52 visits / 12 months (4.33) = $95.33 -> $95/month",
-      "source": "derived_from_published",
-      "version": 1,
+      "monthly_price_cents": 10000,
+      "derivation": "floor:$85/hr on-site at est_minutes, rounded to $10",
+      "source": "confirmed",
+      "confirmed_at": "2026-09-19T03:01:11.284Z",
+      "badge": null,
+      "version": 2,
       "featured": false,
       "sort_order": 320
     }
@@ -1132,7 +1186,7 @@
       "local_context": "Ventura's coastal climate keeps yards damp year-round, which means waste breaks down more slowly and odors linger longer than you'd expect. Whether you're near the beach where salt air keeps things humid, or up in the hills off Foothill Road where larger lots mean more ground to cover, Scoop Dogg adapts to your property. Most of our Ventura clients are on a weekly Tuesday or Thursday route, and we typically confirm your start date within 24 hours of booking.",
       "faqs": [
         {
-          "a": "Weekly yard cleanup is $15/week for 1 dog, $20/week for 2 dogs, $23/week for 3 dogs, and $25/week for 4 or more dogs. A Turf Deep Clean is a flat $99. Turf Rescue deodorizing starts at $20. We confirm all pricing before your first visit.",
+          "a": "Weekly scooping is priced by how many dogs you have, and the plans and their prices are on this page. One-time work — a deep clean, turf deodorizing or a dog run — is priced by the size of the area, and you see the number before you book, not after.",
           "q": "How much does pooper scooper service cost in Ventura?"
         },
         {
@@ -1183,7 +1237,7 @@
       "local_context": "Ojai's inland valley location means warm, dry summers and occasional heavy rains in winter — conditions that create their own yard maintenance challenges. Many properties here have mature landscaping, fruit trees, and sloped terrain that make DIY cleanup a real chore. Most of our Ojai clients are on a Monday or Wednesday route, and because lots in the valley tend to run larger, we give each property the time it needs. We confirm your start date within 24 hours of booking.",
       "faqs": [
         {
-          "a": "Weekly service is $15/week for 1 dog, $20/week for 2 dogs, $23/week for 3 dogs, and $25/week for 4 or more dogs. A Turf Deep Clean is a flat $99. Turf Rescue deodorizing starts at $20. Pricing is confirmed based on your yard size and number of dogs.",
+          "a": "Weekly scooping is priced by how many dogs you have, and the plans and their prices are on this page. One-time work — a deep clean, turf deodorizing or a dog run — is priced by the size of the area, and you see the number before you book, not after.",
           "q": "How much does pooper scooper service cost in Ojai?"
         },
         {
@@ -1232,7 +1286,7 @@
       "local_context": "Oak View's rural character means most properties have large yards — and with more space comes more ground to cover. Many homeowners here have multiple dogs and rarely have time to keep up with cleanup on bigger lots. We serve Oak View on our Monday and Wednesday inland routes, pairing it efficiently with nearby Ojai. Because the community is small and tight-knit, we treat every property like a neighbor's — and we confirm your start date within 24 hours of booking.",
       "faqs": [
         {
-          "a": "Weekly service is $15/week for 1 dog, $20/week for 2 dogs, $23/week for 3 dogs, and $25/week for 4 or more dogs. A Turf Deep Clean is a flat $99. Turf Rescue deodorizing starts at $20. We confirm exact pricing based on yard size and dog count.",
+          "a": "Weekly scooping is priced by how many dogs you have, and the plans and their prices are on this page. One-time work — a deep clean, turf deodorizing or a dog run — is priced by the size of the area, and you see the number before you book, not after.",
           "q": "How much does pooper scooper service cost in Oak View?"
         },
         {
@@ -1284,7 +1338,7 @@
       "local_context": "Oxnard spans a lot of ground, from the coastal neighborhoods near Hollywood Beach and Silver Strand to the newer master-planned streets of Riverpark. Coastal yards tend to stay damp and are more prone to odor buildup, while inland Oxnard properties often feature artificial turf that needs enzyme treatment to stay fresh. We run Oxnard routes on Tuesdays and Fridays, and with so many clients in the city we can usually get new customers started within 48 hours of booking.",
       "faqs": [
         {
-          "a": "Weekly service is $15/week for 1 dog, $20/week for 2 dogs, $23/week for 3 dogs, and $25/week for 4 or more dogs. A Turf Deep Clean is a flat $99. Turf Rescue deodorizing starts at $20. Final pricing depends on yard size and dog count.",
+          "a": "Weekly scooping is priced by how many dogs you have, and the plans and their prices are on this page. One-time work — a deep clean, turf deodorizing or a dog run — is priced by the size of the area, and you see the number before you book, not after.",
           "q": "How much does pooper scooper service cost in Oxnard?"
         },
         {
@@ -1336,7 +1390,7 @@
       "local_context": "Camarillo's well-kept neighborhoods and HOA-managed communities mean curb appeal matters — and that extends to backyards. Many homes in Spanish Hills and Las Posas Estates have larger lots with mature landscaping, while Mission Oaks and Springville feature smaller yards that still need consistent weekly attention. We run Camarillo routes on Wednesdays and Fridays, and with a large client base in the city we can usually confirm your start date within 24 hours of booking.",
       "faqs": [
         {
-          "a": "Weekly service is $15/week for 1 dog, $20/week for 2 dogs, $23/week for 3 dogs, and $25/week for 4 or more dogs. A Turf Deep Clean is a flat $99. Turf Rescue deodorizing starts at $20. Pricing is based on yard size and number of dogs.",
+          "a": "Weekly scooping is priced by how many dogs you have, and the plans and their prices are on this page. One-time work — a deep clean, turf deodorizing or a dog run — is priced by the size of the area, and you see the number before you book, not after.",
           "q": "How much does pooper scooper service cost in Camarillo?"
         },
         {
@@ -1387,7 +1441,7 @@
       "local_context": "Santa Paula sits in the Santa Clara River Valley where warm inland temperatures and agricultural surroundings mean yards dry out quickly in summer. Many properties here have older, more character-filled lots — fruit trees, uneven terrain, and established landscaping that takes extra care to navigate. We service Santa Paula on our Monday and Thursday inland routes, and new customers can typically get started within a few days of booking.",
       "faqs": [
         {
-          "a": "Weekly service is $15/week for 1 dog, $20/week for 2 dogs, $23/week for 3 dogs, and $25/week for 4 or more dogs. A Turf Deep Clean is a flat $99. Turf Rescue deodorizing starts at $20. We confirm final pricing based on your yard and dog count.",
+          "a": "Weekly scooping is priced by how many dogs you have, and the plans and their prices are on this page. One-time work — a deep clean, turf deodorizing or a dog run — is priced by the size of the area, and you see the number before you book, not after.",
           "q": "How much does pooper scooper service cost in Santa Paula?"
         },
         {
@@ -1440,7 +1494,7 @@
       "local_context": "Thousand Oaks has one of the highest concentrations of dog owners in Ventura County, and many neighborhoods — particularly Lang Ranch, Oakbrook, and Lynn Ranch — feature larger lots with significant yard space. Artificial turf is increasingly common in newer builds, and enzyme deodorizing is a popular add-on for those clients. We run Thousand Oaks routes on Tuesdays and Thursdays, and because of our volume here, we can usually confirm new customers within 24 hours and start within the week.",
       "faqs": [
         {
-          "a": "Weekly service is $15/week for 1 dog, $20/week for 2 dogs, $23/week for 3 dogs, and $25/week for 4 or more dogs. A Turf Deep Clean is a flat $99. Turf Rescue deodorizing starts at $20. We confirm pricing based on yard size and number of dogs.",
+          "a": "Weekly scooping is priced by how many dogs you have, and the plans and their prices are on this page. One-time work — a deep clean, turf deodorizing or a dog run — is priced by the size of the area, and you see the number before you book, not after.",
           "q": "How much does pooper scooper service cost in Thousand Oaks?"
         },
         {
@@ -1490,7 +1544,7 @@
       "local_context": "Newbury Park's master-planned neighborhoods — especially Dos Vientos — feature well-maintained yards and HOA standards that make outdoor cleanliness important for everyone. Many families here have multiple dogs and active kids sharing the same backyard. We service Newbury Park on our Tuesday and Thursday Conejo Valley routes, grouping it efficiently with Thousand Oaks. New customers typically get their start date confirmed within 24 hours.",
       "faqs": [
         {
-          "a": "Weekly service is $15/week for 1 dog, $20/week for 2 dogs, $23/week for 3 dogs, and $25/week for 4 or more dogs. A Turf Deep Clean is a flat $99. Turf Rescue deodorizing starts at $20. Pricing confirmed based on yard size and dogs.",
+          "a": "Weekly scooping is priced by how many dogs you have, and the plans and their prices are on this page. One-time work — a deep clean, turf deodorizing or a dog run — is priced by the size of the area, and you see the number before you book, not after.",
           "q": "How much does pooper scooper service cost in Newbury Park?"
         },
         {
@@ -1541,7 +1595,7 @@
       "local_context": "Moorpark is growing fast, and newer developments like Mountain Meadows bring larger lots and more multi-dog households to the area. Many homes here also have artificial turf installed as part of drought-conscious landscaping — which looks great but needs enzyme treatment to stay odor-free. We service Moorpark on our Wednesday and Friday routes, and new customers are typically confirmed and scheduled within 24 hours of booking.",
       "faqs": [
         {
-          "a": "Weekly service is $15/week for 1 dog, $20/week for 2 dogs, $23/week for 3 dogs, and $25/week for 4 or more dogs. A Turf Deep Clean is a flat $99. Turf Rescue deodorizing starts at $20. Final pricing based on yard size and dogs.",
+          "a": "Weekly scooping is priced by how many dogs you have, and the plans and their prices are on this page. One-time work — a deep clean, turf deodorizing or a dog run — is priced by the size of the area, and you see the number before you book, not after.",
           "q": "How much does pooper scooper service cost in Moorpark?"
         },
         {
@@ -1592,7 +1646,7 @@
       "local_context": "Simi Valley is one of the warmest areas in our service territory — summer heat accelerates odor and bacteria growth in yards with artificial turf, which is common in many newer Simi builds. Wood Ranch and Big Sky properties tend to have larger lots and multiple dogs, which is why many families here opt for weekly service. We run Simi Valley routes on Mondays and Thursdays, and new customers typically receive a confirmation within 24 hours of booking.",
       "faqs": [
         {
-          "a": "Weekly service is $15/week for 1 dog, $20/week for 2 dogs, $23/week for 3 dogs, and $25/week for 4 or more dogs. A Turf Deep Clean is a flat $99. Turf Rescue deodorizing starts at $20. Pricing confirmed based on yard size and dog count.",
+          "a": "Weekly scooping is priced by how many dogs you have, and the plans and their prices are on this page. One-time work — a deep clean, turf deodorizing or a dog run — is priced by the size of the area, and you see the number before you book, not after.",
           "q": "How much does pooper scooper service cost in Simi Valley?"
         },
         {
@@ -1643,7 +1697,7 @@
       "local_context": "Santa Barbara's mild year-round climate is perfect for outdoor living — which means dogs spend more time outside, and yards need more consistent attention. The Mesa and Mission Canyon neighborhoods feature older properties with established landscaping, while Goleta has a mix of newer homes with turf. We run Santa Barbara on a Tuesday and Friday coastal route, and because it's a longer drive from our home base, we group clients efficiently to keep pricing competitive. Expect confirmation within 24 hours of booking.",
       "faqs": [
         {
-          "a": "Weekly service is $15/week for 1 dog, $20/week for 2 dogs, $23/week for 3 dogs, and $25/week for 4 or more dogs. A Turf Deep Clean is a flat $99. Turf Rescue deodorizing starts at $20. Pricing confirmed after booking based on yard and dogs.",
+          "a": "Weekly scooping is priced by how many dogs you have, and the plans and their prices are on this page. One-time work — a deep clean, turf deodorizing or a dog run — is priced by the size of the area, and you see the number before you book, not after.",
           "q": "How much does pooper scooper service cost in Santa Barbara?"
         },
         {
@@ -1693,7 +1747,7 @@
       "local_context": "Westlake Village's manicured neighborhoods and HOA-managed communities set high expectations for outdoor appearance — and that includes backyards. Many properties near the lake and in North Ranch feature larger lots with mature landscaping that requires careful navigation. We service Westlake on our Tuesday and Thursday Conejo Valley routes, grouping it efficiently with nearby Thousand Oaks and Newbury Park. New customers are confirmed within 24 hours of booking.",
       "faqs": [
         {
-          "a": "Weekly service is $15/week for 1 dog, $20/week for 2 dogs, $23/week for 3 dogs, and $25/week for 4 or more dogs. A Turf Deep Clean is a flat $99. Turf Rescue deodorizing starts at $20. Pricing confirmed based on yard size and dogs.",
+          "a": "Weekly scooping is priced by how many dogs you have, and the plans and their prices are on this page. One-time work — a deep clean, turf deodorizing or a dog run — is priced by the size of the area, and you see the number before you book, not after.",
           "q": "How much does pooper scooper service cost in Westlake Village?"
         },
         {
@@ -1744,7 +1798,7 @@
       "local_context": "Malibu's coastal environment means salt air, marine layer moisture, and sandy or rocky terrain that presents unique challenges for yard maintenance. Canyon properties can have steep, uneven ground while beachside lots deal with moisture-related odor buildup year-round. We service Malibu on a dedicated coastal route and group clients geographically to keep service efficient. Because properties here can be spread out, we recommend booking in advance to secure your preferred day.",
       "faqs": [
         {
-          "a": "Weekly service is $15/week for 1 dog, $20/week for 2 dogs, $23/week for 3 dogs, and $25/week for 4 or more dogs. A Turf Deep Clean is a flat $99. Turf Rescue deodorizing starts at $20. Final pricing confirmed based on your yard and dogs.",
+          "a": "Weekly scooping is priced by how many dogs you have, and the plans and their prices are on this page. One-time work — a deep clean, turf deodorizing or a dog run — is priced by the size of the area, and you see the number before you book, not after.",
           "q": "How much does pooper scooper service cost in Malibu?"
         },
         {
@@ -1794,7 +1848,7 @@
       "local_context": "Fillmore's warm inland climate and agricultural surroundings mean yards dry out fast in summer, but spring rains can create muddy conditions that complicate cleanup. Many properties here are larger than typical suburban lots, with fruit trees, irrigation channels, or working land that requires careful navigation. We service Fillmore on our Monday and Thursday inland routes alongside Santa Paula and Ojai, and new customers are typically confirmed within 24 hours of booking.",
       "faqs": [
         {
-          "a": "Weekly service is $15/week for 1 dog, $20/week for 2 dogs, $23/week for 3 dogs, and $25/week for 4 or more dogs. A Turf Deep Clean is a flat $99. Turf Rescue deodorizing starts at $20. We confirm pricing based on your yard and dog count.",
+          "a": "Weekly scooping is priced by how many dogs you have, and the plans and their prices are on this page. One-time work — a deep clean, turf deodorizing or a dog run — is priced by the size of the area, and you see the number before you book, not after.",
           "q": "How much does pooper scooper service cost in Fillmore?"
         },
         {
@@ -1844,7 +1898,7 @@
       "local_context": "Agoura Hills combines hillside properties with master-planned communities, creating diverse yard maintenance needs. Morrison Ranch and Lake Lindero feature larger lots with manicured landscaping, while Old Agoura offers a more rural feel with horse properties and bigger yards. Many homes here have artificial turf as part of drought-conscious landscaping, which requires regular enzyme deodorizing. We service Agoura Hills on our Tuesday and Thursday Conejo Valley routes alongside Westlake Village and Thousand Oaks, with new customers confirmed within 24 hours of booking.",
       "faqs": [
         {
-          "a": "Weekly service is $15/week for 1 dog, $20/week for 2 dogs, $23/week for 3 dogs, and $25/week for 4 or more dogs. A Turf Deep Clean is a flat $99. Turf Rescue deodorizing starts at $20. Pricing confirmed based on yard size and number of dogs.",
+          "a": "Weekly scooping is priced by how many dogs you have, and the plans and their prices are on this page. One-time work — a deep clean, turf deodorizing or a dog run — is priced by the size of the area, and you see the number before you book, not after.",
           "q": "How much does pooper scooper service cost in Agoura Hills?"
         },
         {
@@ -1893,7 +1947,7 @@
       "local_context": "Carpinteria's coastal microclimate keeps yards moist year-round, and the sandy soil near the beach can make cleanup more challenging than a typical inland property. Many homeowners here are part-time residents or weekend visitors who need occasional deep cleans rather than weekly service — though plenty of full-time locals are on our regular route. We service Carpinteria on our Tuesday coastal run alongside Santa Barbara, and confirm new customers within 24 hours of booking.",
       "faqs": [
         {
-          "a": "Weekly service is $15/week for 1 dog, $20/week for 2 dogs, $23/week for 3 dogs, and $25/week for 4 or more dogs. A Turf Deep Clean is a flat $99. Turf Rescue deodorizing starts at $20. Final pricing depends on yard size and dogs.",
+          "a": "Weekly scooping is priced by how many dogs you have, and the plans and their prices are on this page. One-time work — a deep clean, turf deodorizing or a dog run — is priced by the size of the area, and you see the number before you book, not after.",
           "q": "How much does pooper scooper service cost in Carpinteria?"
         },
         {
@@ -2161,11 +2215,11 @@
     "visit.skip_charge_policy": "no_charge",
     "subscription.cancel_notice_hours": 0,
     "subscription.pause_max_weeks": 12,
+    "billing.package_prices_confirmed": true,
     "schedule.day_capacity": 20,
     "booking.start_window_days": 14,
     "booking.initial_cleanup_policy": "offer_optional",
     "booking.card_required": true,
-    "billing.monthly_factor": "52/12",
-    "billing.package_prices_confirmed": false
+    "billing.monthly_factor": "52/12"
   }
 }
