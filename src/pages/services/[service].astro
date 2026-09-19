@@ -50,7 +50,7 @@ const jsonLd = [
 ];
 ---
 <Site title={title} description={description} canonicalPath={`/services/${s.slug}`} jsonLd={jsonLd}>
-  <PageHero
+  <PageHero tone="cream"
     tone="forest"
     eyebrow={pkgs.length ? 'Monthly plan' : 'One-time service'}
     title={heading}
@@ -98,7 +98,7 @@ const jsonLd = [
           <ul class="space-y-4">
             {(s.what_includes ?? []).map((w) => (
               <li class="flex gap-4 text-lg text-ink-700">
-                <span class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-forest-700 text-white" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><path d="M5 12l5 5 9-10" /></svg></span>
+                <span class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-forest-700 text-white" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l5 5 9-10" /></svg></span>
                 {w}
               </li>
             ))}
@@ -128,7 +128,7 @@ const jsonLd = [
   )}
 
   {related.length > 0 && (
-    <Section tone="white" size="sm" rule labelledby="related">
+    <Section tone="sand" size="sm" rule labelledby="related">
       <h2 id="related" class="text-h3 text-forest-900">Often paired with</h2>
       <ul class="mt-6 grid gap-4 sm:grid-cols-3">
         {related.map((r) => {
@@ -136,7 +136,7 @@ const jsonLd = [
           return (
             <li><a href={`/services/${r.slug}`} class="card-lift group flex h-full items-center justify-between gap-4 p-5">
               <span><span class="block text-lg font-semibold text-forest-900">{r.name}</span>{p && <span class="mt-1 block text-sm text-ink-500">{p.text}{p.per}</span>}</span>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="shrink-0 text-forest-500 transition duration-fast group-hover:translate-x-0.5" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="shrink-0 text-forest-500 transition duration-fast group-hover:translate-x-0.5" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
             </a></li>
           );
         })}

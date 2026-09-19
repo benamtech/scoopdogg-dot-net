@@ -24,7 +24,17 @@ import { chromium } from 'playwright';
 import pg from 'pg';
 import { readFileSync } from 'node:fs';
 import { loadEnv } from '../scripts/_env.mjs';
-import { quoteBooking, quoteOneTime, formatCents } from '../.gate-build/src/shared/pricing.js';
+/**
+ * The resolver, compiled here rather than read out of a directory somebody else made.
+ *
+ * This was a static `import ... from '../.gate-build/src/shared/pricing.js'`, which only worked
+ * when another gate had run first and had not cleaned up after itself. Run this gate on its own
+ * — which is exactly what SPEC §5 tells you to do with browser jobs — and it died on
+ * ERR_MODULE_NOT_FOUND before a single check. An import that depends on the order gates happen
+ * to run in is not a dependency, it is a coincidence.
+ */
+import { compileServer } from './_compile.mjs';
+const { quoteBooking, quoteOneTime, formatCents } = await import(`${compileServer()}/src/shared/pricing.js`);
 
 loadEnv();
 const arg = (k, d) => (process.argv.includes(k) ? process.argv[process.argv.indexOf(k) + 1] : d);

@@ -18,8 +18,8 @@ const [lead, ...rest] = ARTICLES;
 const fmt = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 ---
 <Site jsonLd={jsonLd} title="Guides | Dog Waste, Turf and Yard Care in Ventura County | Scoop Dogg" description="Local guides on dog waste disposal rules, artificial turf cleaning, drought-tolerant yards and city-by-city ordinances." canonicalPath="/resources">
-  <PageHero eyebrow="Guides" title="Straight answers about dog waste, turf and yards" lede="Local rules, cleaning methods and what actually works in Ventura County yards." />
-  <Section tone="white">
+  <PageHero tone="cream" eyebrow="Guides" title="Straight answers about dog waste, turf and yards" lede="Local rules, cleaning methods and what actually works in Ventura County yards." />
+  <Section tone="sand">
     {lead && (
       <a href={`/resources/${lead.slug}`} class="tone-forest group grid gap-6 rounded-xl bg-tone-bg p-7 transition duration-base ease-brand hover:shadow-lg sm:p-10 lg:grid-cols-12 lg:items-end">
         <div class="lg:col-span-8">

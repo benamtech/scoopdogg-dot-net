@@ -7,15 +7,24 @@
 @tailwind utilities;
 
 /*
- * THE THREE SURFACES (Ben, 2026-09-16). A band sets one of these and everything inside it that
- * uses a `tone-*` colour follows. Channels are space-separated RGB so Tailwind's opacity
- * modifiers work (`border-tone-rule/40`). Contrast for every pair: tests/contrast.test.ts.
+ * THE SURFACES. A band sets one of these and everything inside it that uses a `tone-*` colour
+ * follows. Channels are space-separated RGB so Tailwind's opacity modifiers work
+ * (`border-tone-rule/40`). Contrast for every pair: tests/contrast.test.ts.
  *
- *   white   black text on white. The default, and most of the site.
+ *   white   black text on white. No longer the default for every other band.
+ *   cream   the live site's warmth (#FAF8F5). Anything.
+ *   sand    separation without colour (#F2EDE4). Anything.
+ *   tint    a whisper of green for app surfaces (booking, account). Not a marketing band.
  *   forest  white text on the brand green (11.08:1). Any size.
  *   orange  white text on the band orange (3.15:1). LARGE text only; small text sits on a
  *           white card, or uses the dark-green accent (5.46:1).
- *   tint    a whisper of green for app surfaces (booking, account). Not a marketing band.
+ *   deep    the footer.
+ *
+ * THREE OF THESE ARE NEW, and they are the answer to Ben's *"we want to avoid the basic, all
+ * white background that we have in the demo styling."* That was not a styling preference being
+ * ignored — `Section.astro` MAPPED `cream` and `sand` onto white and tint, so a page asking for
+ * warmth got white and nobody could see why. The mapping is gone; these are real surfaces now,
+ * and `gates/surface-rhythm.mjs` holds the page to at most 60% white by rendered height.
  */
 .tone-white, :root {
   --tone-bg: 255 255 255;        /* paper */
@@ -24,6 +33,22 @@
   --tone-muted: 91 102 96;       /* ink-500, 5.98:1 */
   --tone-accent: 36 89 63;       /* forest-600, 8.15:1 */
   --tone-rule: 227 232 228;      /* line */
+}
+.tone-cream {
+  --tone-bg: 250 248 245;        /* cream — the live site's warmth */
+  --tone-fg: 58 66 62;
+  --tone-heading: 15 42 31;
+  --tone-muted: 91 102 96;       /* 5.80:1 on cream */
+  --tone-accent: 36 89 63;
+  --tone-rule: 230 225 216;      /* a warm rule, not the cool grey line */
+}
+.tone-sand {
+  --tone-bg: 242 237 228;        /* sand — separation without colour */
+  --tone-fg: 58 66 62;
+  --tone-heading: 15 42 31;
+  --tone-muted: 88 99 93;        /* darkened a step: 5.54:1 on sand */
+  --tone-accent: 36 89 63;
+  --tone-rule: 223 214 199;
 }
 .tone-tint {
   --tone-bg: 243 247 244;        /* forest-50 */
@@ -49,6 +74,22 @@
   --tone-accent: 11 31 22;       /* forest-950, 5.46:1: the only small text allowed on orange */
   --tone-rule: 255 255 255;
 }
+/*
+ * `photo` is the hero and any band whose background is a graded photograph or a video frame
+ * under the forest duotone. It is a separate tone from `forest` for one practical reason and
+ * one honest one: two adjacent bands may not share a tone (`gates/surface-rhythm.mjs`), and
+ * the hero sitting directly above the forest proof strip would otherwise be two greens in a
+ * row; and the contrast behind this text comes from the overlay, not from a flat colour, so
+ * treating it as `forest` would be claiming a ratio nothing measured. LARGE TEXT ONLY.
+ */
+.tone-photo {
+  --tone-bg: 15 42 31;           /* what shows through where the picture is darkest */
+  --tone-fg: 255 255 255;
+  --tone-heading: 255 255 255;
+  --tone-muted: 232 240 235;     /* forest-100 — large only */
+  --tone-accent: 247 182 80;     /* amber-400 */
+  --tone-rule: 255 255 255;
+}
 .tone-deep {
   --tone-bg: 15 42 31;           /* forest-900: the footer */
   --tone-fg: 201 221 208;        /* 10.75:1 */
@@ -59,6 +100,20 @@
 }
 
 @layer base {
+  /*
+   * PRICES LINE UP. P15 §6.3 asks for tabular figures on every price, and the reliable way to
+   * get that is not a class somebody remembers: it is the attribute every price renderer
+   * already carries. `data-price-cents` is what `gates/price-four-places.mjs` looks for to
+   * find a price on a page, so anything that is a price has it, and anything that has it is a
+   * price. One selector, and a new price surface inherits it without being told.
+   *
+   * `font-variant-numeric` is inherited, so tagging the wrapper covers the digits inside it.
+   */
+  [data-price-cents], .tabular-figures {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+  }
+
   html {
     font-family: theme('fontFamily.sans');
     background-color: theme('colors.paper');

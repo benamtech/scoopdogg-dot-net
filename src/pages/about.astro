@@ -23,9 +23,9 @@ const check = 'M5 12l5 5 9-10';
 <Site title="About Scoop Dogg | Locally Owned Pooper Scoopers" description={`Scoop Dogg is a locally owned dog waste removal company serving ${regionSentence()}.`} canonicalPath="/about">
   <PageHero tone="forest" eyebrow="About us" title="A clean yard, done personally" lede={`Scoop Dogg is a locally owned pooper scooper and turf care company serving ${regionSentence()}.`}>
     <ul class="mt-8 flex flex-wrap gap-x-7 gap-y-3 text-base font-medium text-white">
-      {trust.insured && <li class="inline-flex items-center gap-2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" class="text-amber-400" aria-hidden="true"><path d={check} /></svg>Fully insured</li>}
-      {trust.backgroundChecked && <li class="inline-flex items-center gap-2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" class="text-amber-400" aria-hidden="true"><path d={check} /></svg>Background-checked</li>}
-      <li class="inline-flex items-center gap-2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" class="text-amber-400" aria-hidden="true"><path d={check} /></svg>Locally owned</li>
+      {trust.insured && <li class="inline-flex items-center gap-2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-amber-400" aria-hidden="true"><path d={check} /></svg>Fully insured</li>}
+      {trust.backgroundChecked && <li class="inline-flex items-center gap-2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-amber-400" aria-hidden="true"><path d={check} /></svg>Background-checked</li>}
+      <li class="inline-flex items-center gap-2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-amber-400" aria-hidden="true"><path d={check} /></svg>Locally owned</li>
     </ul>
     <div slot="aside" class="relative mx-auto max-w-sm lg:max-w-none">
       <Image src={josue} alt="Josue, owner of Scoop Dogg" widths={[400, 800]} sizes="(min-width: 1024px) 440px, 90vw" class="aspect-[4/5] w-full rounded-xl object-cover shadow-lg" loading="eager" />

@@ -34,7 +34,11 @@ const surface = (name: string): Record<string, Rgb> => {
 const NORMAL = 4.5;
 const LARGE = 3;
 
-for (const name of ['white', 'tint', 'forest', 'deep']) {
+// `cream` and `sand` joined this list on 2026-09-19. They existed as names before that and
+// `Section.astro` quietly mapped them onto white and tint, so no page ever rendered them and
+// no test ever measured them. A surface that is only a name needs no contrast; a surface that
+// paints does.
+for (const name of ['white', 'cream', 'sand', 'tint', 'forest', 'deep']) {
   test(`${name} surface: every text colour passes as normal text`, () => {
     const s = surface(name);
     for (const k of ['fg', 'heading', 'muted', 'accent'] as const) {
@@ -53,6 +57,23 @@ test('orange surface: white passes only as large text, and the accent passes as 
   assert.ok(white < NORMAL, `white on orange is ${white.toFixed(2)}:1 — the band orange changed; revisit the large-text-only rule`);
   const accent = ratio(s.accent, s.bg);
   assert.ok(accent >= NORMAL, `accent on orange is ${accent.toFixed(2)}:1, needs ${NORMAL}`);
+});
+
+/**
+ * `photo` is the hero: text over a graded photograph under a forest duotone. Its `--tone-bg` is
+ * the darkest the overlay reaches, so the ratio computed here is the WORST CASE — where the
+ * picture is brighter, the contrast is better. Large text only, like orange, and for the same
+ * reason: the guarantee is only as good as the darkest pixel under the lightest glyph.
+ *
+ * This test cannot see the photograph. What it can do is hold the floor, so the day somebody
+ * lightens the overlay the number moves and this says so.
+ */
+test('photo surface: the overlay floor carries large text, and the heading carries any text', () => {
+  const s = surface('photo');
+  const fg = ratio(s.fg, s.bg);
+  assert.ok(fg >= LARGE, `white on the photo overlay floor is ${fg.toFixed(2)}:1, needs ${LARGE}`);
+  const accent = ratio(s.accent, s.bg);
+  assert.ok(accent >= LARGE, `the amber accent on the photo overlay floor is ${accent.toFixed(2)}:1, needs ${LARGE}`);
 });
 
 test('the band orange in the CSS is the orange in the config', () => {

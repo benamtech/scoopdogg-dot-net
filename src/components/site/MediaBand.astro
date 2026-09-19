@@ -1,0 +1,141 @@
+---
+/**
+ * `before-after.mp4`, which opens the live services band and which Josue's caption calls
+ * "Animation created using real before and after photos."
+ *
+ * P15 §2 rows 3 and 8, and §4 rule 6. It is the second video on the page, so it gets the same
+ * treatment as the first and one more rule: it does not exist until its band is within a
+ * viewport of the reader. A 720KB download for a band nobody scrolled to is 720KB of somebody's
+ * data allowance spent on nothing.
+ *
+ *  - `preload="none"`, no `<source>` in the markup
+ *  - an `IntersectionObserver` with a viewport of root margin attaches the source
+ *  - `prefers-reduced-motion` and Save-Data keep the poster
+ *  - WCAG 2.2.2: the same real pause control as the hero, for the same reason
+ *
+ * The caption is Josue's own and ports verbatim. It matters: a viewer who thinks an animation
+ * is a stock loop discounts it, and this one is his own photographs.
+ */
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+
+export interface Props {
+  src: string;
+  /**
+   * The still behind the video, as an imported asset rather than a `poster="..."` URL.
+   *
+   * `<video poster>` loads its image EAGERLY — the whole point of the IntersectionObserver
+   * below is that nothing about this band costs anything until it is nearly on screen, and a
+   * poster attribute quietly undoes that. Measured 2026-09-19: the services band was pulling
+   * the hero's unprocessed 89KB JPEG on every page load. As an `<Image>` it is lazy, resized
+   * and WebP.
+   */
+  posterImage?: ImageMetadata;
+  caption?: string;
+  /** A short label for the control, so two videos on a page do not both say "background video". */
+  label?: string;
+  class?: string;
+}
+const { src, posterImage, caption, label = 'animation', class: extra = '' } = Astro.props;
+const uid = `mb-${Math.random().toString(36).slice(2, 8)}`;
+---
+<figure class={`relative overflow-hidden rounded-xl bg-forest-900 ${extra}`} data-media-band id={uid}>
+  {posterImage && (
+    <Image
+      data-media-poster
+      src={posterImage}
+      alt=""
+      aria-hidden="true"
+      widths={[390, 640, 960]}
+      sizes="(min-width: 1024px) 900px, 100vw"
+      format="webp"
+      quality={62}
+      loading="lazy"
+      decoding="async"
+      class="absolute inset-0 h-full w-full object-cover transition-opacity duration-500"
+    />
+  )}
+  <video
+    data-media-player
+    data-src={src}
+    muted
+    loop
+    playsinline
+    preload="none"
+    aria-label={caption ?? label}
+    class="relative aspect-video w-full object-cover"
+  ></video>
+
+  <button
+    type="button"
+    data-media-toggle
+    hidden
+    class="absolute bottom-3 right-3 z-10 inline-flex items-center gap-2 rounded-full border border-white/40 bg-forest-900/70 px-3.5 py-1.5 text-sm font-medium text-white backdrop-blur transition hover:bg-forest-900/90 focus-visible:shadow-focus"
+  >
+    <svg data-icon-pause width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
+    <svg data-icon-play class="hidden" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+    <span data-media-toggle-label>Pause {label}</span>
+  </button>
+
+  {caption && <figcaption class="bg-forest-900 px-4 py-3 text-sm text-forest-100">{caption}</figcaption>}
+</figure>
+
+<script>
+  // One handler for every MediaBand on the page. Written once, so a second band on the
+  // services row and the Real Results row cannot drift apart.
+  for (const fig of document.querySelectorAll<HTMLElement>('[data-media-band]')) {
+    const video = fig.querySelector('[data-media-player]') as HTMLVideoElement | null;
+    const toggle = fig.querySelector('[data-media-toggle]') as HTMLButtonElement | null;
+    if (!video || !toggle) continue;
+
+    const labelEl = toggle.querySelector('[data-media-toggle-label]');
+    const iconPause = toggle.querySelector('[data-icon-pause]');
+    const iconPlay = toggle.querySelector('[data-icon-play]');
+    const base = labelEl?.textContent?.replace(/^Pause /, '') ?? 'animation';
+
+    const setLabel = (paused: boolean) => {
+      if (labelEl) labelEl.textContent = `${paused ? 'Play' : 'Pause'} ${base}`;
+      // A class, not the `hidden` attribute: Astro types `<svg>` as SVGAttributes, which has
+      // no `hidden`, so the initial state has to be a class and the toggle has to match it.
+      iconPause?.classList.toggle('hidden', paused);
+      iconPlay?.classList.toggle('hidden', !paused);
+    };
+    toggle.addEventListener('click', () => {
+      if (video.paused) { void video.play(); setLabel(false); }
+      else { video.pause(); setLabel(true); }
+    });
+
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const conn = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+    const thin = Boolean(conn?.saveData) || ['slow-2g', '2g', '3g'].includes(conn?.effectiveType ?? '');
+    if (reduced || thin) continue;   // the poster, permanently
+
+    const load = () => {
+      if (video.dataset.started) return;
+      video.dataset.started = '1';
+      const source = document.createElement('source');
+      source.src = video.dataset.src!;
+      source.type = 'video/mp4';
+      video.appendChild(source);
+      video.load();
+      video.addEventListener('playing', () => {
+        // The still steps aside, the same way the hero's poster does.
+        fig.querySelector('[data-media-poster]')?.classList.add('opacity-0');
+        toggle.hidden = false;
+        setLabel(false);
+      }, { once: true });
+      void video.play().catch(() => { video.dataset.started = ''; });
+    };
+
+    if ('IntersectionObserver' in window) {
+      // One viewport of warning, so the first frame is ready as the band arrives rather than
+      // after it has been looked at.
+      const io = new IntersectionObserver((entries) => {
+        for (const e of entries) if (e.isIntersecting) { load(); io.disconnect(); }
+      }, { rootMargin: '100% 0px' });
+      io.observe(fig);
+    } else {
+      load();
+    }
+  }
+</script>

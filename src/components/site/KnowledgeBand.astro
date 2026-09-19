@@ -1,0 +1,68 @@
+---
+/**
+ * Guides & Questions — the band that stops 32 written pages being unreachable.
+ *
+ * P15 §2 row 10 and §8. Measured on the branch: `Header.astro` links /services, /areas, /about
+ * and /contact; `Footer.astro` adds /services, /account and /book. NOTHING links /resources
+ * (6 guides) or /questions (26 pages). Only the retired React nav ever did. That is Ben's
+ * *"articles weren't in the demo"*, and it is the first thing Google's own guidance on AI
+ * features asks for.
+ *
+ * WHY A BAND AND NOT A FOOTER LINK. A crawler reaches a page by following a link, and a page
+ * with no inbound internal links receives no internal PageRank at all — the mechanism is not
+ * correlational, unlike most of what is said about internal linking (R10 §5). Depth matters
+ * too: pages within three clicks of the homepage are crawled and indexed more readily than
+ * buried ones. This band puts every question index and every guide two clicks from `/`.
+ *
+ * `gates/orphan-pages.mjs` (step 8) is what will keep it true. This is the band it needs.
+ */
+export interface Props {
+  guides: { slug: string; title: string; summary?: string }[];
+  questions: { slug: string; question: string }[];
+  /** How many of each to show. The rest are behind the index links. */
+  maxGuides?: number;
+  maxQuestions?: number;
+}
+const { guides, questions, maxGuides = 3, maxQuestions = 6 } = Astro.props;
+---
+<div class="grid gap-10 lg:grid-cols-12 lg:gap-12" data-knowledge-band>
+  <div class="lg:col-span-5">
+    <h2 class="font-serif text-h2 text-tone-heading">Straight answers, before you book</h2>
+    <p class="mt-4 text-lg text-tone-muted">
+      {questions.length} questions people actually ask, and {guides.length} longer guides — how often a yard
+      needs doing, what a visit looks like, what to do about turf odour.
+    </p>
+    <div class="mt-7 flex flex-wrap gap-3">
+      <a href="/questions" class="btn-secondary btn-md">All {questions.length} questions</a>
+      <a href="/resources" class="btn-ghost btn-md">Read the guides</a>
+    </div>
+  </div>
+
+  <div class="lg:col-span-7">
+    {guides.length > 0 && (
+      <ul class="grid gap-3 sm:grid-cols-2">
+        {guides.slice(0, maxGuides).map((g) => (
+          <li>
+            <a href={`/resources/${g.slug}`} class="flex h-full flex-col rounded-lg border border-tone-rule bg-paper p-5 transition duration-fast hover:border-forest-400 hover:shadow-sm">
+              <span class="text-micro font-semibold uppercase tracking-wide text-ink-400">Guide</span>
+              <span class="mt-1.5 text-base font-semibold text-forest-900">{g.title}</span>
+              {g.summary && <span class="mt-1.5 text-sm text-ink-500">{g.summary}</span>}
+            </a>
+          </li>
+        ))}
+      </ul>
+    )}
+
+    {questions.length > 0 && (
+      <ul class="mt-4 flex flex-wrap gap-2">
+        {questions.slice(0, maxQuestions).map((q) => (
+          <li>
+            <a href={`/questions/${q.slug}`} class="inline-flex rounded-full border border-tone-rule bg-paper px-4 py-2 text-sm text-forest-900 transition duration-fast hover:border-forest-400 hover:bg-forest-50">
+              {q.question}
+            </a>
+          </li>
+        ))}
+      </ul>
+    )}
+  </div>
+</div>

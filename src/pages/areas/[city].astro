@@ -48,7 +48,7 @@ const jsonLd = [
 const check = 'M5 12l5 5 9-10';
 ---
 <Site title={title} description={description} canonicalPath={`/areas/${a.slug}`} jsonLd={jsonLd}>
-  <PageHero
+  <PageHero tone="cream"
     eyebrow={market?.label ? `${a.name} · ${market.label.replace(/^the /, 'the ')}` : a.name}
     title={`Dog poop cleanup in ${a.name}`}
     lede={a.intro ?? description}
@@ -60,7 +60,7 @@ const check = 'M5 12l5 5 9-10';
   >
     <ul class="mt-7 flex flex-wrap gap-x-6 gap-y-2 text-base font-medium text-forest-800">
       {[days.length ? `In ${a.name} on ${days.join(' & ')}` : 'Same day every week', headlineOffer?.name, 'No contract'].filter(Boolean).map((t) => (
-        <li class="inline-flex items-center gap-2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" class="text-orange-600" aria-hidden="true"><path d={check} /></svg>{t}</li>
+        <li class="inline-flex items-center gap-2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-orange-600" aria-hidden="true"><path d={check} /></svg>{t}</li>
       ))}
     </ul>
   </PageHero>
@@ -130,7 +130,7 @@ const check = 'M5 12l5 5 9-10';
   </Section>
 
   {a.faqs?.length > 0 && (
-    <Section tone="white" rule labelledby="city-faq">
+    <Section tone="sand" rule labelledby="city-faq">
       <div class="grid gap-12 lg:grid-cols-12">
         <div class="lg:col-span-4">
           <p class="eyebrow mb-4">Questions</p>

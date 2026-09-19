@@ -1,14 +1,19 @@
 ---
 /**
- * A band of the page. The tone is the surface (src/index.css): `white` is the default and most
- * of the site, `forest` carries white text at any size, `orange` carries white text only at
- * large sizes — small text on orange goes on a white card. Two white bands in a row get a
- * hairline between them (`rule`), so a page never blurs into one long sheet.
+ * A band of the page. The tone is the surface (src/index.css): `forest` carries white text at
+ * any size, `orange` carries white text only at large sizes — small text on orange goes on a
+ * white card. Two bands sharing a tone get a hairline between them (`rule`), so a page never
+ * blurs into one long sheet.
  *
- * Legacy tone names map onto the three surfaces so older pages keep rendering.
+ * `cream` AND `sand` ARE REAL SURFACES NOW. They used to be aliases: `cream` mapped to white
+ * and `sand` to tint, which is why P15 §5 records Ben asking to *"avoid the basic, all white
+ * background"* about a site whose pages were already asking for cream and being given white.
+ * A component that silently answers a different question than the one it was asked is worse
+ * than one that refuses. Only `paper` and `forest-deep` remain aliases, and both are exact
+ * synonyms rather than substitutions.
  */
 export interface Props {
-  tone?: 'white' | 'forest' | 'orange' | 'tint' | 'deep' | 'paper' | 'cream' | 'sand' | 'forest-deep';
+  tone?: 'white' | 'cream' | 'sand' | 'forest' | 'orange' | 'tint' | 'photo' | 'deep' | 'paper' | 'forest-deep';
   size?: 'lg' | 'md' | 'sm' | 'none';
   id?: string;
   class?: string;
@@ -17,7 +22,7 @@ export interface Props {
   bleed?: boolean;
 }
 const { tone = 'white', size = 'md', id, class: extra = '', labelledby, rule = false, bleed = false } = Astro.props;
-const surface = ({ paper: 'white', cream: 'white', sand: 'tint', 'forest-deep': 'deep' } as Record<string, string>)[tone] ?? tone;
+const surface = ({ paper: 'white', 'forest-deep': 'deep' } as Record<string, string>)[tone] ?? tone;
 const pad = { lg: 'py-section', md: 'py-section', sm: 'py-section-sm', none: '' }[size];
 ---
 <section

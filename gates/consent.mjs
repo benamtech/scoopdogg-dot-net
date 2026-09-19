@@ -26,7 +26,7 @@
  * Every check has a negative control that is run FIRST, so a check that cannot fail is reported
  * as broken rather than counted as a pass.
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { compileServer, cleanupCompile } from './_compile.mjs';
 import { loadEnv } from '../scripts/_env.mjs';
 import pg from 'pg';
@@ -209,6 +209,41 @@ check(accountSrc.indexOf('data-cancel-control') < accountSrc.indexOf('data-save-
   check(weightOf(pc) < weightOf(ps),
     'NEGATIVE CONTROL: the pre-2026-09-19 weighting fails this check',
     `planted cancel=${weightOf(pc)} save=${weightOf(ps)}`);
+}
+
+// ---------------------------------------------------------------- D2. contradicting copy
+console.log('\nD2. §17602(a)(5): nothing on the site contradicts the consent');
+
+// "Include any information in the contract that interferes with, detracts from, contradicts,
+// or otherwise undermines the ability of consumers to provide their affirmative consent."
+//
+// The live homepage's closing CTA has promised "No credit card required" for years, and both
+// lanes of the new funnel ask for a card — lane B just does not charge it yet. Porting that
+// line across would be the clearest possible case of (a)(5). This is the reader for that
+// decision; the note is in CloseCta.astro.
+const BUILT = 'dist';
+const walk = (d) => readdirSync(d, { withFileTypes: true }).flatMap((e) =>
+  e.isDirectory() ? walk(`${d}/${e.name}`) : (e.name.endsWith('.html') ? [`${d}/${e.name}`] : []));
+const FORBIDDEN = [
+  [/no credit card (is )?(required|needed)/i, 'the funnel asks for a card on both lanes'],
+  [/without (a|your) (credit )?card/i, 'same claim, different words'],
+];
+if (!existsSync(BUILT)) {
+  no('the built site is available to check', 'run npm run build first');
+} else {
+  const html = walk(BUILT).filter((f) => !f.includes('/admin/'));
+  let hits = 0;
+  for (const f of html) {
+    const body = readFileSync(f, 'utf8').replace(/<script[\s\S]*?<\/script>/gi, ' ');
+    for (const [re, why] of FORBIDDEN) {
+      if (re.test(body)) { hits++; no('no page claims a card is not required', `${f.replace('dist', '')} — ${why}`); }
+    }
+  }
+  if (!hits) ok('no page claims a card is not required', `${html.length} pages`);
+  // Negative control: the detector has to fire on the live site's own sentence.
+  check(FORBIDDEN[0][0].test("Takes less than 60 seconds. No credit card required. We'll reach out same day."),
+    'NEGATIVE CONTROL: the detector fires on the live page\'s own line',
+    'so a clean result above means absence, not a broken pattern');
 }
 
 // ---------------------------------------------------------------- E. the schema guard

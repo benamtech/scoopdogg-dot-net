@@ -15,7 +15,7 @@ const oneTime = services.filter((s) => packagesForService(s.slug).length === 0);
 const Card = (s: (typeof services)[number]) => ({ s, p: headlinePrice(s.slug) });
 ---
 <Site title="Services | Dog Poop Cleanup, Turf Care & More | Scoop Dogg" description="Weekly dog poop scooping, turf maintenance, yard care, litter box service and one-time cleanups across Ventura and Santa Barbara counties." canonicalPath="/services">
-  <PageHero eyebrow="Services" title="Everything your yard and your pets need" lede="Monthly plans that run themselves, and one-time jobs when you need a reset.">
+  <PageHero tone="cream" eyebrow="Services" title="Everything your yard and your pets need" lede="Monthly plans that run themselves, and one-time jobs when you need a reset.">
     <div slot="aside" class="hidden justify-center lg:flex" aria-hidden="true">
       <Image src={mowing} alt="" widths={[260, 438]} sizes="260px" class="h-auto w-60" loading="eager" />
     </div>
@@ -32,7 +32,7 @@ const Card = (s: (typeof services)[number]) => ({ s, p: headlinePrice(s.slug) })
             {p && <span class="shrink-0 text-right text-sm text-ink-500">{p.text.startsWith('From') ? 'from' : ''}<span class="block font-serif text-h3 text-forest-900">{p.text.replace(/^From /, '')}<span class="font-sans text-sm text-ink-500">{p.per}</span></span></span>}
           </span>
           <span class="mt-4 line-clamp-3 text-base text-ink-700">{s.intro}</span>
-          <span class="mt-6 inline-flex items-center gap-1.5 text-base font-semibold text-forest-700 group-hover:text-forest-900">See plans<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" aria-hidden="true" class="transition duration-fast group-hover:translate-x-0.5"><path d="M5 12h14M13 6l6 6-6 6" /></svg></span>
+          <span class="mt-6 inline-flex items-center gap-1.5 text-base font-semibold text-forest-700 group-hover:text-forest-900">See plans<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true" class="transition duration-fast group-hover:translate-x-0.5"><path d="M5 12h14M13 6l6 6-6 6" /></svg></span>
         </a></li>
       ))}
     </ul>

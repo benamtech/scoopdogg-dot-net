@@ -17,7 +17,9 @@ export interface Props {
   formCity?: string;
   formTitle?: string;
   source?: string;
-  tone?: 'white' | 'forest';
+  /** Any surface. `cream` is the usual choice for an inner page, so the band under it can be
+   *  white without the page opening on two whites in a row (gates/surface-rhythm.mjs). */
+  tone?: 'white' | 'cream' | 'sand' | 'tint' | 'forest';
 }
 const { eyebrow, title, lede, crumbs = [], form = false, formService, formCity, formTitle = 'See your price in a minute', source = 'page-hero', tone = 'white' } = Astro.props;
 const aside = form || Astro.slots.has('aside');
@@ -46,8 +48,8 @@ const aside = form || Astro.slots.has('aside');
             <p class="mt-1.5 text-base text-ink-500">Your monthly price before we ask for anything else.</p>
             <div class="mt-5"><AddressForm size="md" service={formService} city={formCity} source={source} heroAnchor flat label="Where is your yard?" /></div>
             <ul class="mt-5 flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-ink-700">
-              <li class="inline-flex items-center gap-1.5"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="text-forest-500" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>{headlineOffer?.name ?? 'Cancel anytime'}</li>
-              <li class="inline-flex items-center gap-1.5"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="text-forest-500" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>No contract</li>
+              <li class="inline-flex items-center gap-1.5"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-forest-500" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>{headlineOffer?.name ?? 'Cancel anytime'}</li>
+              <li class="inline-flex items-center gap-1.5"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-forest-500" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>No contract</li>
             </ul>
           </div>
         ) : <slot name="aside" />}

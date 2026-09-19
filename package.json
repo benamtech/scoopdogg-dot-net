@@ -18,7 +18,7 @@
     "pull": "node --env-file=.env.local scripts/pull-catalog.mjs && node --env-file=.env.local scripts/pull-demo-state.mjs",
     "gates:money": "node gates/one-money-door.mjs && node gates/refund-returns-the-fee.mjs",
     "gates:admin": "node gates/admin-roles.mjs && node gates/invite-flow.mjs",
-    "gates:browser": "node gates/funnel-events.mjs && node gates/checkout-e2e.mjs",
+    "gates:browser": "node gates/surface-rhythm.mjs && node gates/funnel-events.mjs && node gates/checkout-e2e.mjs",
     "gates:lighthouse": "node gates/lighthouse.mjs",
     "gates:demo": "node gates/demo-banner-on-pages.mjs && node gates/demo-mode-no-leak.mjs",
     "gates:deployed": "node gates/deployed.mjs",

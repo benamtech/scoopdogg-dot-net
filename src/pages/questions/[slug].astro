@@ -93,7 +93,7 @@ const jsonLd = [
     </div>
   </section>
 
-  <Section tone="white">
+  <Section tone="cream">
     <div class="grid gap-12 lg:grid-cols-12">
       <div class="min-w-0 space-y-12 lg:col-span-8" data-question-body>
         {q.blocks.map((b) => (
@@ -109,7 +109,7 @@ const jsonLd = [
             )}
             {b.kind === 'list' && (
               <ul class="mt-5 space-y-3">
-                {b.items.map((i) => <li class="flex gap-3 text-lg text-ink-700"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" class="mt-1 shrink-0 text-orange-600" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>{i}</li>)}
+                {b.items.map((i) => <li class="flex gap-3 text-lg text-ink-700"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="mt-1 shrink-0 text-orange-600" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>{i}</li>)}
               </ul>
             )}
             {b.kind === 'steps' && (

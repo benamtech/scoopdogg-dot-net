@@ -20,7 +20,9 @@ const port = Number(process.argv[process.argv.indexOf('--port') + 1]) || 4330;
 process.env.PUBLIC_SITE_URL = process.env.PUBLIC_SITE_URL || `http://127.0.0.1:${port}`;
 const env = loadEnv();
 console.log(`  env: ${JSON.stringify({ db: env.database_url, stripe_test: env.stripe_test, resend: env.resend_key })}  demo forced -> ${process.env.SD_DEMO_ADDRESS}`);
-const build = compileServer();
+// Its OWN directory: a gate's `cleanupCompile()` must not be able to delete the routes this
+// server is serving. See the note in gates/_compile.mjs.
+const build = compileServer({ dir: '.dev-build' });
 const vercel = JSON.parse(readFileSync('vercel.json', 'utf8'));
 const DIST = path.resolve('dist');
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.json': 'application/json', '.xml': 'application/xml', '.txt': 'text/plain', '.webmanifest': 'application/manifest+json', '.woff2': 'font/woff2', '.mp4': 'video/mp4' };

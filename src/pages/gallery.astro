@@ -47,8 +47,8 @@ const jsonLd = {
 };
 ---
 <Site jsonLd={jsonLd} title="Gallery | Scoop Dogg Before and After" description="Yards, turf and dog runs across Ventura and Santa Barbara counties, before and after a Scoop Dogg visit." canonicalPath="/gallery">
-  <PageHero eyebrow="Gallery" title="Real yards, before and after" lede="Every photo here is a Scoop Dogg job. Drag across a photo to compare." />
-  <Section tone="white">
+  <PageHero tone="cream" eyebrow="Gallery" title="Real yards, before and after" lede="Every photo here is a Scoop Dogg job. Drag across a photo to compare." />
+  <Section tone="sand">
     <div class="grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
       {items.map((it) => (
         <BeforeAfter before={it.before} after={it.after} caption={it.title} description={it.d} alt={it.title.toLowerCase()} landscape={it.landscape} />

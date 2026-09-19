@@ -17,6 +17,8 @@ import { SITE_URL, DEFAULT_OG_IMAGE, SITE_NAME } from '../lib/constants';
 // The site is static, so a banner added after the page loaded would be invisible to a
 // crawler and to any gate that reads the built HTML.
 import { DEMO_MODE, DEMO_BANNER_TEXT } from '../lib/demo';
+// The analytics tag is a ROW, not a constant. See the block below for why that matters.
+import { setting } from '../lib/catalog';
 // Preload the two faces every page paints with, so the headline does not wait on font discovery.
 import outfitUrl from '@fontsource-variable/outfit/files/outfit-latin-wght-normal.woff2?url';
 import serifUrl from '@fontsource/dm-serif-display/files/dm-serif-display-latin-400-normal.woff2?url';
@@ -32,6 +34,8 @@ export interface Props {
 }
 
 const { title, description, canonicalPath, ogImage, jsonLd, noindex = false, bodyClass = '' } = Astro.props;
+/** The GA4 property, from a row. Empty renders no tag — see the block in <head>. */
+const measurementId = setting<string>('analytics.measurement_id', 'G-SNLVJNSP05');
 // A demo build is never indexable, whatever the page asked for. A demo booking page in
 // Google's index outlives the demo.
 const isNoindex = noindex || DEMO_MODE;
@@ -94,20 +98,40 @@ const schema = jsonLd
       <script type="application/ld+json" set:html={JSON.stringify(schema.length === 1 ? schema[0] : schema)} />
     )}
 
-    <!-- GA4, loaded after the first interaction or when the browser is idle. The tag cost ~500ms
-         of main-thread time on every page load (Lighthouse, 2026-09-16); events queue in
-         dataLayer until it arrives, so nothing is lost - including booking_step and purchase. -->
-    <script is:inline>
+    <!--
+      GA4, loaded after the first interaction or when the browser is idle. Events queue in
+      dataLayer until it arrives, so nothing is lost - including booking_step and purchase.
+
+      IT IS A SETTING NOW, and the reason is a measurement. The deferral above was added on
+      2026-09-16 because the tag cost ~500ms of main-thread time; re-measured on 2026-09-19
+      after the design port, it is STILL the single largest cost on every page. On
+      /areas/ventura it is the ONLY script on the page - this site ships 0KB of its own
+      JavaScript on content pages - and Total Blocking Time is 830ms. The homepage swings
+      between 74 and 89 on identical runs, and the swing tracks TBT exactly.
+
+      Deferring it further would move the Lighthouse number without moving anything a visitor
+      experiences, which is gaming the only instrument we have (R10 §1). So the lever is
+      whether to keep the tag at all - and that is Ben's call, not a code change. P19 §2
+      already decided the scoreboard is our own `events` rows, "no analytics vendor, no
+      third-party script, no cookie banner", and step 5 built that spine. This makes the
+      decision one row:
+
+        node scripts/set-setting.mjs analytics.measurement_id ""
+
+      An empty id renders no tag at all.
+    -->
+    {measurementId && (
+    <script is:inline define:vars={{ measurementId }}>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
-      gtag('config', 'G-SNLVJNSP05');
+      gtag('config', measurementId);
       (function () {
         var loaded = false;
         function load() {
           if (loaded) return; loaded = true;
           var s = document.createElement('script');
-          s.async = true; s.src = 'https://www.googletagmanager.com/gtag/js?id=G-SNLVJNSP05';
+          s.async = true; s.src = 'https://www.googletagmanager.com/gtag/js?id=' + measurementId;
           document.head.appendChild(s);
         }
         ['pointerdown', 'keydown', 'scroll', 'touchstart'].forEach(function (e) { addEventListener(e, load, { once: true, passive: true }); });
@@ -116,6 +140,7 @@ const schema = jsonLd
         });
       })();
     </script>
+    )}
   </head>
   <body class={`bg-paper text-ink-900 font-sans antialiased ${bodyClass}`}>
     {DEMO_MODE && (

@@ -1,22 +1,39 @@
 ---
 /**
- * The homepage. Design pass 2 (Ben, 2026-09-16): three surfaces — black on white dominating,
- * white on the brand green, white on orange — and "get rid of the 'your account card' in the
- * hero. too busy." Each band has one job, and no two coloured bands touch:
+ * The homepage — Josue's page, with the demo's machine inside it.
  *
- *   hero (white) -> proof (forest, slim) -> plans + add-ons (white) -> how it works (orange,
- *   white cards) -> real yards + guarantee (white) -> Josue (forest) -> reviews (white) ->
- *   where we work (forest) -> FAQ (white) -> close (orange) -> footer (deep green)
+ * P15 is the port. Ben, 2026-09-18: *"he loves his current website so he wants to keep his
+ * website basically the way it is, like the main design, but still implement all those funnel
+ * changes"*, and, asked how literal: *"section-for-section port ... the best parts of each but
+ * without restriction for adding."*
  *
- * Every number comes from the rows (S19). Region copy is two counties, not one (Ben).
- * Evidence for the choices: research/R5-COMPETITORS.md and research/R6-DESIGN-MONEY-AND-AI-SEARCH.md.
+ * THE ORDER IS THE LIVE PAGE'S ORDER, verified against `origin/main:src/pages/index.astro`:
+ * Hero → Services → How It Works → Meet Josue → Reviews → Real Results → Areas → FAQ → Book.
+ * Design pass 2 had reordered it and dropped the video, the cartoons and the service groups;
+ * they come back, and the four bands the demo added (proof strip, plan grid, guides, and the
+ * funnel inside the hero) stay.
+ *
+ * THE SURFACES (P15 §5). Ben: *"we want to avoid the basic, all white background."* No two
+ * adjacent bands share a tone and no page is more than 60% white by rendered height:
+ *
+ *   photo(hero) → forest(proof) → cream(services) → white(plans) → orange(how) →
+ *   forest(Josue) → cream(reviews) → sand(real yards) → forest(areas) → tint(guides) →
+ *   white(FAQ) → orange(close) → deep(footer)
+ *
+ * Every number comes from a row. Every price on this page resolves through `headlinePrice()`
+ * or `PackageCards`, and `gates/no-price-in-prose.mjs` is what stops one being typed back in.
  */
-import { Image } from 'astro:assets';
+import { Image, getImage } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
 import Site from '../layouts/Site.astro';
 import Section from '../components/site/Section.astro';
 import SectionHeading from '../components/site/SectionHeading.astro';
-import AddressForm from '../components/site/AddressForm.astro';
+import HeroVideo from '../components/site/HeroVideo.astro';
 import ProofBar from '../components/site/ProofBar.astro';
+import ServiceGroup from '../components/site/ServiceGroup.astro';
+import ServiceCard from '../components/site/ServiceCard.astro';
+import MediaBand from '../components/site/MediaBand.astro';
+import KnowledgeBand from '../components/site/KnowledgeBand.astro';
 import PackageCards from '../components/site/PackageCards.astro';
 import Steps from '../components/site/Steps.astro';
 import BeforeAfter from '../components/site/BeforeAfter.astro';
@@ -30,10 +47,11 @@ import {
   business, markets, regionSentence, serviceRegion, services, headlinePrice, reviewSummary, reviews,
   packagesForService, formatCents, trust, setting, headlineOffer,
 } from '../lib/catalog';
+import { ARTICLES } from '../lib/articles';
+import { questions } from '../lib/questions';
 
+import heroPoster from '../assets/video/hero-poster.jpg';
 import josue from '../assets/photos/4824.jpg';
-import turfBefore from '../assets/photos/turf1-before.jpg';
-import turfAfter from '../assets/photos/turf2-after.jpg';
 import runBefore from '../assets/photos/grass-dog-run-before.jpg';
 import runAfter from '../assets/photos/grass-dog-run-after.jpg';
 import yardBefore from '../assets/photos/backyard-before.jpg';
@@ -41,30 +59,102 @@ import yardAfter from '../assets/photos/backyard-after.jpg';
 import enclosureBefore from '../assets/photos/enclosure-before.jpg';
 import enclosureAfter from '../assets/photos/enclosure-after.jpg';
 
+// THE SEVEN CARTOONS. P15 §3 counted seven on the live homepage and nine in the repository;
+// these are them, and every one goes through `astro:assets` so it ships resized as WebP rather
+// than as the full PNG the live site serves.
+import artShovel from '../assets/art/dogs-with-shovel.png';
+import artDeodorizer from '../assets/art/dog-spraying-turf-deodorizer.png';
+import artMower from '../assets/art/dog-with-lawn-mower.png';
+import artWeedwacker from '../assets/art/dog-with-weedwacker.png';
+import artMowing from '../assets/art/transp-dog-character-mowing-grass.png';
+import artPressure from '../assets/art/transp-dog-character-pressure-washing-driveway.png';
+import artLitter from '../assets/art/transp-cat-character-cleaning-litter-box.png';
+import artCatTree from '../assets/art/transp-cat-character-cleaning-cat-tree.png';
+
 const scoop = packagesForService('weekly-pooper-scooper-service');
 const from = scoop.length ? Math.min(...scoop.map((p) => p.monthly_price_cents)) : null;
+const perVisit = from ? Math.round(from / (52 / 12)) : null;
 const startDays = setting<number>('schedule.new_customer_start_days', 3);
 const region = regionSentence();
-// The meta description gets the short region. regionSentence() adds ", including Malibu and
-// the Conejo Valley" - forty characters that read well in a paragraph and push the description
-// past 200, which is where a search result starts being truncated mid-sentence.
 const offer = headlineOffer?.name;
 
-const title = 'Weekly Dog Poop Cleanup in Ventura & Santa Barbara Counties | Scoop Dogg';
+const title = 'Dog Poop Cleaning Services in Ventura County, CA | Scoop Dogg';
 const description = `Weekly dog poop pickup across ${serviceRegion}, on the same day every week${from ? ` — from ${formatCents(from)} a month` : ''}. See your price in a minute.${offer ? ` ${offer}.` : ''} No contract.`;
 
 const featured = reviews.find((r) => r.featured) ?? reviews[0];
 const cardReviews = reviews.filter((r) => r.featured && r.id !== featured?.id).slice(0, 3).map((r) => r.id);
 
-// Add-ons sit under the plans, where the decision is being made (R6 §B: revenue per customer).
-const addOns = services
-  .filter((s) => s.slug !== 'weekly-pooper-scooper-service')
-  .map((s) => ({ s, price: headlinePrice(s.slug) }));
+/**
+ * The five groups the live page divides its services into, in its order. A visitor with a cat
+ * reads two headings and stops, which is what the grouping is for.
+ *
+ * The card copy is TAKEN FROM THE ROW, not typed here: `sub` from the service's own basis
+ * label, `description` from the first sentences of its intro, `includes` from
+ * `what_includes`, the price from `headlinePrice()`. So a service edited in the admin changes
+ * its card, and the card cannot disagree with its own service page.
+ */
+const svc = (slug: string) => services.find((s) => s.slug === slug);
+/** The first one or two sentences of an intro — a card's worth, without cutting mid-word. */
+const blurb = (text: string | null | undefined, max = 190) => {
+  const t = (text ?? '').trim();
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max);
+  const stop = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '));
+  return stop > 80 ? cut.slice(0, stop + 1) : `${cut.slice(0, cut.lastIndexOf(' '))}…`;
+};
+
+type CardSpec = { slug: string; sub: string; cta: string; art?: ImageMetadata; artAlt?: string; badge?: string | null; featured?: boolean };
+
+const GROUPS: { title: string; lede?: string; cols?: 2 | 3; cards: CardSpec[] }[] = [
+  {
+    title: 'Pet waste & yard cleaning',
+    lede: 'The weekly service, and the one-off that gets a yard back to zero.',
+    cards: [
+      { slug: 'weekly-pooper-scooper-service', sub: 'Weekly scooping — billed monthly', cta: 'Get weekly service', art: artShovel, artAlt: 'Two Scoop Dogg dogs holding scooping tools', badge: 'Most booked', featured: true },
+      { slug: 'one-time-dog-poop-cleanup', sub: 'One-time catch-up clean', cta: 'Book a one-time clean' },
+      { slug: 'dog-run-cleanups', sub: 'Runs, kennels and side yards', cta: 'Book a run cleanup' },
+    ],
+  },
+  {
+    title: 'Turf maintenance',
+    lede: 'Artificial turf holds odour differently. This is the part nobody else round here does.',
+    cards: [
+      { slug: 'yard-deep-clean', sub: 'One-time deep clean & restoration', cta: 'Book a deep clean', art: artMower, artAlt: 'A Scoop Dogg dog with a lawn mower' },
+      { slug: 'artificial-turf-deodorizing', sub: 'Enzyme treatment for odour', cta: 'Book deodorizing', art: artDeodorizer, artAlt: 'A Scoop Dogg dog spraying turf deodorizer' },
+      { slug: 'weekly-turf-maintenance', sub: 'Ongoing sweeping & deodorizing', cta: 'Get turf maintenance', badge: 'New' },
+    ],
+  },
+  {
+    title: 'Landscaping & yard maintenance',
+    lede: 'Mowing, edging and the overgrown corners, on the same visit as the scoop.',
+    cols: 2,
+    cards: [
+      { slug: 'weekly-yard-maintenance', sub: 'Mow, edge and trim, weekly', cta: 'See yard pricing', art: artMowing, artAlt: 'A Scoop Dogg dog mowing grass' },
+    ],
+  },
+  {
+    title: 'Featured: pressure washing',
+    lede: 'Driveways, patios and walkways — the surfaces a hose does not touch.',
+    cols: 2,
+    cards: [
+      { slug: 'pressure-washing', sub: 'Driveways, patios and walkways', cta: 'Book pressure washing', art: artPressure, artAlt: 'A Scoop Dogg dog pressure washing a driveway' },
+    ],
+  },
+  {
+    title: 'Extra pet services',
+    lede: 'Cats too.',
+    cards: [
+      { slug: 'kitty-litter-exchange', sub: 'Litter boxes, emptied and refilled', cta: 'Add litter exchange', art: artLitter, artAlt: 'A Scoop Dogg cat cleaning a litter box' },
+      { slug: 'cat-tree-cleaning', sub: 'Cat trees, deep cleaned', cta: 'Book cat tree cleaning', art: artCatTree, artAlt: 'A Scoop Dogg cat cleaning a cat tree' },
+      { slug: 'kitty-litter-robot-cleaning', sub: 'Litter-Robot strip and clean', cta: 'Book a Litter-Robot clean', art: artWeedwacker, artAlt: 'A Scoop Dogg dog with a weedwacker' },
+    ],
+  },
+];
 
 const steps = [
-  { t: 'See your price', d: 'Your address and how many dogs. The monthly price is on screen before we ask for anything else.' },
-  { t: 'Pick your day', d: `We serve each city on set days, so your day is the same every week. Start in as little as ${startDays} days.` },
-  { t: 'Run it from your account', d: 'Your next visit, your plan and your payments in one place. Skip, pause or cancel in a tap.' },
+  { t: 'Pick your service', d: 'Your ZIP and how many dogs. The monthly price is on screen before we ask for anything else.' },
+  { t: 'We show up', d: `We serve each city on set days, so your day is the same every week. Start in as little as ${startDays} days. You never need to be home.` },
+  { t: 'Enjoy your yard', d: 'Your next visit, your plan and your payments in one place. Skip, pause or cancel in a tap.' },
 ];
 
 const faqs = [
@@ -75,6 +165,10 @@ const faqs = [
   { q: 'My yard has not been cleaned in a while. Is that a problem?', a: 'Not at all. Tell us when you book, and we can add a one-time deep clean before your weekly visits start.' },
   { q: 'Which areas do you serve?', a: `${region}. If your address is not on a route yet, leave it with us and we will let you know when it is.` },
 ];
+
+// The orphans, given their first inbound links from the homepage (P15 §8).
+const guides = ARTICLES.map((a) => ({ slug: a.slug, title: a.title, summary: a.excerpt }));
+const questionLinks = questions().map((q) => ({ slug: q.slug, question: q.q }));
 
 const jsonLd = [
   {
@@ -109,72 +203,107 @@ const jsonLd = [
   },
 ];
 
+/**
+ * THE PRELOAD HAS TO NAME THE SAME FILES THE <Image> WILL ASK FOR.
+ *
+ * A `<link rel=preload as=image href="...">` pointing at a different URL than the rendered
+ * srcset does not warm the cache — it downloads a second image and makes LCP worse, which is
+ * the trap in preloading a responsive image at all. `getImage()` generates the identical
+ * srcset, so `imagesrcset` + `imagesizes` here and `widths` + `sizes` in HeroVideo resolve to
+ * the same candidate on every viewport.
+ */
+const posterPreload = await getImage({
+  src: heroPoster, widths: [390, 640, 960, 1280], sizes: '100vw', format: 'webp', quality: 62,
+});
+
 const check = 'M5 12l5 5 9-10';
 ---
 <Site title={title} description={description} canonicalPath="/" jsonLd={jsonLd}>
+  {/*
+    THE LCP PRELOAD. The hero poster is the largest thing above the fold and therefore the
+    Largest Contentful Paint element; preloading it at high priority is the single highest-value
+    line on this page. It sits here rather than in HeroVideo.astro because Astro's head slot
+    only reaches the layout from the page (see the note in that component).
+  */}
+  <link
+    slot="head"
+    rel="preload"
+    as="image"
+    href={posterPreload.src}
+    imagesrcset={posterPreload.srcSet.attribute}
+    imagesizes="100vw"
+    fetchpriority="high"
+  />
 
-  <!-- 1. HERO — the first step of booking, and one real yard -->
-  <section class="tone-white relative overflow-hidden bg-paper">
-    <div class="container-site relative grid items-center gap-12 pb-14 pt-10 lg:grid-cols-12 lg:gap-10 lg:pb-20 lg:pt-14">
-      <div class="lg:col-span-7">
-        <p class="eyebrow mb-6">Pooper scoopers · {serviceRegion}</p>
-        <h1 class="text-hero text-forest-900">
-          Your yard, scooped.<br /><span class="text-orange-600">Every week.</span>
-        </h1>
-        <p class="mt-7 max-w-xl text-lg text-ink-700 sm:text-xl sm:leading-9">
-          We clean up after your dog on the same day every week — bagged and hauled away{from && <>, from <strong class="font-semibold text-forest-900">{formatCents(from)} a month</strong></>}.
-          {offer && <> {offer}.</>} No contract.
-        </p>
-        <div class="mt-9"><AddressForm heroAnchor source="home-hero" /></div>
-        <ul class="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-ink-700 sm:text-base">
-          {reviewSummary.rating && (
-            <li><a href="/reviews" class="inline-flex items-center gap-2 hover:text-forest-800">
-              <Stars rating={reviewSummary.rating} size={16} />
-              <span><strong class="font-semibold text-forest-900">{reviewSummary.rating.toFixed(1)}</strong> · {reviewSummary.count} Google reviews</span>
-            </a></li>
-          )}
-          <li class="inline-flex items-center gap-1.5"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" class="text-forest-500" aria-hidden="true"><path d={check} /></svg>Start within {startDays} days</li>
-        </ul>
-      </div>
+  {/* 1. HERO — the video, the serif headline, and the funnel's first question */}
+  <HeroVideo
+    fromCents={from}
+    perVisitCents={perVisit}
+    serviceRegion={serviceRegion}
+    phone={business.phone}
+    phoneHref={business.phoneHref}
+    rating={reviewSummary.rating}
+    reviewCount={reviewSummary.googleCount ?? reviewSummary.count}
+    offer={offer ?? null}
+  />
 
-      <div class="relative hidden sm:block lg:col-span-5">
-        <div class="relative mx-auto w-full max-w-[26rem] lg:mr-0">
-          <div class="absolute -bottom-5 -right-5 left-10 top-10 rounded-xl bg-forest-700" aria-hidden="true"></div>
-          <div class="relative">
-            <BeforeAfter feature before={turfBefore} after={turfAfter} caption="A Scoop Dogg turf yard" alt="an artificial turf yard cleaned by Scoop Dogg" sizes="(min-width: 1024px) 416px, 90vw" />
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 2. PROOF — operational, not adjectives (R5 §4) -->
+  {/* 2. PROOF — operational, not adjectives (R5 §4) */}
   <ProofBar />
 
-  <!-- 3. PLANS, with the add-ons where the decision is made -->
+  {/* 3. OUR SERVICES — the part that gets the comments (P15 §2 row 3), opening with Josue's
+       own before/after animation, five groups, every card's cartoon and its own CTA. */}
+  <Section tone="cream" labelledby="services-title">
+    <SectionHeading id="services-title" eyebrow="Our services" title="Everything we do, and what it costs" lede="Weekly plans, one-off cleans, turf, landscaping and the cats. Every price here is the price you book at.">
+      <a slot="action" href="/services" class="link text-base">All services</a>
+    </SectionHeading>
+
+    <div class="mt-10">
+      <MediaBand
+        src="/video/before-after.mp4"
+        posterImage={yardAfter}
+        caption="Animation created using real before and after photos."
+        label="before-and-after animation"
+      />
+    </div>
+
+    {GROUPS.map((g) => (
+      <ServiceGroup title={g.title} lede={g.lede} cols={g.cols}>
+        {g.cards.map((card) => {
+          const s = svc(card.slug);
+          return s ? (
+            <ServiceCard
+              slug={s.slug}
+              name={s.name}
+              sub={card.sub}
+              description={blurb(s.intro)}
+              includes={s.what_includes ?? []}
+              price={headlinePrice(s.slug)}
+              priceNote={s.slug === 'weekly-pooper-scooper-service' && offer ? offer : null}
+              cta={card.cta}
+              art={card.art}
+              artAlt={card.artAlt}
+              badge={card.badge}
+              featured={card.featured}
+            />
+          ) : null;
+        })}
+      </ServiceGroup>
+    ))}
+  </Section>
+
+  {/* 4. PLANS — new to the live page: the ladder, with the badge on the row the leads support */}
   <Section tone="white" labelledby="plans-title">
     <SectionHeading id="plans-title" eyebrow="Monthly plans" title="One price a month. Every visit covers the whole yard." lede={`Weekly scooping, priced by how many dogs you have.${offer ? ` ${offer}.` : ''}`}>
       <a slot="action" href="/pricing" class="link text-base">See all pricing</a>
     </SectionHeading>
     <div class="mt-12 lg:mt-14"><PackageCards service="weekly-pooper-scooper-service" /></div>
-    <div class="mt-12 border-t border-line pt-8">
-      <p class="text-sm font-semibold uppercase tracking-[0.12em] text-ink-500">Add to any plan, or book once</p>
-      <ul class="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-2.5">
-        {addOns.map(({ s, price }) => (
-          <li><a href={`/services/${s.slug}`} class="group flex h-full flex-col rounded-md border border-line-strong bg-paper px-3 py-2 text-forest-900 transition duration-fast hover:border-forest-500 hover:bg-forest-50 sm:flex-row sm:items-center sm:gap-2 sm:rounded-full sm:px-4">
-            <span class="text-sm font-medium sm:text-base">{s.short_name || s.name}</span>
-            {price && <span class="text-sm text-ink-500">{price.text.replace(/^From /, 'from ')}{price.per}</span>}
-          </a></li>
-        ))}
-      </ul>
-    </div>
   </Section>
 
-  <!-- 4. HOW IT WORKS — orange; small text lives on the white cards -->
+  {/* 5. HERE'S HOW IT WORKS — the live page's three numbered steps, orange band */}
   <Section tone="orange" labelledby="how-title">
     <div class="grid gap-10 lg:grid-cols-12 lg:items-end">
       <div class="lg:col-span-7">
-        <p class="eyebrow mb-4">How it works</p>
+        <p class="eyebrow mb-4">Here's how it works</p>
         <h2 id="how-title" class="text-h1 text-white">Booked in a minute.<br />Handled every week.</h2>
       </div>
       <p class="text-statement text-white lg:col-span-5">No quotes to wait for and no phone tag. You never need to be home.</p>
@@ -186,25 +315,7 @@ const check = 'M5 12l5 5 9-10';
     </div>
   </Section>
 
-  <!-- 5. REAL YARDS + the guarantee -->
-  <Section tone="white" labelledby="proof-title">
-    <SectionHeading id="proof-title" eyebrow="Real yards" title="Actually clean. Every corner." lede="Scoop Dogg jobs, before and after. Drag across a photo to compare.">
-      <a slot="action" href="/gallery" class="link text-base">More before-and-afters</a>
-    </SectionHeading>
-    <div class="-mx-5 mt-12 flex snap-x snap-mandatory gap-4 overflow-x-auto px-5 pb-2 sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-6 sm:overflow-visible sm:px-0 [&>figure]:w-[72%] [&>figure]:shrink-0 [&>figure]:snap-center sm:[&>figure]:w-auto">
-      <BeforeAfter before={runBefore} after={runAfter} caption="Side-yard dog run" alt="side-yard dog run" />
-      <BeforeAfter before={yardBefore} after={yardAfter} caption="Backyard" alt="backyard" />
-      <BeforeAfter before={enclosureBefore} after={enclosureAfter} caption="Dog enclosure" alt="dog enclosure" />
-    </div>
-    {trust.guarantee && (
-      <div class="tone-tint mt-14 flex flex-col gap-6 rounded-xl bg-tone-bg p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
-        <GuaranteeStamp size={112} />
-        <a href="/book" class="btn-primary btn-lg shrink-0" data-cta="guarantee">See my price</a>
-      </div>
-    )}
-  </Section>
-
-  <!-- 6. JOSUE — the owner, large, on the brand green -->
+  {/* 6. MEET JOSUE — the owner, large, on the brand green */}
   <Section tone="forest" labelledby="josue-title">
     <div class="grid items-center gap-12 lg:grid-cols-12">
       <div class="lg:col-span-5">
@@ -215,32 +326,43 @@ const check = 'M5 12l5 5 9-10';
       </div>
       <div class="lg:col-span-6 lg:col-start-7">
         <p class="eyebrow mb-5">Meet the owner</p>
-        <h2 id="josue-title" class="text-h1 text-white">“I know my clients' dogs by name.”</h2>
+        <h2 id="josue-title" class="text-h1 text-white">“I'm out scooping alongside my team every week.”</h2>
         <div class="mt-7 space-y-4 text-lg text-tone-fg">
           <p>I'm Josue. I started Scoop Dogg because dog owners shouldn't have to dread their own backyard.</p>
           <p>I know which gates stick and which yards have the sneaky spots. This isn't a side hustle — it's my business, and I take it personally.</p>
         </div>
         <ul class="mt-8 flex flex-wrap gap-x-7 gap-y-3 text-base font-medium text-white">
-          {trust.insured && <li class="inline-flex items-center gap-2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" class="text-amber-400" aria-hidden="true"><path d={check} /></svg>Fully insured</li>}
-          {trust.backgroundChecked && <li class="inline-flex items-center gap-2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" class="text-amber-400" aria-hidden="true"><path d={check} /></svg>Background-checked</li>}
-          <li class="inline-flex items-center gap-2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" class="text-amber-400" aria-hidden="true"><path d={check} /></svg>Locally owned</li>
+          {trust.insured && <li class="inline-flex items-center gap-2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-amber-400" aria-hidden="true"><path d={check} /></svg>Fully insured</li>}
+          {trust.backgroundChecked && <li class="inline-flex items-center gap-2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-amber-400" aria-hidden="true"><path d={check} /></svg>Background-checked</li>}
+          <li class="inline-flex items-center gap-2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-amber-400" aria-hidden="true"><path d={check} /></svg>Locally owned</li>
         </ul>
         <a href="/about" class="btn-ghost mt-9">More about Josue</a>
       </div>
     </div>
   </Section>
 
-  <!-- 7. REVIEWS — the words, the count, and the date (R6 §A5) -->
+  {/* 7. WHAT OUR CUSTOMERS SAY — the words, ONE count from ONE row, and the date (R6 §A5) */}
   {featured && (
-    <Section tone="white" labelledby="reviews-title">
+    <Section tone="cream" labelledby="reviews-title">
       <div class="grid gap-10 lg:grid-cols-12 lg:items-center">
         <div class="lg:col-span-4">
-          <p class="eyebrow mb-4">Reviews</p>
+          <p class="eyebrow mb-4">What our customers say</p>
           <h2 id="reviews-title" class="text-h2 text-forest-900">Dog owners say it best</h2>
           {reviewSummary.rating && (
             <div class="mt-6 flex items-center gap-4">
-              <span class="font-serif text-hero leading-none text-forest-900">{reviewSummary.rating.toFixed(1)}</span>
-              <span class="flex flex-col gap-1"><Stars rating={reviewSummary.rating} size={20} /><span class="text-base text-ink-500">{reviewSummary.count} Google reviews</span></span>
+              <span class="font-serif text-hero tabular-nums leading-none text-forest-900">{reviewSummary.rating.toFixed(1)}</span>
+              <span class="flex flex-col gap-1">
+                <Stars rating={reviewSummary.rating} size={20} />
+                {/* P15 §7 defect 1: the live page said "19 Google reviews" in one place and
+                    "all 27 reviews" 300px lower while the database held 18. ONE number, from
+                    ONE row — reviews.google_count when Josue has entered it, otherwise the
+                    quotes we can actually show, described as exactly that. */}
+                <span class="text-base text-ink-500">
+                  {reviewSummary.googleCount
+                    ? `${reviewSummary.googleCount} Google reviews`
+                    : `${reviewSummary.count} reviews on this page`}
+                </span>
+              </span>
             </div>
           )}
         </div>
@@ -253,12 +375,32 @@ const check = 'M5 12l5 5 9-10';
     </Section>
   )}
 
-  <!-- 8. WHERE WE WORK — green, the city list is the local proof -->
+  {/* 8. REAL RESULTS, REAL YARDS — the graded photographs, draggable, on sand */}
+  <Section tone="sand" labelledby="results-title">
+    <SectionHeading id="results-title" eyebrow="Real results, real yards" title="Actually clean. Every corner." lede="Scoop Dogg jobs, before and after. Drag across a photo to compare.">
+      <a slot="action" href="/gallery" class="link text-base">More before-and-afters</a>
+    </SectionHeading>
+    <div class="-mx-5 mt-12 flex snap-x snap-mandatory gap-4 overflow-x-auto px-5 pb-2 sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-6 sm:overflow-visible sm:px-0 [&>figure]:w-[72%] [&>figure]:shrink-0 [&>figure]:snap-center sm:[&>figure]:w-auto">
+      <BeforeAfter before={runBefore} after={runAfter} caption="Side-yard dog run" alt="side-yard dog run" />
+      <BeforeAfter before={yardBefore} after={yardAfter} caption="Backyard" alt="backyard" />
+      <BeforeAfter before={enclosureBefore} after={enclosureAfter} caption="Dog enclosure" alt="dog enclosure" />
+    </div>
+    {trust.guarantee && (
+      <div class="mt-14 flex flex-col gap-6 rounded-xl border border-tone-rule bg-paper p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
+        <GuaranteeStamp size={112} />
+        <a href="/book" class="btn-primary btn-lg shrink-0" data-cta="guarantee">See my price</a>
+      </div>
+    )}
+  </Section>
+
+  {/* 9. SERVING ALL OF VENTURA COUNTY AND MORE — the count comes from markets() (P15 §7 defect 2) */}
   <Section tone="forest" labelledby="areas-title">
     <div class="grid gap-12 lg:grid-cols-12">
       <div class="lg:col-span-5">
         <p class="eyebrow mb-4">Where we work</p>
-        <h2 id="areas-title" class="text-h2 text-white">Local routes across two counties</h2>
+        <h2 id="areas-title" class="text-h2 text-white">
+          Serving {markets().reduce((n, m) => n + m.areas.length, 0)} cities across two counties
+        </h2>
         <p class="mt-5 text-lg text-tone-fg">Each city has set service days. That is how every customer gets the same day every week.</p>
         <a href="/areas" class="btn-primary mt-8">Check my address</a>
       </div>
@@ -275,18 +417,23 @@ const check = 'M5 12l5 5 9-10';
     </div>
   </Section>
 
-  <!-- 9. FAQ -->
+  {/* 10. GUIDES & QUESTIONS — new. Thirty-two written pages stop being orphans here (P15 §8). */}
+  <Section tone="tint" labelledby="knowledge-title">
+    <KnowledgeBand guides={guides} questions={questionLinks} />
+  </Section>
+
+  {/* 11. FREQUENTLY ASKED QUESTIONS — the live page's own seven, prices resolved from rows */}
   <Section tone="white" labelledby="faq-title">
     <div class="grid gap-12 lg:grid-cols-12">
       <div class="lg:col-span-4">
         <p class="eyebrow mb-4">Questions</p>
-        <h2 id="faq-title" class="text-h2 text-forest-900">Questions, answered</h2>
+        <h2 id="faq-title" class="text-h2 text-forest-900">Frequently asked questions</h2>
         <p class="mt-5 text-lg text-ink-700">Something else? Call or text <a href={business.phoneHref} class="link whitespace-nowrap">{business.phone}</a>.</p>
       </div>
       <div class="lg:col-span-8"><Faq items={faqs} /></div>
     </div>
   </Section>
 
-  <!-- 10. CLOSE -->
+  {/* 12. BOOK YOUR SERVICE — the live page's closing promise, with the ZIP field inside it */}
   <CloseCta source="home-close" />
 </Site>

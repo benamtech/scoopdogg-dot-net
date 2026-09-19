@@ -50,3 +50,6 @@ output/rehearsals/
 
 # local artifacts: lighthouse reports, demo receipts, gate failure screenshots
 output/
+
+# The dev server's own compiled output (see gates/_compile.mjs on why it is not .gate-build)
+.dev-build/

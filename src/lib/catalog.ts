@@ -150,14 +150,21 @@ export function regionSentence(): string {
   return setting<string>('business.region_sentence', `${serviceRegion}, including Malibu and the Conejo Valley`);
 }
 
-/** How a service's price reads on a card: the monthly package when one exists, else the tier. */
-export function headlinePrice(slug: string): { text: string; per: string; derived: boolean } | null {
+/**
+ * How a service's price reads on a card: the monthly package when one exists, else the tier.
+ *
+ * `cents` comes back alongside the text so a caller can emit `data-price-cents`. That attribute
+ * is not decoration: `gates/price-four-places.mjs` uses it to find a price on a page and check
+ * it against the database and Stripe, and `src/index.css` hangs tabular figures off it. A price
+ * rendered without it is a price no gate can see.
+ */
+export function headlinePrice(slug: string): { text: string; per: string; cents: number; derived: boolean } | null {
   const pkg = lowestMonthly(catalog, slug);
-  if (pkg) return { text: formatCents(pkg.monthly_price_cents), per: '/month', derived: pkg.source === 'derived_from_published' };
+  if (pkg) return { text: formatCents(pkg.monthly_price_cents), per: '/month', cents: pkg.monthly_price_cents, derived: pkg.source === 'derived_from_published' };
   const priced = tiersFor(slug).filter((t) => t.price_cents !== null && !t.requires_quote);
   if (!priced.length) return null;
   const low = priced.sort((a, b) => (a.price_cents ?? 0) - (b.price_cents ?? 0))[0];
-  return { text: `From ${formatCents(low.price_cents!)}`, per: low.price_suffix || '', derived: false };
+  return { text: `From ${formatCents(low.price_cents!)}`, per: low.price_suffix || '', cents: low.price_cents!, derived: false };
 }
 
 export { formatCents, formatTierPrice };

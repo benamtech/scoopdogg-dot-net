@@ -1,0 +1,30 @@
+---
+/**
+ * One of the five groups the live Our Services band is divided into: Yard Cleaning, Turf
+ * Maintenance, Landscaping, Pressure Washing and Extra Pet Services.
+ *
+ * P15 §2 row 3. The grouping is the part of the page people actually navigate by — a visitor
+ * with a cat reads two headings and stops — so it carries over as it is. The heading level is
+ * h3 because the band's own "Our Services" is the h2, and `gates/build-gates.mjs` checks a page
+ * has exactly one h1.
+ */
+export interface Props {
+  title: string;
+  lede?: string;
+  /** Three across on a wide screen unless the group is small enough to look sparse. */
+  cols?: 2 | 3;
+}
+const { title, lede, cols = 3 } = Astro.props;
+const grid = cols === 2
+  ? 'sm:grid-cols-2'
+  : 'sm:grid-cols-2 lg:grid-cols-3';
+---
+<div class="mt-14 first:mt-0" data-service-group={title}>
+  <div class="flex flex-col gap-1 border-b border-tone-rule pb-4">
+    <h3 class="font-serif text-h4 text-tone-heading">{title}</h3>
+    {lede && <p class="text-base text-tone-muted">{lede}</p>}
+  </div>
+  <div class={`mt-7 grid gap-5 ${grid}`}>
+    <slot />
+  </div>
+</div>

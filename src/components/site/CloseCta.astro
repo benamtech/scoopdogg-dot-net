@@ -4,13 +4,28 @@
  * white card, and the mascot. On orange only large text may be white (3.15:1), so the lede is
  * statement size and the form's label is visually hidden — the heading asks the question.
  * `tone="forest"` is there for a page whose previous band is already orange.
+ *
+ * THE ONE LINE OF THE LIVE PAGE THAT DOES NOT PORT. Its closing CTA reads *"Takes less than 60
+ * seconds. No credit card required. We'll reach out same day."* The speed promise is true and
+ * comes across. **"No credit card required" does not**, because both lanes of the funnel now
+ * ask for a card — lane B just does not charge it yet.
+ *
+ * P15 §7 listed this as copy to tidy. It is more than that. §17602(a)(5) makes it unlawful to
+ * *"include any information in the contract that interferes with, detracts from, contradicts,
+ * or otherwise undermines the ability of consumers to provide their affirmative consent"*, and
+ * a page telling a reader no card is needed, leading to a screen that takes one, is exactly
+ * that. R9 §2. `gates/consent.mjs` fails the build if the phrase reappears on any built page,
+ * so this is a decision with a reader rather than a line somebody remembered to delete.
+ *
+ * What keeps faith with the old promise is the pay-after lane itself, and the funnel says so
+ * where it is true: at the price step, and in the consent block.
  */
 import { Image } from 'astro:assets';
 import AddressForm from './AddressForm.astro';
 import mascot from '../../assets/art/dog-jumping.png';
 import { headlineOffer } from '../../lib/catalog';
 export interface Props { title?: string; lede?: string; source?: string; city?: string; service?: string; tone?: 'orange' | 'forest' }
-const { title = 'Never pick up after your dog again.', lede = `See your price in a minute.${headlineOffer ? ` ${headlineOffer.name}.` : ''}`, source = 'close', city, service, tone = 'orange' } = Astro.props;
+const { title = 'Never pick up after your dog again.', lede = `Takes about a minute, and you see your price before we ask for anything else.${headlineOffer ? ` ${headlineOffer.name}.` : ''}`, source = 'close', city, service, tone = 'orange' } = Astro.props;
 ---
 <section class={`tone-${tone} relative overflow-hidden bg-tone-bg`} aria-labelledby={`${source}-title`}>
   <div class="container-site relative grid items-center gap-10 py-section-sm lg:grid-cols-12 lg:py-16">
