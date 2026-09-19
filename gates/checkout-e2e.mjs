@@ -165,12 +165,47 @@ async function walk(shape) {
 
     if (/checkout\.stripe\.com/.test(page.url())) {
       outcome = 'paid';
+      /**
+       * CHOOSE CARD FIRST. Stripe Checkout offers Card, Cash App Pay, Klarna and Bank on this
+       * account, and the card fields do not exist in the DOM until Card is the selected method.
+       * This gate went straight for `#cardNumber` and timed out for thirty seconds against a
+       * page that was rendering perfectly — the screenshots in output/ show the full Checkout
+       * with the price, the half-off coupon and the start date all correct.
+       *
+       * It is conditional because a single-method account renders no chooser at all, and a
+       * gate that requires the chooser would then fail on the simpler case.
+       */
+      const cardTab = page.getByTestId('card-accordion-item').or(page.getByText(/^Card$/).first());
+      if (await cardTab.count().catch(() => 0)) {
+        await cardTab.first().click({ timeout: 10000 }).catch(() => {});
+        await page.locator('#cardNumber').waitFor({ timeout: 15000 }).catch(() => {});
+      }
       await page.locator('#cardNumber').fill(CARD);
       await page.locator('#cardExpiry').fill('12 / 34');
       await page.locator('#cardCvc').fill('123');
       await page.locator('#billingName').fill(person.name);
       const zip = page.locator('#billingPostalCode');
       if (await zip.count()) await zip.fill('93001');
+
+      /**
+       * UNTICK "Save my information for faster checkout".
+       *
+       * Stripe ticks it by default, and with it ticked Link demands a phone number — the
+       * screenshot of the failing run shows a correctly filled card and one red-outlined phone
+       * field. Subscribe silently refuses and the walk waits sixty seconds for a redirect that
+       * was never going to come.
+       *
+       * Unticking is the right fix rather than filling a phone: this gate should exercise a
+       * plain card payment, and a gate that creates Link accounts on every run is doing
+       * something nobody asked it to.
+       */
+      const saveInfo = page.locator('#enableStripePass');
+      if (await saveInfo.count().catch(() => 0)) {
+        await saveInfo.uncheck({ timeout: 5000 }).catch(() => {});
+      }
+      const phone = page.locator('#phoneNumber');
+      if (await phone.isVisible().catch(() => false)) await phone.fill('8055550123').catch(() => {});
+
       await page.locator('button[type=submit]').click();
       await page.waitForURL(/\/book\/complete/, { timeout: 60000 });
       await page.getByRole('heading', { name: /you're booked/i }).waitFor({ timeout: 30000 });

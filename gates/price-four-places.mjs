@@ -22,10 +22,28 @@ const build = compileServer();
 const stripeLib = await import(path.join(build, 'server/lib/stripe.js'));
 const { db } = await import(path.join(build, 'server/lib/db.js'));
 
+const { resolve: resolveAccount } = stripeLib;
+const { account } = await resolveAccount(mode);
+
 const c = new pg.Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: true } });
 await c.connect();
 const { rows: pkgs } = await c.query(`select id, slug, name, monthly_price_cents, version from packages where status = 'active' order by sort_order`);
-const { rows: prices } = await c.query(`select package_id, price_id, unit_amount, version from stripe_prices where livemode = $1`, [mode === 'live']);
+/**
+ * SCOPED TO THE CONNECTED ACCOUNT, because a Stripe Price belongs to one.
+ *
+ * This read every `stripe_prices` row for the mode and then retrieved the id against whatever
+ * account is connected now. Switch the connected account — which is the single most important
+ * event in this product, the day Josue connects his own — and every row from the previous
+ * account names a Price that does not exist on the new one. The gate did not fail; it THREW,
+ * with a StripeInvalidRequestError and a stack, which is a different and worse thing.
+ *
+ * `server/lib/stripe.ts:177` already gets this right: `priceForPackage` filters on
+ * `account_id`, so the running site creates fresh Prices on a new account exactly as it should.
+ * The defect was only ever in this gate's own query.
+ */
+const { rows: prices } = await c.query(
+  `select package_id, price_id, unit_amount, version from stripe_prices
+    where livemode = $1 and account_id = $2`, [mode === 'live', account]);
 await c.end();
 
 const walk = (d) => readdirSync(d).flatMap((f) => { const p = path.join(d, f); return statSync(p).isDirectory() ? walk(p) : [p]; });
@@ -39,15 +57,21 @@ for (const f of pages) {
 }
 if (mutate) { const k = [...printed.keys()][0]; printed.set(k, printed.get(k).map((v) => v + 100)); }
 
-const { resolve } = stripeLib;
-const { stripe, account } = await resolve(mode);
+const { stripe } = await resolveAccount(mode);
 let failed = 0;
 for (const p of pkgs) {
   const onPages = printed.get(p.slug) ?? [];
   const pageOk = onPages.length > 0 && onPages.every((v) => v === p.monthly_price_cents);
   const row = prices.find((x) => x.package_id === p.id && x.version === p.version);
   let stripeAmount = null;
-  if (row) stripeAmount = (await stripe.prices.retrieve(row.price_id, {}, { stripeAccount: account })).unit_amount;
+  if (row) {
+    // A row scoped to this account should always resolve. If it does not, say which price is
+    // missing rather than dying with a stack — a gate that crashes tells you less than one
+    // that fails.
+    stripeAmount = await stripe.prices.retrieve(row.price_id, {}, { stripeAccount: account })
+      .then((x) => x.unit_amount)
+      .catch((e) => { console.log(`        ${row.price_id} not on ${account}: ${e.raw?.message ?? e.message}`); return null; });
+  }
   const stripeOk = stripeAmount === p.monthly_price_cents;
   const ok = pageOk && stripeOk;
   if (!ok) failed++;
