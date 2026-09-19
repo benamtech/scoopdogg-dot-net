@@ -5,16 +5,37 @@
  */
 import { useEffect, useState } from 'react';
 
+type CatchUp = { kind: 'charge'; label: string; cents: number; band: string } | { kind: 'quote'; label: string; cents: null };
+type PauseOption = { weeks: number; catch_up: CatchUp | null };
 type Sub = {
   id: string; state: string; package_name: string | null; short_label: string | null; weekday: string; starts_on: string;
   monthly_price_cents: number; current_period_end: string | null; cancel_at_period_end: boolean; payment_state: string;
   paused_until: string | null; address: string; city: string;
+  /** What each offered pause length costs to come back from, priced from Josue's own rows. */
+  pause_options?: PauseOption[]; resume_catch_up_cents: number | null; resume_catch_up_tier_id: string | null;
 };
 type Visit = { id: string; subscription_id: string; date: string; state: string; photo_urls: string[] };
 type Invoice = { id: string; total_cents: number; state: string; paid_at: string | null; hosted_invoice_url: string | null };
 type Overview = { customer: { name: string; email: string; phone: string }; subscriptions: Sub[]; visits: Visit[]; invoices: Invoice[] };
 
 const money = (c: number) => `$${(c / 100).toFixed(c % 100 ? 2 : 0)}`;
+
+/**
+ * WHAT A PAUSE COSTS TO COME BACK FROM, said next to the button that offers it.
+ *
+ * Josue's rule is that the weekly price is priced off a weekly yard. A four-week pause leaves a
+ * month of buildup, and that first visit back is a different job. The rule was enforced at
+ * booking on 2026-09-19 and not here, so this screen was offering a pause - as the save offer
+ * when somebody tried to cancel - with a consequence it did not mention. The numbers come from
+ * the server, which reads them from Josue's own catch-up tiers; nothing is typed here.
+ */
+const pauseNote = (sub: Sub, weeks: number): string | null => {
+  const c = (sub.pause_options ?? []).find((o) => o.weeks === weeks)?.catch_up;
+  if (!c) return null;
+  return c.kind === 'quote'
+    ? 'Josue prices your first visit back himself — a yard that far behind is a bigger job than a weekly visit.'
+    : `Your first visit back is ${money(c.cents)} more — ${c.band} of buildup to reset. Your weekly price does not change.`;
+};
 const nice = (d: string, opts: Intl.DateTimeFormatOptions = { weekday: 'long', month: 'long', day: 'numeric' }) =>
   new Date(`${d.slice(0, 10)}T12:00:00Z`).toLocaleDateString('en-US', { ...opts, timeZone: 'UTC' });
 
@@ -125,14 +146,26 @@ export default function AccountApp({ phone, phoneHref }: { phone: string; phoneH
             )}
             {sub.state === 'paused' && (
               <div className="mt-6 flex flex-col gap-3 rounded-md bg-forest-50 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-base text-forest-900">Paused{sub.paused_until ? ` until ${nice(sub.paused_until)}` : ''}. No charges while paused.</p>
+                <div>
+                  <p className="text-base text-forest-900">Paused{sub.paused_until ? ` until ${nice(sub.paused_until)}` : ''}. No charges while paused.</p>
+                  {sub.resume_catch_up_tier_id && (
+                    <p className="mt-1 text-sm text-ink-600" data-resume-catch-up>
+                      {sub.resume_catch_up_cents == null
+                        ? 'Josue will price your first visit back himself.'
+                        : `Your first visit back carries a ${money(sub.resume_catch_up_cents)} catch-up clean.`}
+                    </p>
+                  )}
+                </div>
                 <button className="btn-secondary btn-sm" disabled={busy === 'resume'} onClick={() => act('resume', 'plan/resume', { subscription_id: sub.id }, 'Welcome back — your visits are back on.')}>Resume now</button>
               </div>
             )}
             <div className="mt-6 flex flex-wrap gap-2 border-t border-line pt-6">
               {sub.state === 'active' && !sub.cancel_at_period_end && (
                 <>
-                  <button className="btn-ghost btn-sm" disabled={!!busy} onClick={() => act('pause', 'plan/pause', { subscription_id: sub.id, weeks: 2 }, 'Paused for two weeks. You won’t be charged while paused.')}>Pause 2 weeks</button>
+                  <span className="inline-flex flex-col gap-1">
+                    <button data-pause={2} className="btn-ghost btn-sm" disabled={!!busy} onClick={() => act('pause', 'plan/pause', { subscription_id: sub.id, weeks: 2 }, 'Paused for two weeks. You won’t be charged while paused.')}>Pause 2 weeks</button>
+                    {pauseNote(sub, 2) && <span className="max-w-xs text-sm text-ink-600">{pauseNote(sub, 2)}</span>}
+                  </span>
                   <button className="btn-ghost btn-sm" disabled={!!busy} onClick={() => setConfirmCancel(sub.id)}>Cancel plan</button>
                 </>
               )}
@@ -159,7 +192,10 @@ export default function AccountApp({ phone, phoneHref }: { phone: string; phoneH
                 */}
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button data-cancel-control className="btn-secondary btn-sm" onClick={() => { setConfirmCancel(null); act('cancel', 'plan/cancel', { subscription_id: sub.id, reason: 'customer portal' }, 'Your plan is set to end at the end of this billing month.'); }}>Cancel my plan</button>
-                  <button data-save-offer className="btn-ghost btn-sm" onClick={() => { setConfirmCancel(null); act('pause', 'plan/pause', { subscription_id: sub.id, weeks: 4 }, 'Paused for four weeks instead.'); }}>Pause 4 weeks instead</button>
+                  <span className="inline-flex flex-col gap-1">
+                    <button data-save-offer data-pause={4} className="btn-ghost btn-sm" onClick={() => { setConfirmCancel(null); act('pause', 'plan/pause', { subscription_id: sub.id, weeks: 4 }, 'Paused for four weeks instead.'); }}>Pause 4 weeks instead</button>
+                    {pauseNote(sub, 4) && <span className="max-w-xs text-sm text-ink-600" data-pause-note={4}>{pauseNote(sub, 4)}</span>}
+                  </span>
                   <button className="text-sm font-medium text-forest-700 underline underline-offset-4" onClick={() => setConfirmCancel(null)}>Never mind</button>
                 </div>
               </div>

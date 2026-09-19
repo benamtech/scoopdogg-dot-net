@@ -246,6 +246,50 @@ export type CatchUp =
   /** Josue's own ladder says this one needs his eyes. No card is taken. */
   | { kind: 'quote'; tier: Tier };
 
+/**
+ * THE LADDER, DECLARED ONCE. The four answers to "When was the yard last cleaned?", in order,
+ * each with the number of weeks it tops out at.
+ *
+ * It lived in `BookingFlow.tsx` until 2026-09-19 and the week boundaries lived only inside the
+ * question's own labels, which meant nothing but a person could read them. They are needed in a
+ * second place now — a plan that has been PAUSED knows how many weeks it was paused for and has
+ * no answer to map, so it has to turn weeks back into a band.
+ *
+ * The prices stay in the rows (`service_tiers.covers_last_cleaned`, migration 026). This is the
+ * question, not the price; `gates/catch-up-priced.mjs` asserts the two agree.
+ */
+export const LAST_CLEANED = [
+  { key: 'this_week', label: 'This week', upToWeeks: 1 },
+  { key: 'two_weeks', label: '1\u20132 weeks ago', upToWeeks: 2 },
+  { key: 'month', label: '3\u20136 weeks ago', upToWeeks: 6 },
+  { key: 'longer', label: 'Longer than that', upToWeeks: Infinity },
+] as const;
+
+export type LastCleaned = (typeof LAST_CLEANED)[number]['key'];
+
+/**
+ * A gap in weeks -> the answer a customer would have given. Used by the pause and resume path,
+ * where nobody is answering a question: the system knows the yard went N weeks without a visit
+ * and owes the same money it would have owed if the customer had typed it at booking.
+ */
+export function lastCleanedForWeeks(weeks: number): LastCleaned {
+  const w = Math.max(0, weeks);
+  return (LAST_CLEANED.find((b) => w <= b.upToWeeks) ?? LAST_CLEANED[LAST_CLEANED.length - 1]).key;
+}
+
+/**
+ * What a yard that has gone `weeks` without a visit owes on the visit that comes next.
+ *
+ * THIS IS THE SECOND DOOR ON JOSUE'S RULE. The first is `catchUpFor` at booking. A customer who
+ * books with a clean yard and then pauses the plan for four weeks arrives at exactly the state
+ * the catch-up ladder exists for, and until 2026-09-19 paid nothing for it — while the account
+ * screen offered "Pause 4 weeks instead" as the save offer when they tried to cancel. Same rule,
+ * same rows, same numbers; the only difference is that the gap is measured rather than asked.
+ */
+export function catchUpForWeeks(catalog: Catalog, serviceSlug: string, weeks: number): CatchUp {
+  return catchUpFor(catalog, serviceSlug, lastCleanedForWeeks(weeks));
+}
+
 export function catchUpFor(catalog: Catalog, serviceSlug: string, lastCleaned: string | null | undefined): CatchUp {
   // Only a recurring plan can be "behind". A one-time job IS the catch-up.
   if (serviceSlug !== 'weekly-pooper-scooper-service' || !lastCleaned) return { kind: 'none' };

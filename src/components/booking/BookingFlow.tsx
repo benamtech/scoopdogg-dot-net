@@ -26,7 +26,7 @@
  * Summit lesson: a client:load controlled input erases pre-hydration typing).
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { quoteBooking, quoteOneTime, bookableServices, formatCents, tierPrice, catchUpFor, type Catalog, type Tier } from '../../shared/pricing';
+import { quoteBooking, quoteOneTime, bookableServices, formatCents, tierPrice, catchUpFor, LAST_CLEANED, type Catalog, type Tier } from '../../shared/pricing';
 import { renewalTerms } from '../../shared/consent';
 
 type Area = { slug: string; name: string; market: string; bookable: boolean };
@@ -83,12 +83,6 @@ const SIZE_QUESTION: Record<string, string> = {
   'pressure-washing': 'How big is the area?',
   'kitty-litter-robot-cleaning': 'How many Litter-Robots?',
 };
-const LAST_CLEANED = [
-  { v: 'this_week', label: 'This week' },
-  { v: 'two_weeks', label: '1–2 weeks ago' },
-  { v: 'month', label: '3–6 weeks ago' },
-  { v: 'longer', label: 'Longer than that' },
-];
 const DEEP_CLEAN = 'one-time-dog-poop-cleanup';
 
 /** Five digits out of whatever was typed or pasted. An address still works. */
@@ -547,8 +541,8 @@ export default function BookingFlow(props: Props) {
                   <legend className="text-lg font-semibold text-forest-900">When was the yard last cleaned?</legend>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {LAST_CLEANED.map((o) => (
-                      <button key={o.v} type="button" aria-pressed={lastCleaned === o.v} onClick={() => { setLastCleaned(o.v); if (o.v === 'this_week' || o.v === 'two_weeks') setDeepClean(''); }}
-                        className={`rounded-md border px-4 py-2.5 text-base font-medium transition duration-fast ${lastCleaned === o.v ? 'border-forest-600 bg-forest-600 text-white' : 'border-line-strong bg-paper text-forest-800 hover:border-forest-400'}`}>{o.label}</button>
+                      <button key={o.key} type="button" aria-pressed={lastCleaned === o.key} onClick={() => { setLastCleaned(o.key); if (o.key === 'this_week' || o.key === 'two_weeks') setDeepClean(''); }}
+                        className={`rounded-md border px-4 py-2.5 text-base font-medium transition duration-fast ${lastCleaned === o.key ? 'border-forest-600 bg-forest-600 text-white' : 'border-line-strong bg-paper text-forest-800 hover:border-forest-400'}`}>{o.label}</button>
                     ))}
                   </div>
                   {/*

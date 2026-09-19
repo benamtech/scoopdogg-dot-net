@@ -9,6 +9,7 @@
  * `admin` sees the business.
  */
 import { db } from '../server/lib/db.js';
+import { expireDuePauses } from '../server/lib/account.js';
 import { demoMode, demoStatus } from '../server/lib/notify.js';
 import { sendJson, readJsonBody, safeError, type ApiRequest, type ApiResponse } from '../server/lib/http.js';
 import { startLogin, verifyLogin, getSession, endSession, rateLimit, isOverLimit, type AdminSession } from '../server/lib/admin-auth.js';
@@ -190,6 +191,10 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
 
     // ---- business: subscriptions and the pace to 200 --------------------------
     if (path === 'business') {
+      // The second of the two places a due pause comes back on. Josue opening his board is at
+      // least as likely as the customer opening theirs, and the plan must not sit paused
+      // waiting for whichever of them looks first.
+      await expireDuePauses();
       const { rows: [m] } = await db().query(
         `select count(*) filter (where state = 'active')::int as active,
                 count(*) filter (where state = 'paused')::int as paused,

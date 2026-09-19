@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   tierForQuantity, formatTierPrice, quoteBooking, quoteOneTime, bookableServices, startDates, offersFor,
+  catchUpFor, catchUpForWeeks, lastCleanedForWeeks, LAST_CLEANED,
   type Catalog, type Service, type Tier, type Package, type Offer,
 } from '../src/shared/pricing.ts';
 
@@ -151,4 +152,59 @@ test('a service with only quote tiers is still offered, as a quote', () => {
   const c: Catalog = { ...catalog, services: [...catalog.services, quoteOnly],
     tiers: [...catalog.tiers, tier('ct1', quoteOnly.slug, null, null, null)] };
   assert.equal(bookableServices(c).find((s) => s.service.slug === quoteOnly.slug)?.shape, 'quote');
+});
+
+// ---------------------------------------------------------------------------------------
+// Josue's rule, on both doors. "when yard has not been cleaned longer than a couple weeks it
+// would increase price because the default price is based on having a weekly clean."
+//
+// The booking door reads an ANSWER the customer gave. The pause door reads a GAP the system
+// measured. They must land on the same band and the same money, or the rule has a hole in the
+// shape of whichever door somebody used.
+// ---------------------------------------------------------------------------------------
+const catchUpTiers: Tier[] = [
+  tier('cu-standard', yardDeep.slug, null, null, 9900, { label: 'Standard yard (up to 2 weeks buildup)', covers_last_cleaned: ['this_week', 'two_weeks'] }),
+  tier('cu-heavy', yardDeep.slug, null, null, 14900, { label: 'Heavy buildup (3-6 weeks)', covers_last_cleaned: ['month'] }),
+  tier('cu-severe', yardDeep.slug, null, null, null, { label: 'Severe (6+ weeks or multiple dogs)', covers_last_cleaned: ['longer'] }),
+];
+const withCatchUp: Catalog = { ...catalog, tiers: [...tiers, ...catchUpTiers] };
+
+test('a couple of weeks is a couple of weeks, and costs nothing', () => {
+  assert.equal(catchUpFor(withCatchUp, scoop.slug, 'this_week').kind, 'none');
+  assert.equal(catchUpFor(withCatchUp, scoop.slug, 'two_weeks').kind, 'none');
+  assert.equal(catchUpForWeeks(withCatchUp, scoop.slug, 2).kind, 'none');
+});
+
+test('beyond a couple of weeks costs what Josue publishes for it', () => {
+  const m = catchUpFor(withCatchUp, scoop.slug, 'month');
+  assert.equal(m.kind, 'charge');
+  if (m.kind === 'charge') { assert.equal(m.cents, 14900); assert.equal(m.band, '3-6 weeks'); }
+  assert.equal(catchUpFor(withCatchUp, scoop.slug, 'longer').kind, 'quote');
+});
+
+test('a measured gap and a typed answer reach the same money', () => {
+  // 4 weeks is the pause the cancel dialog offers as its save offer.
+  const asked = catchUpFor(withCatchUp, scoop.slug, 'month');
+  const measured = catchUpForWeeks(withCatchUp, scoop.slug, 4);
+  assert.deepEqual(measured, asked);
+  assert.deepEqual(catchUpForWeeks(withCatchUp, scoop.slug, 12), catchUpFor(withCatchUp, scoop.slug, 'longer'));
+});
+
+test('the week boundaries are the ones the question states', () => {
+  assert.equal(lastCleanedForWeeks(0), 'this_week');
+  assert.equal(lastCleanedForWeeks(2), 'two_weeks');
+  assert.equal(lastCleanedForWeeks(3), 'month');
+  assert.equal(lastCleanedForWeeks(6), 'month');
+  assert.equal(lastCleanedForWeeks(7), 'longer');
+  // A negative gap is a clock problem, not a free clean.
+  assert.equal(lastCleanedForWeeks(-5), 'this_week');
+  assert.equal(LAST_CLEANED.length, 4);
+});
+
+test('the rule stays on the service Josue described', () => {
+  // Turf and yard maintenance are weekly too, and he has published no catch-up ladder for
+  // them. Inventing one would be inventing a fact about his business.
+  assert.equal(catchUpForWeeks(withCatchUp, turf.slug, 12).kind, 'none');
+  // A one-time job is never "behind" — it IS the catch-up.
+  assert.equal(catchUpForWeeks(withCatchUp, yardDeep.slug, 12).kind, 'none');
 });

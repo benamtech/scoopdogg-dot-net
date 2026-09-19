@@ -38,10 +38,12 @@ const out = compileServer();
 const { catchUpFor } = await import(`${out}/src/shared/pricing.js`);
 const catalog = JSON.parse(readFileSync('content/catalog.json', 'utf8'));
 
-// The answers the funnel actually offers, read from the component rather than retyped here —
-// a gate with its own copy of the list cannot notice the list changing.
-const src = readFileSync('src/components/booking/BookingFlow.tsx', 'utf8');
-const ANSWERS = [...src.matchAll(/\{ v: '([a-z_]+)', label:/g)].map((m) => m[1]);
+// The answers the funnel actually offers, read from the ladder rather than retyped here — a
+// gate with its own copy of the list cannot notice the list changing. The ladder moved out of
+// BookingFlow.tsx and into src/shared/pricing.ts on 2026-09-19, because the pause path needs it
+// too; it is imported from the compiled build so this reads the real export and not a regex.
+const { LAST_CLEANED } = await import(`${out}/src/shared/pricing.js`);
+const ANSWERS = LAST_CLEANED.map((b) => b.key);
 const WEEKLY = 'weekly-pooper-scooper-service';
 
 console.log(`the funnel offers ${ANSWERS.length} answers: ${ANSWERS.join(', ')}\n`);
