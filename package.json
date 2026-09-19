@@ -9,14 +9,15 @@
     "build:only": "node scripts/pull-catalog.mjs && node scripts/pull-demo-state.mjs && astro build",
     "build:bare": "astro build",
     "preview": "astro preview",
-    "gates": "node gates/build-gates.mjs && node gates/question-pages.mjs && node gates/brand-tokens.mjs && node gates/no-price-in-prose.mjs && node gates/price-clears-the-floor.mjs && node gates/one-money-door.mjs && node gates/refund-returns-the-fee.mjs --static && node gates/from-price-never-final.mjs && node gates/e2e.mjs",
+    "gates": "node gates/build-gates.mjs && node gates/question-pages.mjs && node gates/brand-tokens.mjs && node gates/no-price-in-prose.mjs && node gates/price-clears-the-floor.mjs && node gates/one-money-door.mjs && node gates/refund-returns-the-fee.mjs --static && node gates/from-price-never-final.mjs && node gates/connection-truth.mjs && node gates/stripe-connect.mjs && node gates/no-secret-in-admin.mjs && node gates/onboarding-checklist.mjs && node gates/growth-board.mjs && node gates/e2e.mjs",
     "gates:db": "bash gates/schema-guards.sh",
     "typecheck": "astro check",
     "seed:catalog": "node --experimental-strip-types scripts/build-catalog-seed.mjs",
     "seed:settings": "node scripts/build-settings-migration.mjs",
     "test": "node --test 'tests/*.test.ts'",
     "pull": "node --env-file=.env.local scripts/pull-catalog.mjs && node --env-file=.env.local scripts/pull-demo-state.mjs",
-    "gates:money": "node gates/one-money-door.mjs && node gates/refund-returns-the-fee.mjs"
+    "gates:money": "node gates/one-money-door.mjs && node gates/refund-returns-the-fee.mjs",
+    "gates:admin": "node gates/admin-roles.mjs && node gates/invite-flow.mjs"
   },
   "dependencies": {
     "@astrojs/react": "^4.4.2",

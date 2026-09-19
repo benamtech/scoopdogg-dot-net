@@ -70,6 +70,10 @@ const plan = [
   ['visits',           `delete from visits where subscription_id in
                           (select id from subscriptions where customer_id = any($1::uuid[]))`, ids],
   ['stripe_customers', `delete from stripe_customers where customer_id = any($1::uuid[])`, ids],
+  // customer_invites (018) references customers, properties AND subscriptions, so it has to go
+  // before all three or the customers delete fails on a foreign key. A table added to the schema
+  // without being added here turns this script from a cleanup into an error nobody expected.
+  ['customer_invites', `delete from customer_invites where customer_id = any($1::uuid[])`, ids],
   ['invoices (by sub)', `delete from invoices where subscription_id in (select id from subscriptions where customer_id = any($1::uuid[]))`, ids],
   ['subscriptions',    `delete from subscriptions where customer_id = any($1::uuid[])`, ids],
   ['properties',       `delete from properties where customer_id = any($1::uuid[])`, ids],

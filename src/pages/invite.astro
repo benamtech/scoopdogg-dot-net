@@ -1,0 +1,17 @@
+---
+import Base from '../layouts/Base.astro';
+import Logo from '../components/site/Logo.astro';
+import InviteApp from '../components/account/InviteApp';
+import { business } from '../lib/catalog';
+---
+<Base title="Your Scoop Dogg plan" description="Add a card to your existing Scoop Dogg service." canonicalPath="/invite" noindex>
+  <header class="tone-white border-b border-line bg-paper">
+    <div class="container-site flex h-[72px] items-center justify-between">
+      <Logo size="md" />
+      <a href="/" class="text-base font-medium text-forest-700 hover:text-forest-900">scoopdogg.net</a>
+    </div>
+  </header>
+  <main id="main" class="min-h-[calc(100vh-72px)] tone-tint bg-tone-bg py-12">
+    <div class="container-site"><InviteApp client:load phone={business.phone} phoneHref={business.phoneHref} /></div>
+  </main>
+</Base>

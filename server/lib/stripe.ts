@@ -298,3 +298,78 @@ export async function probeV1Account(mode: StripeMode) {
       where livemode = $1`, [mode === 'live', card, acct.requirements?.currently_due?.length ? 'currently_due' : 'none', acct.charges_enabled]);
   return { account_id: acct.id, charges_enabled: acct.charges_enabled, card_payments: card, currently_due: acct.requirements?.currently_due ?? [] };
 }
+
+// ---------------------------------------------------------------------------------------
+// Disconnecting, and why it is not "closing the account" (P18 §1.4, rewritten 2026-09-19).
+//
+// P18 §1.4 was written for OAuth, where a disconnect is `oauth/deauthorize`. This integration
+// does not use OAuth - Stripe's Accounts v2 page lists "Using OAuth to authenticate connected
+// accounts" under the cases where you MUST use Accounts v1, and v1 account creation is refused
+// for this platform. So the v2 question is what the equivalent is, and the answer measured
+// against the API reference on 2026-09-19 is: there isn't one, and there should not be.
+//
+//   POST /v2/core/accounts/:id/close answers `stripe_loss_liable_cannot_be_deleted` for an
+//   account with a dashboard that Stripe is loss-liable for - which is exactly the account
+//   createConnectedAccount() makes (dashboard: 'full', losses_collector: 'stripe').
+//
+// That refusal is correct. It is JOSUE'S Stripe account, with his customers, his payouts and his
+// history in it; AMTECH never had the standing to delete it. What we can end is our own claim on
+// his money, and that is the whole of a disconnect:
+//
+//   1. clear `application_fee_percent` from every live subscription. Stripe, verbatim: the fee
+//      "continues to be collected by the platform after disconnect" otherwise. Taking 9% from a
+//      business that has left is the single worst thing this integration could do by accident,
+//      and it would do it quietly, monthly, until somebody read a statement.
+//   2. record that we stopped.
+//
+// Step 1 runs FIRST and step 2 only if it succeeded, because after we stop reading the row we
+// would no longer notice that a fee survived.
+// ---------------------------------------------------------------------------------------
+
+/** Clear AMTECH's percentage from live subscriptions. Dry by default; `apply` writes. */
+export async function clearPlatformFee(mode: StripeMode, { apply = false } = {}) {
+  const { stripe, account } = await resolve(mode);
+  let scanned = 0, live = 0, carrying = 0, cleared = 0;
+  const failures: string[] = [];
+  const ids: string[] = [];
+  for await (const sub of stripe.subscriptions.list({ status: 'all', limit: 100 }, { stripeAccount: account })) {
+    scanned++;
+    // A cancelled subscription cannot be charged a fee, so it is not our problem; one that is
+    // paused or past_due very much can be.
+    if (['canceled', 'incomplete_expired'].includes(sub.status)) continue;
+    live++;
+    const pct = sub.application_fee_percent;
+    if (pct == null || Number(pct) === 0) continue;
+    carrying++;
+    ids.push(sub.id);
+    if (!apply) continue;
+    try {
+      // Stripe unsets an optional number by being sent an empty string.
+      await stripe.subscriptions.update(sub.id, { application_fee_percent: '' as unknown as number }, { stripeAccount: account });
+      cleared++;
+    } catch (e) {
+      failures.push(`${sub.id}: ${String((e as Error).message).split('\n')[0]}`);
+    }
+  }
+  return { account, scanned, live, carrying, cleared, failures, ids, applied: apply };
+}
+
+export async function disconnect(mode: StripeMode, by: string) {
+  const fee = await clearPlatformFee(mode, { apply: true });
+  if (fee.failures.length) {
+    // Not recorded as disconnected: a fee we failed to clear is a fee that keeps being collected,
+    // and a row saying we left would stop anyone looking for it.
+    throw new Error(`platform_fee_not_cleared:${fee.failures.length}`);
+  }
+  await db().query(
+    `update stripe_connection set revoked_at = now(), revoked_by = $2, updated_at = now() where livemode = $1`,
+    [mode === 'live', by]);
+  return { ...fee, revoked: true };
+}
+
+export async function reconnect(mode: StripeMode) {
+  await db().query(
+    `update stripe_connection set revoked_at = null, revoked_by = null, updated_at = now() where livemode = $1`,
+    [mode === 'live']);
+  return probeAccount(mode);
+}

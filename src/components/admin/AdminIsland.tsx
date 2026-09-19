@@ -7,6 +7,10 @@ import AdminLeadDetailPage from '../../pages_react/admin/AdminLeadDetailPage';
 import AdminMessagesPage from '../../pages_react/admin/AdminMessagesPage';
 import AdminMessageDetailPage from '../../pages_react/admin/AdminMessageDetailPage';
 import AdminPaymentsPage from '../../pages_react/admin/AdminPaymentsPage';
+import AdminChecklistPage from '../../pages_react/admin/AdminChecklistPage';
+import AdminCustomersPage from '../../pages_react/admin/AdminCustomersPage';
+import AdminGrowthPage from '../../pages_react/admin/AdminGrowthPage';
+import AdminTodayPage from '../../pages_react/admin/AdminTodayPage';
 
 /**
  * One admin screen, hydrated — the whole screen, not a shell around it.
@@ -35,6 +39,10 @@ const SCREENS = {
   messages: AdminMessagesPage,
   message: AdminMessageDetailPage,
   payments: AdminPaymentsPage,
+  setup: AdminChecklistPage,
+  customers: AdminCustomersPage,
+  growth: AdminGrowthPage,
+  today: AdminTodayPage,
 } as const;
 
 export type AdminScreen = keyof typeof SCREENS;

@@ -22,7 +22,14 @@ const TTL_SECONDS = 60 * 60 * 8;         // eight hours, like McGrath's admin
 const CODE_TTL_MINUTES = 10;
 const MAX_CODE_ATTEMPTS = 5;
 
-export type AdminRole = 'superadmin' | 'admin';
+/**
+ * Three roles, and the third one is the reason `crew` exists at all (P18 §4): the person in the
+ * truck needs today's stops and must never see money, customers or settings. The refusal is
+ * STRUCTURAL - api/admin.ts allows a crew session onto a named list of paths and refuses
+ * everything else - rather than a check remembered on each new route, because the route somebody
+ * adds next month is the one that would forget. gates/admin-roles.mjs is what keeps it true.
+ */
+export type AdminRole = 'superadmin' | 'admin' | 'crew';
 export type AdminSession = { id: string; teamId: string; name: string; email: string; role: AdminRole };
 
 function secret() {
@@ -77,7 +84,7 @@ export async function startLogin(emailRaw: string): Promise<{ sent: boolean; nam
   const email = normalizeEmail(emailRaw);
   const { rows } = await db().query(
     `select id, name, role from team_members
-      where lower(email) = $1 and status = 'active' and role in ('superadmin','admin')`,
+      where lower(email) = $1 and status = 'active' and role in ('superadmin','admin','crew')`,
     [email]);
   if (!rows.length) return { sent: false };
 
@@ -129,7 +136,7 @@ export async function verifyLogin(res: ApiResponse, emailRaw: string, code: stri
 
   const { rows: people } = await db().query(
     `select id, name, email, role from team_members
-      where lower(email) = $1 and status = 'active' and role in ('superadmin','admin')`,
+      where lower(email) = $1 and status = 'active' and role in ('superadmin','admin','crew')`,
     [email]);
   if (!people.length) return null;
   const person = people[0];
@@ -138,7 +145,10 @@ export async function verifyLogin(res: ApiResponse, emailRaw: string, code: stri
   const { rows: sessions } = await db().query(
     `insert into sessions (actor_kind, team_id, token_hash, expires_at)
      values ($1, $2, $3, now() + ($4 || ' seconds')::interval) returning id`,
-    [person.role === 'superadmin' ? 'superadmin' : 'admin', person.id, hmac(token), String(TTL_SECONDS)]);
+    // sessions.actor_kind has admitted 'team' since 001 and nothing wrote it; a crew session is
+    // that row. The role on team_members stays the single answer to what anyone may do.
+    [person.role === 'superadmin' ? 'superadmin' : person.role === 'crew' ? 'team' : 'admin',
+     person.id, hmac(token), String(TTL_SECONDS)]);
   await db().query('update team_members set last_login_at = now() where id = $1', [person.id]);
   setSessionCookie(res, token);
   return { id: sessions[0].id, teamId: person.id, name: person.name, email: person.email, role: person.role };
@@ -151,7 +161,7 @@ export async function getSession(req: ApiRequest): Promise<AdminSession | null> 
     `select s.id, t.id as team_id, t.name, t.email, t.role
        from sessions s join team_members t on t.id = s.team_id
       where s.token_hash = $1 and s.revoked_at is null and s.expires_at > now()
-        and t.status = 'active' and t.role in ('superadmin','admin')`,
+        and t.status = 'active' and t.role in ('superadmin','admin','crew')`,
     [hmac(token)]);
   if (!rows.length) return null;
   const r = rows[0];

@@ -5,7 +5,7 @@ import type { MessageStatus } from './types';
  * whole point, and it is what the old admin got wrong: it queried the database directly
  * with a key that shipped in the bundle and could read every customer record.
  */
-export type AdminRole = 'superadmin' | 'admin';
+export type AdminRole = 'superadmin' | 'admin' | 'crew';
 export interface AdminUser { id: string; teamId: string; name: string; email: string; role: AdminRole }
 
 export interface Lead {
@@ -67,4 +67,75 @@ export const adminApi = {
   settings:      () => call<{ settings: Array<{ key: string; value: unknown; updated_at: string; updated_by: string | null }> }>('settings'),
   setSetting:    (key: string, value: unknown) =>
     call<{ setting: { key: string; value: unknown } }>('settings', { method: 'PATCH', body: JSON.stringify({ key, value }) }),
+
+  // ---- the onboarding checklist (P18 §2). `done: null` means NOT MEASURABLE, never "no". ----
+  checklist:   () => call<{ items: ChecklistItem[]; done: number; measurable: number; areas: ChecklistArea[]; facts: Record<string, unknown> }>('checklist'),
+  setRouteDays:(slug: string, weekdays: number[]) =>
+    call<{ area: { slug: string; name: string; service_weekdays: number[] } }>('checklist/route-days', { method: 'PATCH', body: JSON.stringify({ slug, weekdays }) }),
+  setBusinessFact: (key: string, value: unknown) =>
+    call<{ setting: { key: string; value: unknown } }>('checklist/business', { method: 'PATCH', body: JSON.stringify({ key, value }) }),
+  setAreaBookable: (slug: string, bookable: boolean) =>
+    call<{ area: { slug: string; name: string; bookable: boolean } }>('checklist/area', { method: 'PATCH', body: JSON.stringify({ slug, bookable }) }),
+  confirmPrices: () => call<{ confirmed: number }>('checklist/prices/confirm', { method: 'POST', body: JSON.stringify({}) }),
+
+  // ---- the growth board, and the hour ----
+  growth:     () => call<GrowthBoard>('growth'),
+  unfinished: () => call<{ measured: boolean; note?: string; rows: UnfinishedRow[] }>('unfinished'),
+
+  // ---- customers and invites (P18 §3) ----
+  customers:  () => call<{ customers: CustomerRow[] }>('customers'),
+  invite:     (body: InviteBody) => call<{ invite_id: string; subscription_id: string; link_sent: boolean; email_state: string }>('customers/invite', { method: 'POST', body: JSON.stringify(body) }),
+
+  // ---- payments ----
+  payments:   () => call<PaymentsData>('payments'),
+  disconnect: (mode: 'test' | 'live') => call<{ cleared: number; message: string }>('payments/disconnect', { method: 'POST', body: JSON.stringify({ mode }) }),
+
+  // ---- today, the crew screen ----
+  today:      () => call<{ date: string; stops: Stop[] }>('today'),
 };
+
+export interface ChecklistItem {
+  key: 'stripe' | 'route_days' | 'business_facts' | 'prices' | 'where_you_work' | 'photos';
+  title: string; what_it_changes: string;
+  done: boolean | null; measurable: boolean; detail: string; blocked_reason?: string;
+}
+export interface ChecklistArea { slug: string; name: string; bookable: boolean; service_weekdays: number[] }
+/** `measured: false` and `value: 0` are different answers and the screen must never merge them. */
+export interface Metric { value: number | null; measured: boolean; note?: string }
+export interface FeeRow { period: string; collected_cents: number; fee_cents: number; payments: number }
+export interface GrowthBoard {
+  instrumented: boolean; month: string;
+  metrics: Record<'booking_intent_starts' | 'price_step_reached' | 'booked' | 'conversion_pct'
+    | 'new_customers_this_month' | 'customers_now' | 'mrr_cents' | 'platform_fee_this_month_cents', Metric>;
+  fees_by_month: FeeRow[]; fees_by_year: FeeRow[];
+}
+export interface UnfinishedRow {
+  id: string; postal_code: string | null; step: string | null; price_cents_seen: number | null;
+  name: string | null; phone: string | null; email: string | null; area: string; plan: string | null;
+  started_at: string; last_seen_at: string; sms_href: string | null; sms_body: string;
+}
+export interface CustomerRow {
+  id: string; name: string; email: string | null; phone: string; created_at: string;
+  subscription_id: string | null; state: string | null; payment_state: string | null;
+  monthly_price_cents: number | null; starts_on: string | null; service_weekday: number | null;
+  source: string | null; address: string | null; area_name: string | null;
+  invite_id: string | null; sent_at: string | null; accepted_at: string | null;
+}
+export interface InviteBody {
+  name: string; email: string; phone: string; address: string; area_slug: string;
+  price_cents: number; starts_on?: string | null; num_dogs?: number | null; notes?: string;
+}
+export interface ModeStatus {
+  account_id: string | null; display_name: string | null; ready: boolean;
+  card_payments: string | null; requirements: string | null; probed_at: string | null;
+  revoked_at: string | null; platform_fee_bps: number | null; requirement_entries?: string[] | null;
+}
+export interface PaymentsData {
+  status: { live: ModeStatus; test: ModeStatus };
+  packages: Array<{ slug: string; name: string; monthly_price_cents: number; source: string; derivation: string; version: number; published_test: boolean; published_live: boolean }>;
+}
+export interface Stop {
+  id: string; scheduled_for: string; state: string; crew_notes: string;
+  customer_name: string; phone: string; address: string; city: string;
+  gate_code: string | null; access_notes: string;
+}

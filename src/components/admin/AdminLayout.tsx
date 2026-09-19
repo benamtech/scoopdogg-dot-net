@@ -1,14 +1,24 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, MessageSquare, LogOut, Menu, X, CreditCard } from 'lucide-react';
+import { LayoutDashboard, Users, MessageSquare, LogOut, Menu, X, CreditCard, TrendingUp, ListChecks, Truck, UserPlus } from 'lucide-react';
 import { adminApi } from '../../lib/adminApi';
 import { useAuth } from '../../lib/auth';
 
+/**
+ * The nav, in the order a route runs (P18 §4): today first, then what needs answering, then the
+ * business. `crew` is the person in the truck and sees one item - the server refuses the rest
+ * whatever this list says (api/admin.ts allowlists crew paths), so this is the honest menu for a
+ * refusal that already exists rather than the thing enforcing it.
+ */
 const navItems = [
-  { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
-  { to: '/admin/leads', label: 'Leads', icon: Users, exact: false },
-  { to: '/admin/messages', label: 'Messages', icon: MessageSquare, exact: false },
-  { to: '/admin/payments', label: 'Payments', icon: CreditCard, exact: false },
+  { to: '/admin/today', label: 'Today', icon: Truck, exact: false, crew: true },
+  { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true, crew: false },
+  { to: '/admin/growth', label: 'Growth', icon: TrendingUp, exact: false, crew: false },
+  { to: '/admin/leads', label: 'Leads', icon: Users, exact: false, crew: false },
+  { to: '/admin/customers', label: 'Customers', icon: UserPlus, exact: false, crew: false },
+  { to: '/admin/messages', label: 'Messages', icon: MessageSquare, exact: false, crew: false },
+  { to: '/admin/payments', label: 'Payments', icon: CreditCard, exact: false, crew: false },
+  { to: '/admin/setup', label: 'Your setup', icon: ListChecks, exact: false, crew: false },
 ];
 
 /**
@@ -93,7 +103,9 @@ function DemoBanner() {
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const items = navItems.filter((i) => user?.role !== 'crew' || i.crew);
 
   const handleSignOut = async () => {
     await adminApi.logout();
@@ -107,7 +119,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <p className="text-sage text-xs mt-0.5">Admin Portal</p>
       </div>
       <nav className="flex-1 p-3 flex flex-col gap-1 overflow-y-auto">
-        {navItems.map((item) => {
+        {items.map((item) => {
           const Icon = item.icon;
           const active = item.exact
             ? location.pathname === item.to

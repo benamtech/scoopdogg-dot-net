@@ -5,6 +5,7 @@ import { sendJson, readJsonBody, safeError, type ApiRequest, type ApiResponse } 
 import { rateLimit, isOverLimit } from '../server/lib/admin-auth.js';
 import { startCustomerLogin, verifyCustomerLogin, getCustomerSession, endCustomerSession } from '../server/lib/customer-auth.js';
 import { AccountError, overview, skipVisit, unskipVisit, pausePlan, resumePlan, cancelPlan, keepPlan, billingPortalUrl } from '../server/lib/account.js';
+import { InviteError, readInvite, acceptInvite } from '../server/lib/invites.js';
 
 const routePath = (req: ApiRequest) =>
   (new URL(req.url || '/', 'https://local.test').searchParams.get('path') || '').replace(/^\/+|\/+$/g, '');
@@ -37,6 +38,28 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       if (!s) return sendJson(res, 401, { error: 'That code is not right, or it has expired.' });
       return sendJson(res, 200, { ok: true });
     }
+    // ---- the invite link (P18 §3) ----------------------------------------
+    // No session: the token IS the credential, the same way the six-digit code is. It is 32
+    // random bytes, stored as an HMAC, single-purpose and expiring - and rate-limited here
+    // anyway, because a token nobody can guess is still a token somebody will try to guess.
+    if (path.startsWith('invite/') && req.method === 'POST') {
+      const ip = String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown').split(',')[0].trim();
+      try { await rateLimit(`invite:${ip}`, 20, 60 * 60); }
+      catch (e) {
+        if (isOverLimit(e)) return sendJson(res, 429, { error: 'Too many attempts. Please call (805) 869-8070.' });
+        safeError('account:invite:ratelimit', e);
+        return sendJson(res, 503, { error: 'We could not take that just now. Please try again in a moment.' });
+      }
+      const body = await readJsonBody(req);
+      const token = String(body.token ?? '');
+      if (path === 'invite/read') return sendJson(res, 200, await readInvite(token));
+      if (path === 'invite/accept') {
+        const host = (req.headers['x-forwarded-host'] as string) || req.headers.host || 'scoopdogg.net';
+        const proto = (req.headers['x-forwarded-proto'] as string) || (host.startsWith('127.') || host.startsWith('localhost') ? 'http' : 'https');
+        return sendJson(res, 200, await acceptInvite(token, `${proto}://${host}`));
+      }
+    }
+
     const session = await getCustomerSession(req);
     if (!session) return sendJson(res, 401, { error: 'Not signed in.' });
     if (path === 'logout') { await endCustomerSession(req, res); return sendJson(res, 200, { ok: true }); }
@@ -57,6 +80,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     return sendJson(res, 404, { error: 'Not found.' });
   } catch (e) {
     if (e instanceof AccountError) return sendJson(res, e.status, { error: e.userMessage });
+    if (e instanceof InviteError) return sendJson(res, e.status, { error: e.userMessage, code: e.code });
     safeError(`account:${path}`, e);
     return sendJson(res, 503, { error: 'Something went wrong on our side. Please try again.' });
   }

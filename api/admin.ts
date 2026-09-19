@@ -12,7 +12,10 @@ import { db } from '../server/lib/db.js';
 import { demoMode, demoStatus } from '../server/lib/notify.js';
 import { sendJson, readJsonBody, safeError, type ApiRequest, type ApiResponse } from '../server/lib/http.js';
 import { startLogin, verifyLogin, getSession, endSession, rateLimit, isOverLimit, type AdminSession } from '../server/lib/admin-auth.js';
-import { probeAccount, createConnectedAccount, onboardingLink, publishAllPrices, connection, type StripeMode } from '../server/lib/stripe.js';
+import { probeAccount, createConnectedAccount, onboardingLink, publishAllPrices, connection, requirementsOf, disconnect, reconnect, type StripeMode } from '../server/lib/stripe.js';
+import { checklist, setRouteDays, setOwnerSetting, setAreaBookable, confirmPrices } from '../server/lib/onboarding.js';
+import { growthBoard, unfinished } from '../server/lib/growth.js';
+import { createInvite, customerList, InviteError } from '../server/lib/invites.js';
 
 const routePath = (req: ApiRequest) =>
   (new URL(req.url || '/', 'https://local.test').searchParams.get('path') || '')
@@ -78,6 +81,33 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     }
     if (!session) return sendJson(res, 401, { error: 'Not signed in.' });
 
+    // ---- what a crew session may reach -----------------------------------
+    // DEFAULT DENY, and that is the whole point. P18 §5's admin-roles gate asks whether a crew
+    // session can read money, customers or settings; a per-route check answers that correctly
+    // for every route somebody remembered and wrongly for the one they add next month. So crew
+    // is an allowlist of paths and everything else is 403, including routes that do not exist
+    // yet. gates/admin-roles.mjs proves it by asking for a route the list does not name.
+    const CREW_PATHS = new Set(['session', 'logout', 'today']);
+    if (session.role === 'crew' && !CREW_PATHS.has(path)) {
+      return sendJson(res, 403, { error: 'Your account sees today\'s route only.' });
+    }
+
+    // ---- today's route, the one screen a crew member has -----------------
+    if (path === 'today') {
+      const { rows } = await db().query(
+        `select v.id, v.scheduled_for::text as scheduled_for, v.state, v.crew_notes,
+                c.name as customer_name, c.phone, p.address, p.city, p.gate_code, p.access_notes
+           from visits v
+           join subscriptions s on s.id = v.subscription_id
+           join customers c on c.id = s.customer_id
+           join properties p on p.id = v.property_id
+          where v.scheduled_for = current_date and v.state not in ('cancelled','skipped')
+          order by p.city, p.address`);
+      // The gate code is on this screen because the person at the gate needs it, and nowhere
+      // else: visit.gate_code_visible_to is 'assigned_crew_only'.
+      return sendJson(res, 200, { date: new Date().toISOString().slice(0, 10), stops: rows });
+    }
+
     // ---- demo mode -------------------------------------------------------
     // Deliberately NOT behind requireSuper. It is the control that makes the system
     // exercisable at all, and the owner is the person who will be shown it.
@@ -123,7 +153,19 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         const conn = await connection(m).catch(() => null);
         let probe = null;
         try { probe = conn?.account_id ? await probeAccount(m) : null; } catch (e) { safeError(`admin:payments:${m}`, e); }
-        status[m] = { account_id: conn?.account_id ?? null, display_name: conn?.display_name ?? null, ready: probe?.ready ?? false, card_payments: probe?.card_payments ?? conn?.card_payments_status ?? null, requirements: probe?.requirements ?? null, probed_at: probe?.probed_at ?? conn?.last_probed_at ?? null };
+        const { rows: rev } = await db().query(`select revoked_at, revoked_by from stripe_connection where livemode = $1`, [m === 'live']);
+        status[m] = { account_id: conn?.account_id ?? null, display_name: conn?.display_name ?? null, ready: probe?.ready ?? false, card_payments: probe?.card_payments ?? conn?.card_payments_status ?? null, requirements: probe?.requirements ?? null, probed_at: probe?.probed_at ?? conn?.last_probed_at ?? null, revoked_at: rev[0]?.revoked_at ?? null, platform_fee_bps: conn?.platform_fee_bps ?? null };
+      }
+      // What Stripe still wants, in Stripe's words. P18 §1.3: an account that quietly stops
+      // paying out because a document expired is the worst silent failure in this system, so a
+      // non-empty requirements list is never summarised away into "needs onboarding".
+      for (const m of modes) {
+        const st = status[m] as Record<string, unknown>;
+        if (!st.account_id) continue;
+        try {
+          const r = await requirementsOf(m);
+          st.requirement_entries = r?.entries ?? [];
+        } catch (e) { safeError(`admin:payments:requirements:${m}`, e); st.requirement_entries = null; }
       }
       const { rows: packages } = await db().query(
         `select p.slug, p.name, p.monthly_price_cents, p.source, p.derivation, p.version,
@@ -244,6 +286,71 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       if (!rows.length) return sendJson(res, 404, { error: 'Message not found.' });
       if (rows[0].status === 'unread') await db().query("update contact_messages set status = 'read' where id = $1", [id]);
       return sendJson(res, 200, { message: rows[0] });
+    }
+
+    // ---- disconnecting, in the right order (P18 §1.4) ---------------------
+    if (path === 'payments/disconnect' && req.method === 'POST') {
+      const body = await readJsonBody(req);
+      const mode: StripeMode = body.mode === 'live' ? 'live' : 'test';
+      try {
+        const r = await disconnect(mode, session.email);
+        return sendJson(res, 200, { ...r, message: `Stopped. ${r.cleared} subscription(s) no longer carry our fee, and the Stripe account stays yours.` });
+      } catch (e) {
+        safeError('admin:payments/disconnect', e);
+        return sendJson(res, 502, { error: 'We could not clear our fee from every subscription, so nothing was disconnected. Try again, or tell AMTECH.' });
+      }
+    }
+    if (path === 'payments/reconnect' && req.method === 'POST') {
+      const body = await readJsonBody(req);
+      return sendJson(res, 200, await reconnect(body.mode === 'live' ? 'live' : 'test'));
+    }
+
+    // ---- the onboarding checklist (P18 §2) --------------------------------
+    if (path === 'checklist') return sendJson(res, 200, await checklist());
+
+    if (path === 'checklist/route-days' && req.method === 'PATCH') {
+      const body = await readJsonBody(req);
+      const days = Array.isArray(body.weekdays) ? body.weekdays.map(Number) : [];
+      try { return sendJson(res, 200, { area: await setRouteDays(String(body.slug ?? ''), days, session.email) }); }
+      catch { return sendJson(res, 404, { error: 'We do not have that city.' }); }
+    }
+    if (path === 'checklist/business' && req.method === 'PATCH') {
+      const body = await readJsonBody(req);
+      try { return sendJson(res, 200, { setting: await setOwnerSetting(String(body.key ?? ''), body.value, session.email) }); }
+      catch { return sendJson(res, 400, { error: 'That is not something this screen can change.' }); }
+    }
+    if (path === 'checklist/area' && req.method === 'PATCH') {
+      const body = await readJsonBody(req);
+      try { return sendJson(res, 200, { area: await setAreaBookable(String(body.slug ?? ''), Boolean(body.bookable)) }); }
+      catch { return sendJson(res, 404, { error: 'We do not have that city.' }); }
+    }
+    if (path === 'checklist/prices/confirm' && req.method === 'POST') {
+      return sendJson(res, 200, await confirmPrices(session.email));
+    }
+
+    // ---- the growth board, and the hour (P18 §4, P16 §7) -------------------
+    if (path === 'growth') return sendJson(res, 200, await growthBoard());
+    if (path === 'unfinished') return sendJson(res, 200, await unfinished(60));
+
+    // ---- customers, and the invites that bring them onto the rail ----------
+    if (path === 'customers') return sendJson(res, 200, await customerList());
+    if (path === 'customers/invite' && req.method === 'POST') {
+      const body = await readJsonBody(req);
+      const host = (req.headers['x-forwarded-host'] as string) || req.headers.host || 'scoopdogg.net';
+      const proto = host.startsWith('127.') || host.startsWith('localhost') ? 'http' : 'https';
+      try {
+        return sendJson(res, 200, await createInvite({
+          name: String(body.name ?? ''), email: String(body.email ?? ''), phone: String(body.phone ?? ''),
+          address: String(body.address ?? ''), area_slug: String(body.area_slug ?? ''),
+          price_cents: Number(body.price_cents ?? 0), package_id: body.package_id ? String(body.package_id) : null,
+          starts_on: body.starts_on ? String(body.starts_on) : null,
+          num_dogs: body.num_dogs != null ? Number(body.num_dogs) : null,
+          notes: String(body.notes ?? ''),
+        }, session.email, `${proto}://${host}`));
+      } catch (e) {
+        if (e instanceof InviteError) return sendJson(res, e.status, { error: e.userMessage, code: e.code });
+        throw e;
+      }
     }
 
     // ---- superadmin only -------------------------------------------------
