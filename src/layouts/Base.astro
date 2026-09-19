@@ -37,7 +37,27 @@ const { title, description, canonicalPath, ogImage, jsonLd, noindex = false, bod
 const isNoindex = noindex || DEMO_MODE;
 const canonical = `${SITE_URL}${canonicalPath}`;
 const image = ogImage || DEFAULT_OG_IMAGE;
-const schema = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : null;
+// EVERY INDEXABLE PAGE CARRIES STRUCTURED DATA, and a page that does not name its own gets a
+// WebPage node built from the props it already passed. Seven pages - /about, /areas, /book,
+// /careers, /commercial, /how-it-works, /services - shipped with none at all, which R8 §F calls
+// the machine-readable layer and Google's AI-features guidance asks for first.
+//
+// It is built from `title`, `description` and `canonical` rather than written per page ON PURPOSE:
+// structured data that is authored separately drifts from the visible text, and the rule this
+// repository holds (STANDARD.md §4.3) is that a page may not claim to a machine what a reader
+// cannot see. These three ARE what the reader sees.
+const defaultSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  name: title,
+  description,
+  url: canonical,
+  inLanguage: 'en-US',
+  isPartOf: { '@type': 'WebSite', name: SITE_NAME, url: SITE_URL },
+};
+const schema = jsonLd
+  ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd])
+  : (isNoindex ? null : [defaultSchema]);
 ---
 <!doctype html>
 <html lang="en">

@@ -22,8 +22,17 @@ const q = questionBySlug(Astro.params.slug!)!;
 const svc = q.service ? serviceBySlug(q.service) : undefined;
 const review = reviewFor(q);
 const related = (q.related ?? []).map((s) => questionBySlug(s)).filter(Boolean) as ReturnType<typeof questions>;
-const firstSentence = q.answer.split(/(?<=[.?!])\s/)[0];
-const description = (q.answer.length > 155 ? `${firstSentence}` : q.answer).slice(0, 158);
+// Grow the description one WHOLE SENTENCE at a time until it is long enough to be a summary,
+// then trim on a word boundary if that overshot. Taking only the first sentence gave three pages
+// a four-character meta description - "Yes." - because that is how those answers open.
+const description = (() => {
+  let d = '';
+  for (const sentence of q.answer.split(/(?<=[.?!])\s/)) {
+    d = d ? `${d} ${sentence}` : sentence;
+    if (d.length >= 60) break;
+  }
+  return d.length > 158 ? `${d.slice(0, 155).replace(/\s+\S*$/, '')}…` : d;
+})();
 const isBooking = q.action.href.startsWith('/book');
 const jsonLd = [
   {

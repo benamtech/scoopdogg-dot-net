@@ -9,7 +9,7 @@
     "build:only": "node scripts/pull-catalog.mjs && node scripts/pull-demo-state.mjs && astro build",
     "build:bare": "astro build",
     "preview": "astro preview",
-    "gates": "node gates/build-gates.mjs && node gates/question-pages.mjs && node gates/brand-tokens.mjs && node gates/no-price-in-prose.mjs && node gates/one-money-door.mjs && node gates/refund-returns-the-fee.mjs --static",
+    "gates": "node gates/build-gates.mjs && node gates/question-pages.mjs && node gates/brand-tokens.mjs && node gates/no-price-in-prose.mjs && node gates/price-clears-the-floor.mjs && node gates/one-money-door.mjs && node gates/refund-returns-the-fee.mjs --static && node gates/from-price-never-final.mjs && node gates/e2e.mjs",
     "gates:db": "bash gates/schema-guards.sh",
     "typecheck": "astro check",
     "seed:catalog": "node --experimental-strip-types scripts/build-catalog-seed.mjs",

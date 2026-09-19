@@ -14,6 +14,12 @@ const allPages = globSync(`${DIST}/**/index.html`).sort();
 // self-referencing canonical are meaningless there. gates/build-gates.mjs carries the
 // admin-specific gates instead.
 const pages = allPages.filter((f) => path.relative(DIST, f).split(path.sep)[0] !== 'admin');
+// Same reasoning one step further: /account and /book/complete ship `robots: noindex, nofollow`.
+// A meta-description length, a self-referencing canonical and a structured-data block are rules
+// about a search result, and these pages do not have one. Scoring them as content is how this
+// gate came to report seven failures of which five were the gate misreading its own scope.
+const noindex = (f) => /<meta name="robots"[^>]*content="[^"]*noindex/i.test(readFileSync(f, 'utf8'));
+const indexed = pages.filter((f) => !noindex(f));
 const route = (f) => { const r = '/' + path.relative(DIST, path.dirname(f)).replace(/\\/g, '/'); return r === '/.' ? '/' : r; };
 const strip = (h) => h.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<style[\s\S]*?<\/style>/gi, '');
 const text = (h) => strip(h).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -28,17 +34,23 @@ P('pages built', String(pages.length));
 
 // meta description present and a sane length on every page
 {
+  // `&` is one character to a reader and five (`&#38;`) in the attribute. Measuring the escaped
+  // markup made a 214-character description read as 218 and would have hidden one at 198.
+  const unescape = (t) => t.replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>');
   const bad = [];
-  for (const f of pages) {
+  for (const f of indexed) {
     const h = readFileSync(f, 'utf8');
     const m = h.match(/<meta name="description" content="([^"]*)"/);
-    if (!m || m[1].length < 50 || m[1].length > 200) bad.push(`${route(f)} (${m ? m[1].length : 0} chars)`);
+    const n = m ? unescape(m[1]).length : 0;
+    if (!m || n < 50 || n > 200) bad.push(`${route(f)} (${n} chars)`);
   }
-  bad.length ? F('meta descriptions 50–200 chars', `${bad.length}: ${bad.slice(0,3)}`) : P('meta descriptions 50–200 chars');
+  bad.length ? F('meta descriptions 50–200 chars', `${bad.length}: ${bad.slice(0,3)}`) : P('meta descriptions 50–200 chars', `${indexed.length} indexable pages`);
 }
 // canonical on every page, self-referencing
 {
-  const bad = pages.filter((f) => {
+  const bad = indexed.filter((f) => {
     const h = readFileSync(f, 'utf8');
     const m = h.match(/<link rel="canonical" href="([^"]+)"/);
     if (!m) return true;
@@ -49,7 +61,7 @@ P('pages built', String(pages.length));
 // heading order: exactly one h1, and an h2 before any h3
 {
   const bad = [];
-  for (const f of pages) {
+  for (const f of indexed) {
     const h = readFileSync(f, 'utf8');
     const seq = [...h.matchAll(/<h([1-6])[\s>]/g)].map((m) => +m[1]);
     if (seq.filter((n) => n === 1).length !== 1) bad.push(`${route(f)} h1x${seq.filter(n=>n===1).length}`);
@@ -61,15 +73,22 @@ P('pages built', String(pages.length));
 console.log(`\n── ACCESSIBILITY ─────────────────────────────────────`);
 // every image needs alt text
 {
+  // THE ATTRIBUTE MUST BE PRESENT, with or without a value. `alt=""` is the documented way to
+  // mark an image decorative, and Astro emits it as a bare `alt` — so a regex requiring `alt=`
+  // reported 71 of 248 images "missing alt text" when 69 of them were one correctly-hidden
+  // mascot. The gate was wrong, not the site.
+  const HAS_ALT = /\balt(?=[\s=>/])/;
   let imgs = 0; const missing = [];
   for (const f of pages) {
     for (const m of readFileSync(f, 'utf8').matchAll(/<img\b[^>]*>/gi)) {
       imgs++;
-      if (!/\balt=/.test(m[0])) missing.push(route(f));
+      if (!HAS_ALT.test(m[0])) missing.push(`${route(f)} ${(m[0].match(/src="([^"]*)"/) ?? [, '?'])[1]}`);
     }
   }
-  missing.length ? F('every image has alt text', `${missing.length} of ${imgs} missing: ${[...new Set(missing)].slice(0,3)}`)
-                 : P('every image has alt text', `${imgs} images`);
+  const control = !HAS_ALT.test('<img src="x.png">') && HAS_ALT.test('<img src="x.png" alt>') && HAS_ALT.test('<img src="x.png" alt="a dog">');
+  if (!control) F('every image has alt text', 'DETECTOR BLIND — the alt check does not distinguish present from absent');
+  else missing.length ? F('every image has alt text', `${missing.length} of ${imgs} missing: ${[...new Set(missing)].slice(0,3)}`)
+                      : P('every image has alt text', `${imgs} images, present-or-empty`);
 }
 // html lang
 {
@@ -80,11 +99,21 @@ console.log(`\n── ACCESSIBILITY ──────────────�
 // from a hand-written list. A hardcoded pair keeps passing after the code stops using
 // it, and keeps failing after the code is fixed; neither tells you about the site.
 {
-  const PALETTE = {
-    'forest': '#1B4332', 'forest-dark': '#143728', 'sage': '#95B8A2',
-    'sage-light': '#E8F0EB', 'amber': '#F4A024', 'amber-hover': '#E8911A',
-    'cream': '#FAF8F5', 'dark': '#1A1A1A', 'white': '#FFFFFF', 'black': '#000000',
-  };
+  // THE PALETTE COMES FROM tailwind.config.js, which the config's own header calls "the one place
+  // a colour, a size or a radius is decided". The list that used to be here was hand-written and
+  // was the PREDECESSOR's - forest/sage/amber/cream/dark - so after the 2026-09-16 rebuild it
+  // matched nothing the pages emit and this check quietly measured zero pairs for days. The
+  // comment above it already said not to hand-write a list; now it does not.
+  const flatten = (obj, prefix = '') => Object.entries(obj).flatMap(([k, v]) => {
+    const name = k === 'DEFAULT' ? prefix : (prefix ? `${prefix}-${k}` : k);
+    if (typeof v === 'string') return /^#[0-9a-f]{6}$/i.test(v) ? [[name, v]] : [];
+    return v && typeof v === 'object' ? flatten(v, name) : [];
+  });
+  const cfg = (await import('../tailwind.config.js')).default;
+  const PALETTE = Object.fromEntries([
+    ...flatten(cfg.theme?.extend?.colors ?? {}),
+    ['white', '#FFFFFF'], ['black', '#000000'],
+  ]);
   const hex = (c) => [1,3,5].map((i) => parseInt(c.slice(i, i+2), 16));
   const lum = (c) => { const [r,g,b] = hex(c).map((v) => { v/=255; return v<=0.03928 ? v/12.92 : ((v+0.055)/1.055)**2.4; }); return 0.2126*r+0.7152*g+0.0722*b; };
   const ratio = (a,b) => { const [x,y] = [lum(a), lum(b)].sort((m,n)=>n-m); return (x+0.05)/(y+0.05); };
@@ -101,7 +130,8 @@ console.log(`\n── ACCESSIBILITY ──────────────�
       used.set(k, (used.get(k) || 0) + 1);
     }
   }
-  if (!used.size) W('contrast', 'no palette class pairs found in the built HTML');
+  // A palette that matches nothing is the failure this check was hiding, so it is a FAIL now.
+  if (!used.size) F('contrast', `no palette class pairs found in the built HTML (palette has ${Object.keys(PALETTE).length} colours)`);
   for (const [k, count] of [...used.entries()].sort((a,b) => b[1]-a[1])) {
     const [fg, , bg] = k.split(' ');
     const r = ratio(PALETTE[fg], PALETTE[bg]);
@@ -151,7 +181,7 @@ console.log(`\n── STRUCTURED DATA ──────────────
     }
   }
   bad.length ? F('JSON-LD parses and is typed', bad.slice(0,3).join('; ')) : P('JSON-LD parses and is typed', `${blocks} blocks`);
-  const without = pages.filter((f) => !readFileSync(f,'utf8').includes('application/ld+json'));
+  const without = indexed.filter((f) => !readFileSync(f,'utf8').includes('application/ld+json'));
   without.length ? W('pages without structured data', `${without.length}: ${without.slice(0,4).map(route)}`) : P('every page has structured data');
 }
 
