@@ -1,5 +1,5 @@
 {
-  "pulled_at": "2026-09-19T20:10:04.224Z",
+  "pulled_at": "2026-09-19T21:31:21.201Z",
   "source": "database",
   "services": [
     {
@@ -512,7 +512,8 @@
       "requires_quote": false,
       "price_is_from": false,
       "est_minutes": 20,
-      "sort_order": 10
+      "sort_order": 10,
+      "covers_last_cleaned": null
     },
     {
       "id": "72a67a19-7a7a-4468-bb1c-8f8925d21975",
@@ -525,7 +526,8 @@
       "requires_quote": false,
       "price_is_from": false,
       "est_minutes": 30,
-      "sort_order": 20
+      "sort_order": 20,
+      "covers_last_cleaned": null
     },
     {
       "id": "758c470e-9185-4066-8892-b3318a369d08",
@@ -538,7 +540,8 @@
       "requires_quote": false,
       "price_is_from": true,
       "est_minutes": 45,
-      "sort_order": 30
+      "sort_order": 30,
+      "covers_last_cleaned": null
     },
     {
       "id": "ff673ade-b551-4045-af7b-ed8c9bec99d5",
@@ -551,7 +554,8 @@
       "requires_quote": false,
       "price_is_from": false,
       "est_minutes": 20,
-      "sort_order": 10
+      "sort_order": 10,
+      "covers_last_cleaned": null
     },
     {
       "id": "a84ef296-352f-4344-b7a1-2ec0bb61d90f",
@@ -564,7 +568,8 @@
       "requires_quote": false,
       "price_is_from": false,
       "est_minutes": 35,
-      "sort_order": 20
+      "sort_order": 20,
+      "covers_last_cleaned": null
     },
     {
       "id": "387240a1-cc4b-41ab-b617-2a74622873cd",
@@ -577,7 +582,8 @@
       "requires_quote": true,
       "price_is_from": false,
       "est_minutes": 60,
-      "sort_order": 30
+      "sort_order": 30,
+      "covers_last_cleaned": null
     },
     {
       "id": "94eb01e3-2900-46f2-81e8-769499966eab",
@@ -590,7 +596,8 @@
       "requires_quote": false,
       "price_is_from": false,
       "est_minutes": 30,
-      "sort_order": 10
+      "sort_order": 10,
+      "covers_last_cleaned": null
     },
     {
       "id": "bcd866c7-a93d-4287-ac07-9c0f398130b6",
@@ -603,7 +610,8 @@
       "requires_quote": false,
       "price_is_from": false,
       "est_minutes": 60,
-      "sort_order": 20
+      "sort_order": 20,
+      "covers_last_cleaned": null
     },
     {
       "id": "f039e332-1dc9-4e52-809d-62e7673de1d5",
@@ -616,7 +624,8 @@
       "requires_quote": true,
       "price_is_from": false,
       "est_minutes": 90,
-      "sort_order": 30
+      "sort_order": 30,
+      "covers_last_cleaned": null
     },
     {
       "id": "fcd966f0-6fd9-4949-92ae-64f8d1f9b29d",
@@ -629,7 +638,8 @@
       "requires_quote": false,
       "price_is_from": false,
       "est_minutes": 10,
-      "sort_order": 10
+      "sort_order": 10,
+      "covers_last_cleaned": null
     },
     {
       "id": "1acfdcce-9846-4d3d-b0d2-fd70b945e922",
@@ -642,7 +652,8 @@
       "requires_quote": false,
       "price_is_from": false,
       "est_minutes": 15,
-      "sort_order": 20
+      "sort_order": 20,
+      "covers_last_cleaned": null
     },
     {
       "id": "c50ab406-254a-40a8-8de3-f10f5c5933c2",
@@ -655,7 +666,8 @@
       "requires_quote": true,
       "price_is_from": false,
       "est_minutes": 25,
-      "sort_order": 30
+      "sort_order": 30,
+      "covers_last_cleaned": null
     },
     {
       "id": "a8f35df5-e23b-4c37-8302-95f6fe0e7ed2",
@@ -668,7 +680,8 @@
       "requires_quote": false,
       "price_is_from": false,
       "est_minutes": 30,
-      "sort_order": 10
+      "sort_order": 10,
+      "covers_last_cleaned": null
     },
     {
       "id": "feda176a-6cef-445b-b35c-24e9dfd963a6",
@@ -681,7 +694,8 @@
       "requires_quote": false,
       "price_is_from": false,
       "est_minutes": 50,
-      "sort_order": 20
+      "sort_order": 20,
+      "covers_last_cleaned": null
     },
     {
       "id": "e32d9186-125d-4a9e-9f93-f5a143deeb5f",
@@ -694,7 +708,8 @@
       "requires_quote": true,
       "price_is_from": false,
       "est_minutes": 75,
-      "sort_order": 30
+      "sort_order": 30,
+      "covers_last_cleaned": null
     },
     {
       "id": "01bac231-024e-4ce5-bad8-7f5613bc4f1b",
@@ -707,7 +722,11 @@
       "requires_quote": false,
       "price_is_from": false,
       "est_minutes": 45,
-      "sort_order": 10
+      "sort_order": 10,
+      "covers_last_cleaned": [
+        "this_week",
+        "two_weeks"
+      ]
     },
     {
       "id": "e81f6974-1f3d-4ebf-85fc-66b674a0ef81",
@@ -720,7 +739,10 @@
       "requires_quote": false,
       "price_is_from": false,
       "est_minutes": 90,
-      "sort_order": 20
+      "sort_order": 20,
+      "covers_last_cleaned": [
+        "month"
+      ]
     },
     {
       "id": "d953cbff-85b4-43ee-b48c-d77adf323859",
@@ -733,7 +755,10 @@
       "requires_quote": true,
       "price_is_from": false,
       "est_minutes": 150,
-      "sort_order": 30
+      "sort_order": 30,
+      "covers_last_cleaned": [
+        "longer"
+      ]
     },
     {
       "id": "18d466d5-6f03-4a7a-9a1a-787348b2a71c",
@@ -746,7 +771,8 @@
       "requires_quote": false,
       "price_is_from": false,
       "est_minutes": 45,
-      "sort_order": 10
+      "sort_order": 10,
+      "covers_last_cleaned": null
     },
     {
       "id": "904dfec9-41fd-4cc7-b084-dc46c7985c98",
@@ -759,7 +785,8 @@
       "requires_quote": false,
       "price_is_from": false,
       "est_minutes": 75,
-      "sort_order": 20
+      "sort_order": 20,
+      "covers_last_cleaned": null
     },
     {
       "id": "db60c61f-e0fc-4fba-b599-9799ec7c0b27",
@@ -772,7 +799,8 @@
       "requires_quote": true,
       "price_is_from": false,
       "est_minutes": 120,
-      "sort_order": 30
+      "sort_order": 30,
+      "covers_last_cleaned": null
     },
     {
       "id": "c20d2bba-0759-487a-88ed-c6296947af79",
@@ -785,7 +813,8 @@
       "requires_quote": false,
       "price_is_from": false,
       "est_minutes": 15,
-      "sort_order": 10
+      "sort_order": 10,
+      "covers_last_cleaned": null
     },
     {
       "id": "c1f8b8ce-757c-4eec-9ab4-e1f84eccf3c4",
@@ -798,7 +827,8 @@
       "requires_quote": false,
       "price_is_from": false,
       "est_minutes": 18,
-      "sort_order": 20
+      "sort_order": 20,
+      "covers_last_cleaned": null
     },
     {
       "id": "a2530a29-7bf1-4089-8ef8-5953a5430af5",
@@ -811,7 +841,8 @@
       "requires_quote": false,
       "price_is_from": false,
       "est_minutes": 21,
-      "sort_order": 30
+      "sort_order": 30,
+      "covers_last_cleaned": null
     },
     {
       "id": "fd0ea69a-aaae-4210-8c4d-66742bb07495",
@@ -824,7 +855,8 @@
       "requires_quote": false,
       "price_is_from": false,
       "est_minutes": 25,
-      "sort_order": 40
+      "sort_order": 40,
+      "covers_last_cleaned": null
     },
     {
       "id": "271f9843-7cdb-4754-aa39-8cb6056956ef",
@@ -837,7 +869,8 @@
       "requires_quote": false,
       "price_is_from": false,
       "est_minutes": 20,
-      "sort_order": 10
+      "sort_order": 10,
+      "covers_last_cleaned": null
     },
     {
       "id": "20382e00-fb8c-43f1-8cb9-7b526e06c9b1",
@@ -850,7 +883,8 @@
       "requires_quote": false,
       "price_is_from": false,
       "est_minutes": 30,
-      "sort_order": 20
+      "sort_order": 20,
+      "covers_last_cleaned": null
     },
     {
       "id": "2d643c45-8f00-493b-af41-fd2d79206259",
@@ -863,7 +897,8 @@
       "requires_quote": true,
       "price_is_from": false,
       "est_minutes": 45,
-      "sort_order": 30
+      "sort_order": 30,
+      "covers_last_cleaned": null
     },
     {
       "id": "e0fca44e-edcd-4090-876d-0f831eff5092",
@@ -876,7 +911,8 @@
       "requires_quote": false,
       "price_is_from": true,
       "est_minutes": 45,
-      "sort_order": 10
+      "sort_order": 10,
+      "covers_last_cleaned": null
     },
     {
       "id": "3c987fac-5de3-4767-b33f-dd48b3d95f33",
@@ -889,7 +925,8 @@
       "requires_quote": false,
       "price_is_from": true,
       "est_minutes": 75,
-      "sort_order": 20
+      "sort_order": 20,
+      "covers_last_cleaned": null
     },
     {
       "id": "05897338-0015-4047-ad37-201365d77fb0",
@@ -902,7 +939,8 @@
       "requires_quote": true,
       "price_is_from": false,
       "est_minutes": 120,
-      "sort_order": 30
+      "sort_order": 30,
+      "covers_last_cleaned": null
     },
     {
       "id": "be225a4c-d403-483b-9737-370eb4f22aaa",
@@ -915,7 +953,8 @@
       "requires_quote": false,
       "price_is_from": false,
       "est_minutes": 120,
-      "sort_order": 10
+      "sort_order": 10,
+      "covers_last_cleaned": null
     },
     {
       "id": "0691e980-0241-446d-9dfd-b2758ad74a9f",
@@ -928,7 +967,8 @@
       "requires_quote": false,
       "price_is_from": false,
       "est_minutes": 180,
-      "sort_order": 20
+      "sort_order": 20,
+      "covers_last_cleaned": null
     },
     {
       "id": "c92a7e68-477d-47b2-96b3-14afdf04818b",
@@ -941,7 +981,8 @@
       "requires_quote": true,
       "price_is_from": false,
       "est_minutes": 240,
-      "sort_order": 30
+      "sort_order": 30,
+      "covers_last_cleaned": null
     }
   ],
   "packages": [
@@ -2285,9 +2326,9 @@
     "booking.payafter_charge_offset_days": 1,
     "booking.onetime_enabled": true,
     "growth.review_request_after_visits": 3,
+    "booking.initial_cleanup_policy": "required_beyond_two_weeks",
     "schedule.day_capacity": 20,
     "booking.start_window_days": 14,
-    "booking.initial_cleanup_policy": "offer_optional",
     "booking.card_required": true,
     "billing.monthly_factor": "52/12"
   }

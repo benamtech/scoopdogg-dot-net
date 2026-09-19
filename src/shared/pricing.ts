@@ -35,6 +35,11 @@ export type Tier = {
   requires_quote: boolean;
   price_is_from: boolean;
   sort_order: number;
+  /**
+   * Which answers to "When was the yard last cleaned?" this catch-up tier covers
+   * (migration 026). NULL on every tier that is not a catch-up.
+   */
+  covers_last_cleaned?: string[] | null;
 };
 
 export type Package = {
@@ -213,6 +218,50 @@ export function quoteBooking(catalog: Catalog, input: BookingInput): Quote {
       containsFromPrice: Boolean(tier?.price_is_from),
     },
   };
+}
+
+/**
+ * THE CATCH-UP CHARGE. Josue, 2026-09-19: "when yard has not been cleaned longer than a couple
+ * weeks it would increase price because the default price is based on having a weekly clean."
+ *
+ * The weekly price is priced off a weekly yard. A first visit to a yard with six weeks on it is
+ * a different job, and until now the funnel offered the catch-up as a free choice with a "No
+ * thanks, just weekly" button beside it — so the customer could decline the extra work and pay
+ * the weekly price for it.
+ *
+ * The mapping is a ROW, not a heuristic: `service_tiers.covers_last_cleaned`. These tiers have
+ * no min_qty or max_qty to match on, and matching the label text or the sort order would break
+ * silently the first time somebody edits a tier in the admin.
+ *
+ * `two_weeks` maps to a tier that is NOT charged on a weekly plan, because Josue said "longer
+ * than a couple weeks" and two weeks is a couple of weeks. Reading his sentence harder than he
+ * wrote it would be inventing a policy and charging real customers for it.
+ */
+export type CatchUp =
+  /** Nothing owed: the yard is inside the cadence the weekly price assumes. */
+  | { kind: 'none' }
+  /** A priced catch-up, added to the first charge. `band` is the human phrase for how far
+   *  behind the yard is ("3-6 weeks"), taken from the tier's own label. */
+  | { kind: 'charge'; tier: Tier; cents: number; band: string }
+  /** Josue's own ladder says this one needs his eyes. No card is taken. */
+  | { kind: 'quote'; tier: Tier };
+
+export function catchUpFor(catalog: Catalog, serviceSlug: string, lastCleaned: string | null | undefined): CatchUp {
+  // Only a recurring plan can be "behind". A one-time job IS the catch-up.
+  if (serviceSlug !== 'weekly-pooper-scooper-service' || !lastCleaned) return { kind: 'none' };
+  const tier = catalog.tiers.find((t) => (t.covers_last_cleaned ?? []).includes(lastCleaned));
+  if (!tier) return { kind: 'none' };
+  // Inside the cadence: the tier exists so the ladder is complete, but nothing is owed.
+  if (lastCleaned === 'this_week' || lastCleaned === 'two_weeks') return { kind: 'none' };
+  const p = tierPrice(tier);
+  if (p.kind === 'quote') return { kind: 'quote', tier };
+  // "Heavy buildup (3-6 weeks)" -> "3-6 weeks". Done here rather than in the component so the
+  // component holds no string surgery, and so `gates/no-price-in-prose.mjs` is not reading a
+  // regex replacement token as a typed price — which it did, correctly, on the first attempt.
+  const open = tier.label.lastIndexOf('(');
+  const close = tier.label.lastIndexOf(')');
+  const band = open > -1 && close > open ? tier.label.slice(open + 1, close).toLowerCase() : tier.label.toLowerCase();
+  return { kind: 'charge', tier, cents: p.cents, band };
 }
 
 // ---------------------------------------------------------------------------------------

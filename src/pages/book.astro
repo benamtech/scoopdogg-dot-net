@@ -41,6 +41,7 @@ const slim = {
         businessEmail={business.email}
         businessName={business.name}
         payafterOffsetDays={Number(setting('booking.payafter_charge_offset_days', '1'))}
+        cleanupPolicy={setting('booking.initial_cleanup_policy', 'offer_optional')}
       />
     </div>
     <!-- THE CITY LIST IS CONTENT, NOT A DROPDOWN. It used to be a <select> inside the funnel's

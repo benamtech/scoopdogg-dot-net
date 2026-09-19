@@ -29,7 +29,7 @@ import { resolveZip, sessionConverted } from './funnel.js';
 import { renewalTerms, acknowledgmentHtml } from '../../src/shared/consent.js';
 import { recordConsent } from './consent.js';
 import { openSessionForCustomer } from './customer-auth.js';
-import { quoteBooking, quoteOneTime, startDates, formatCents, weekdayName } from '../../src/shared/pricing.js';
+import { quoteBooking, quoteOneTime, startDates, formatCents, weekdayName, catchUpFor } from '../../src/shared/pricing.js';
 import type { ApiResponse } from './http.js';
 
 export type BookingInput = {
@@ -193,8 +193,39 @@ export async function createBooking(input: BookingInput, base: string) {
     [input.idempotency_key]);
   if (prior[0]?.url && prior[0].state === 'deposit_pending') return { mode: 'checkout' as const, url: prior[0].url as string, booking_id: prior[0].id as string };
 
+  /**
+   * THE CATCH-UP CHARGE, ENFORCED HERE AND NOT ONLY ON THE SCREEN.
+   *
+   * Josue, 2026-09-19: "when yard has not been cleaned longer than a couple weeks it would
+   * increase price because the default price is based on having a weekly clean."
+   *
+   * The browser derives the same thing from the same rows and preselects the tier, but a
+   * pricing rule that only the browser applies is a pricing rule anybody can skip by posting
+   * the form without it. So the server recomputes it from `last_cleaned` and refuses a booking
+   * whose extras do not carry the tier the answer requires.
+   *
+   * THE QUOTE BAND DOES NOT TAKE A CARD. Josue's own ladder says a yard six weeks or more
+   * behind needs his eyes, so there is no number to charge and the booking goes down the
+   * request path — the same path a booking takes when payments are not connected, for the same
+   * reason: we will not invent a price, and we will not dead-end the customer either.
+   */
+  const catalogNow = await loadCatalog();
+  const cleanupPolicy = String(catalogNow.settings.get('booking.initial_cleanup_policy') ?? 'offer_optional');
+  const catchUp = quote && quote.ok
+    ? catchUpFor(catalogNow, quote.package.service_slug, input.last_cleaned)
+    : { kind: 'none' as const };
+  const catchUpRequired = cleanupPolicy === 'required_beyond_two_weeks';
+
+  if (catchUpRequired && catchUp.kind === 'charge'
+      && !(input.extra_tier_ids ?? []).includes(catchUp.tier.id)) {
+    throw new BookingError('catch_up_missing',
+      'Your first visit needs a catch-up clean because the yard is more than a couple of weeks behind. Please go back a step so we can show you the price.', 409);
+  }
+  const needsFirstVisitQuote = catchUpRequired && catchUp.kind === 'quote';
+
   const mode = await currentMode();
-  const ready = await paymentsReady(mode);
+  // A first visit Josue has to price himself is not a checkout, whatever Stripe's state is.
+  const ready = (await paymentsReady(mode)) && !needsFirstVisitQuote;
 
   // LANE B ONLY EXISTS WHEN THE SETTINGS SAY SO, and only for a recurring plan: a one-time job
   // has no second month to trial into. `booking.lanes_enabled` is a row (migration 018).
@@ -225,7 +256,7 @@ export async function createBooking(input: BookingInput, base: string) {
    * A one-time job gets `null` here and no consent row. It neither renews nor continues, so the
    * article does not reach it, and a renewal sentence over it would be a false statement.
    */
-  const settings = (await loadCatalog()).settings;
+  const settings = catalogNow.settings;
   const terms = quote && quote.ok
     ? renewalTerms({
         lane: payAfter ? 'payafter' : 'prepay',
@@ -342,7 +373,9 @@ export async function createBooking(input: BookingInput, base: string) {
 
   if (!ready) {
     await notifyOwner('booking_owner', `Booking request: ${input.name} — ${quote ? quote.package.name : oneTime!.label}`, input, quote, chosen.label,
-      'Online payments are not connected in this mode yet, so this booking was saved without payment. Confirm it with the customer.');
+      needsFirstVisitQuote
+        ? `The yard has not been cleaned in ${input.last_cleaned === 'longer' ? 'more than six weeks' : 'a while'}, so your own catalog says the first visit needs a quote. No card was taken. Price the first visit and confirm it with the customer; the weekly plan is unaffected.`
+        : 'Online payments are not connected in this mode yet, so this booking was saved without payment. Confirm it with the customer.');
     return { mode: 'request' as const, booking_id: subscriptionId, start_label: chosen.label };
   }
 

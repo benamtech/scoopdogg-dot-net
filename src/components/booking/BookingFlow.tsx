@@ -26,7 +26,7 @@
  * Summit lesson: a client:load controlled input erases pre-hydration typing).
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { quoteBooking, quoteOneTime, bookableServices, formatCents, tierPrice, type Catalog, type Tier } from '../../shared/pricing';
+import { quoteBooking, quoteOneTime, bookableServices, formatCents, tierPrice, catchUpFor, type Catalog, type Tier } from '../../shared/pricing';
 import { renewalTerms } from '../../shared/consent';
 
 type Area = { slug: string; name: string; market: string; bookable: boolean };
@@ -47,6 +47,12 @@ type Props = {
   businessEmail: string;
   /** `business.name`. A row. */
   businessName: string;
+  /**
+   * `booking.initial_cleanup_policy`. `required_beyond_two_weeks` is Josue's rule: a yard more
+   * than a couple of weeks behind costs more, because the weekly price assumes a weekly yard.
+   * `offer_optional` is what the funnel did before 2026-09-19 and is still a valid value.
+   */
+  cleanupPolicy: string;
   /**
    * `booking.payafter_charge_offset_days`. The browser used to add exactly one day here while
    * the server read this setting — harmless while it was 1, and the day somebody changed it the
@@ -239,6 +245,26 @@ export default function BookingFlow(props: Props) {
       businessName: props.businessName,
     });
   }, [isOneTime, quote?.ok && quote.package.id, quote?.ok && quote.firstChargeCents, lane, firstChargeOn]);
+
+  /**
+   * THE CATCH-UP, derived from the answer rather than chosen from a menu.
+   *
+   * Under `required_beyond_two_weeks` the customer no longer picks which catch-up tier applies
+   * and no longer has a "No thanks, just weekly" button: the answer to "when was the yard last
+   * cleaned" selects Josue's own tier for that band, and it is added to the first charge.
+   */
+  const catchUp = useMemo(
+    () => catchUpFor(catalog, service, lastCleaned),
+    [service, lastCleaned],
+  );
+  const catchUpRequired = props.cleanupPolicy === 'required_beyond_two_weeks';
+
+  // Keep the extra the server will price in step with what the screen shows. Under the required
+  // policy the tier is not the customer's to choose, so it is set here rather than by a click.
+  useEffect(() => {
+    if (!catchUpRequired) return;
+    setDeepClean(catchUp.kind === 'charge' ? catchUp.tier.id : '');
+  }, [catchUpRequired, catchUp.kind, catchUp.kind === 'charge' ? catchUp.tier.id : '']);
 
   // A change to what is being agreed to un-agrees it. Switching lane after ticking the box would
   // otherwise carry a tick for the prepay sentence onto the pay-after one.
@@ -525,7 +551,36 @@ export default function BookingFlow(props: Props) {
                         className={`rounded-md border px-4 py-2.5 text-base font-medium transition duration-fast ${lastCleaned === o.v ? 'border-forest-600 bg-forest-600 text-white' : 'border-line-strong bg-paper text-forest-800 hover:border-forest-400'}`}>{o.label}</button>
                     ))}
                   </div>
-                  {(lastCleaned === 'month' || lastCleaned === 'longer') && (
+                  {/*
+                    WHY THE PRICE MOVED, in Josue's own terms. A customer who is told the number
+                    changed and not told why reads it as a bait and switch; the sentence is the
+                    difference between a surcharge and an explanation.
+                  */}
+                  {catchUpRequired && catchUp.kind === 'charge' && (
+                    <div className="mt-4 rounded-lg border border-forest-300 bg-forest-50 p-5" data-catch-up="charge">
+                      <p className="text-base text-forest-900">
+                        <strong className="font-semibold">Your first visit is {formatCents(catchUp.cents)} more.</strong>{' '}
+                        The weekly price is for a yard that gets done every week. Yours has {catchUp.band} on it,
+                        so the first visit is a full reset — then the weekly price keeps it that way.
+                      </p>
+                      <p className="mt-2 text-sm text-ink-600">{catchUp.tier.label} · one time, on your first visit only</p>
+                    </div>
+                  )}
+                  {catchUpRequired && catchUp.kind === 'quote' && (
+                    <div className="mt-4 rounded-lg border border-amber-400 bg-amber-50 p-5" data-catch-up="quote">
+                      <p className="text-base text-forest-900">
+                        <strong className="font-semibold">Josue will price your first visit himself.</strong>{' '}
+                        A yard this far behind is a bigger job than a weekly visit, and he would rather look at it than
+                        guess. Book below and he will confirm the first-visit price before anything is charged — your
+                        weekly price is unaffected.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* The pre-2026-09-19 behaviour, still reachable by setting the policy back
+                      to `offer_optional`: the customer picks a tier, or declines. */}
+                  {!catchUpRequired && (lastCleaned === 'month' || lastCleaned === 'longer') && (
+
                     <div className="mt-4 rounded-lg border border-line bg-forest-50 p-5">
                       <p className="text-base text-forest-900"><strong className="font-semibold">Start fresh with a one-time deep clean?</strong> We'll reset the whole yard on your first visit, then keep it that way.</p>
                       <div className="mt-3 grid gap-2 sm:grid-cols-2">

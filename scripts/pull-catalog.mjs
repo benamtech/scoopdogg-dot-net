@@ -67,7 +67,11 @@ try {
               meta_title, meta_description, h1, intro, what_includes, who_its_for, faqs, related_slugs
          from services where status = 'active' order by sort_order`);
   const tiers = await q(`select id, service_slug, label, min_qty, max_qty, price_cents, price_suffix, requires_quote,
-              price_is_from, est_minutes, sort_order
+              price_is_from, est_minutes, sort_order,
+              -- Migration 026: which "when was the yard last cleaned" answer this catch-up
+              -- tier covers. A column the site reads and this script does not ship is a
+              -- feature that silently does not exist (the same way booking.lanes_enabled was).
+              covers_last_cleaned
          from service_tiers order by service_slug, sort_order`);
   const packages = await q(`select id, slug, service_slug, tier_id, name, short_label, frequency, visits_per_month::float as visits_per_month,
               monthly_price_cents, derivation, source, confirmed_at, badge, version, featured, sort_order
