@@ -8,14 +8,24 @@
  * loses a customer it already had.
  */
 import { useEffect, useState } from 'react';
+import type { RenewalTerms } from '../../shared/consent';
 
-type Invite = { name: string; price_cents: number; address: string | null; area: string | null; starts_on: string; weekday: string; accepted: boolean };
+type Invite = {
+  name: string; price_cents: number; address: string | null; area: string | null;
+  starts_on: string; weekday: string; accepted: boolean;
+  /**
+   * The renewal terms, rendered by the server from the same module the funnel uses. They arrive
+   * with the invite rather than being composed here, because the price on an invite is the one
+   * Josue typed for this customer and only the server has it.
+   */
+  terms: RenewalTerms;
+};
 
 const money = (c: number) => `$${(c / 100).toFixed(c % 100 ? 2 : 0)}`;
 
-async function api(path: string, token: string) {
+async function api(path: string, token: string, extra: Record<string, unknown> = {}) {
   const r = await fetch(`/api/account/${path}`, {
-    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token }),
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token, ...extra }),
   });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.error || 'Something went wrong.');
@@ -27,6 +37,8 @@ export default function InviteApp({ phone, phoneHref }: { phone: string; phoneHr
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [token, setToken] = useState('');
+  /** §17602(a)(4), exactly as on the funnel's review step. Starts false, never restored. */
+  const [agreed, setAgreed] = useState(false);
 
   useEffect(() => {
     const t = new URL(window.location.href).searchParams.get('t') ?? '';
@@ -36,9 +48,10 @@ export default function InviteApp({ phone, phoneHref }: { phone: string; phoneHr
   }, []);
 
   const addCard = async () => {
+    if (!invite || !agreed) return;
     setBusy(true); setError('');
     try {
-      const j = await api('invite/accept', token);
+      const j = await api('invite/accept', token, { consent_text: invite.terms.sentence });
       if (j.url) { window.location.href = j.url as string; return; }
       setError('Your plan is already set up. Check your account.');
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
@@ -71,10 +84,36 @@ export default function InviteApp({ phone, phoneHref }: { phone: string; phoneHr
             <dd className="text-right text-base text-forest-900">{invite.address}{invite.area ? `, ${invite.area}` : ''}</dd></div>
         )}
       </dl>
+      {/*
+        The same disclosures the funnel shows, for the same reason: moving a cash customer onto a
+        card is a continuous service offer, and §17602 does not care that they were already a
+        customer. It reads gently here because nothing about their arrangement is changing —
+        which is exactly what the terms say.
+      */}
+      <div className="mt-6 rounded-lg border-2 border-forest-300 bg-paper p-5" data-consent-block>
+        <p className="text-base font-semibold text-forest-900">What you're agreeing to</p>
+        <ul className="mt-3 space-y-2">
+          {invite.terms.disclosures.map((d) => (
+            <li key={d.cite} data-consent-cite={d.cite} className="flex gap-2.5 text-base text-ink-700">
+              <span aria-hidden="true" className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-forest-500" />
+              <span>{d.text}</span>
+            </li>
+          ))}
+        </ul>
+        <label className="mt-5 flex cursor-pointer items-start gap-3 border-t border-line pt-4">
+          <input type="checkbox" required checked={agreed} onChange={(e) => setAgreed(e.target.checked)}
+            className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer rounded-sm border-line-strong text-forest-600 focus-visible:shadow-focus"
+            aria-describedby="invite-consent-sentence" />
+          <span id="invite-consent-sentence" data-consent-sentence className="text-base text-forest-900">
+            {invite.terms.sentence}
+          </span>
+        </label>
+      </div>
       {error && <p role="alert" className="mt-4 rounded-md border border-danger/30 bg-danger-100 px-4 py-3 text-base text-danger">{error}</p>}
-      <button type="button" className="btn-primary btn-lg mt-6 w-full" disabled={busy} onClick={addCard}>
+      <button type="button" className="btn-primary btn-lg mt-6 w-full" disabled={busy || !agreed} onClick={addCard}>
         {busy ? 'One moment…' : 'Add my card'}
       </button>
+      {!agreed && <p className="mt-2 text-center text-sm text-ink-500" role="status">Tick the box above to continue.</p>}
       <p className="mt-3 text-center text-sm text-ink-500">Cancel anytime · Your price is not going up</p>
       <p className="mt-6 border-t border-line pt-5 text-base text-ink-700">
         Rather keep paying cash or Venmo? That's completely fine — just tell Josue and ignore this.

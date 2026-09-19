@@ -6,6 +6,7 @@ import { rateLimit, isOverLimit } from '../server/lib/admin-auth.js';
 import { startCustomerLogin, verifyCustomerLogin, getCustomerSession, endCustomerSession } from '../server/lib/customer-auth.js';
 import { AccountError, overview, skipVisit, unskipVisit, pausePlan, resumePlan, cancelPlan, keepPlan, billingPortalUrl } from '../server/lib/account.js';
 import { InviteError, readInvite, acceptInvite } from '../server/lib/invites.js';
+import { requestFingerprint } from '../server/lib/consent.js';
 
 const routePath = (req: ApiRequest) =>
   (new URL(req.url || '/', 'https://local.test').searchParams.get('path') || '').replace(/^\/+|\/+$/g, '');
@@ -56,7 +57,10 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       if (path === 'invite/accept') {
         const host = (req.headers['x-forwarded-host'] as string) || req.headers.host || 'scoopdogg.net';
         const proto = (req.headers['x-forwarded-proto'] as string) || (host.startsWith('127.') || host.startsWith('localhost') ? 'http' : 'https');
-        return sendJson(res, 200, await acceptInvite(token, `${proto}://${host}`));
+        return sendJson(res, 200, await acceptInvite(token, `${proto}://${host}`, {
+          text: body.consent_text == null ? null : String(body.consent_text).slice(0, 1000),
+          ...requestFingerprint(req.headers as Record<string, string | undefined>),
+        }));
       }
     }
 

@@ -38,6 +38,9 @@ const slim = {
         phoneHref={business.phoneHref}
         demo={DEMO_MODE}
         guarantee={trust.guarantee}
+        businessEmail={business.email}
+        businessName={business.name}
+        payafterOffsetDays={Number(setting('booking.payafter_charge_offset_days', '1'))}
       />
     </div>
     <!-- THE CITY LIST IS CONTENT, NOT A DROPDOWN. It used to be a <select> inside the funnel's

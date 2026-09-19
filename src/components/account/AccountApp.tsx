@@ -142,9 +142,24 @@ export default function AccountApp({ phone, phoneHref }: { phone: string; phoneH
               <div className="mt-5 rounded-lg border border-line bg-forest-50 p-5" role="dialog" aria-labelledby="cancel-h">
                 <h3 id="cancel-h" className="text-lg font-semibold text-forest-900">Before you go — would a pause help?</h3>
                 <p className="mt-1 text-base text-ink-700">Going away or tight this month? Pause instead and pick up where you left off. Or cancel — no questions asked.</p>
+                {/*
+                  THE CANCEL COMES FIRST AND IS THE STRONGER BUTTON. §17602(e)(2) permits a
+                  retention offer here only while a "click to cancel" control is "prominently
+                  located and continuously and proximately displayed" alongside it.
+
+                  Until 2026-09-19 this was the other way round: the pause was `btn-secondary`
+                  and the cancel was `btn-ghost`, so the save offer was the more prominent of the
+                  two. R6 §B4 had recorded the dialog as already correct, having read its shape
+                  and not its classes. The randomised evidence on why the statute cares is in
+                  R9 §5 — mild dark patterns more than doubled sign-ups in Luguri & Strahilevitz,
+                  which is why a filled button beside an outline one is not a neutral choice.
+
+                  `data-cancel-control` and `data-save-offer` are what gates/consent.mjs compares,
+                  so the ordering cannot quietly revert.
+                */}
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <button className="btn-secondary btn-sm" onClick={() => { setConfirmCancel(null); act('pause', 'plan/pause', { subscription_id: sub.id, weeks: 4 }, 'Paused for four weeks instead.'); }}>Pause 4 weeks instead</button>
-                  <button className="btn-ghost btn-sm" onClick={() => { setConfirmCancel(null); act('cancel', 'plan/cancel', { subscription_id: sub.id, reason: 'customer portal' }, 'Your plan is set to end at the end of this billing month.'); }}>Cancel my plan</button>
+                  <button data-cancel-control className="btn-secondary btn-sm" onClick={() => { setConfirmCancel(null); act('cancel', 'plan/cancel', { subscription_id: sub.id, reason: 'customer portal' }, 'Your plan is set to end at the end of this billing month.'); }}>Cancel my plan</button>
+                  <button data-save-offer className="btn-ghost btn-sm" onClick={() => { setConfirmCancel(null); act('pause', 'plan/pause', { subscription_id: sub.id, weeks: 4 }, 'Paused for four weeks instead.'); }}>Pause 4 weeks instead</button>
                   <button className="text-sm font-medium text-forest-700 underline underline-offset-4" onClick={() => setConfirmCancel(null)}>Never mind</button>
                 </div>
               </div>

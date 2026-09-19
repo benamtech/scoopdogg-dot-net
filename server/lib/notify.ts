@@ -38,7 +38,11 @@ export type OutboxState = 'pending' | 'delivering' | 'delivered' | 'failed' | 'a
 
 export type SendEmailArgs = {
   /** What this message is for. Stored on the row so a gate can find its own sends. */
-  purpose: 'lead' | 'contact' | 'admin_login' | 'gate_probe' | 'customer_login' | 'booking_welcome' | 'booking_owner' | 'waitlist' | 'waitlist_owner' | 'subscription_change' | 'quote_request' | 'customer_invite';
+  purpose: 'lead' | 'contact' | 'admin_login' | 'gate_probe' | 'customer_login' | 'booking_welcome' | 'booking_owner' | 'waitlist' | 'waitlist_owner' | 'subscription_change' | 'quote_request' | 'customer_invite'
+    // The three California ARL notices (server/lib/lifecycle.ts). They are `purpose` values and
+    // not a separate table because the retention, the delivery state and the reconciliation all
+    // already work on `outbox`, and a notice we cannot prove we sent is not a notice.
+    | 'renewal_reminder' | 'price_change_notice' | 'promo_or_term_notice';
   /** Settings key holding the recipient list, or an explicit address for a sign-in code. */
   recipients: { settingKey: string } | { explicit: string[] };
   subject: string;

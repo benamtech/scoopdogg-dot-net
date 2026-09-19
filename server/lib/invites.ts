@@ -26,7 +26,12 @@ import { sendEmail } from './notify.js';
 import { appendEvent } from './events.js';
 import { currentMode, resolve, connection } from './stripe.js';
 import { startSubscription } from './money.js';
+// An invited customer is agreeing to a continuous service just as a funnel customer is, so the
+// same statute reaches this path and the same module writes the words. R9 §0; step 6.
+import { renewalTerms } from '../../src/shared/consent.js';
+import { recordConsent } from './consent.js';
 import { formatCents, weekdayName } from '../../src/shared/pricing.js';
+import { loadCatalog } from './catalog-db.js';
 
 export class InviteError extends Error {
   constructor(public code: string, public userMessage: string, public status = 400) { super(code); }
@@ -152,6 +157,31 @@ export async function createInvite(input: InviteInput, by: string, base: string)
   return { invite_id: inviteId, customer_id: customerId, subscription_id: subscriptionId, email_state: sent.state, link_sent: sent.state !== 'failed' };
 }
 
+/**
+ * The renewal terms for an invite, from the one module that writes them.
+ *
+ * An invited customer is being offered a continuous service at a price, which is what §17601
+ * defines; that they already buy the same service for cash changes who is being asked, not what
+ * they are agreeing to. So the same disclosures and the same consent record apply here, and
+ * `readInvite` and `acceptInvite` both call this rather than each composing a sentence.
+ *
+ * `priceMayChange` is FALSE and that is a promise, not an omission: the whole invite says "same
+ * price", the amount is the one Josue typed, and nothing in the catalog can drag it.
+ */
+async function inviteTerms(priceCents: number) {
+  const settings = (await loadCatalog()).settings;
+  return renewalTerms({
+    lane: 'prepay',
+    monthlyCents: priceCents,
+    firstChargeCents: priceCents,
+    firstChargeOn: null,
+    packageName: 'weekly service',
+    priceMayChange: false,
+    cancelEmail: String(settings.get('business.email') ?? ''),
+    businessName: String(settings.get('business.name') ?? 'Scoop Dogg'),
+  });
+}
+
 /** What the /invite page may show before anyone pays. No token, no answer. */
 export async function readInvite(token: string) {
   const { rows } = await db().query(
@@ -169,6 +199,7 @@ export async function readInvite(token: string) {
   return {
     name: inv.name, price_cents: inv.price_cents, address: inv.address, area: inv.area_name,
     starts_on: inv.starts_on, weekday: weekdayName(inv.service_weekday), accepted: Boolean(inv.accepted_at),
+    terms: await inviteTerms(inv.price_cents),
   };
 }
 
@@ -180,7 +211,9 @@ export async function readInvite(token: string) {
  * return lands on /book/complete, so completion, the invoice, the visits and the welcome email are
  * the one path booking.ts already proved rather than a parallel one written for this.
  */
-export async function acceptInvite(token: string, base: string) {
+export async function acceptInvite(token: string, base: string, consent: {
+  text: string | null; ip: string | null; userAgent: string | null;
+}) {
   const hash = hmac(String(token ?? ''));
   const { rows } = await db().query(
     `select i.id, i.customer_id, i.subscription_id, i.price_cents, i.accepted_at, i.expires_at,
@@ -200,6 +233,17 @@ export async function acceptInvite(token: string, base: string) {
   if (!conn?.account_id || conn.card_payments_status !== 'active') {
     throw new InviteError('not_connected', 'Card payments are not switched on yet. Josue will be in touch — keep paying the way you do now.', 409);
   }
+  // §17602(a)(4), the same check the funnel makes: the sentence the browser showed is compared
+  // against one rebuilt here, and a mismatch stops the flow rather than storing a record of
+  // something nobody read. If Josue edits the price between send and click, this is what catches
+  // it — and catching it is the point, because that price is the entire promise of the invite.
+  const terms = await inviteTerms(inv.price_cents);
+  if (!consent.text) throw new InviteError('consent', 'Please tick the box agreeing to the renewal terms.', 400);
+  if (consent.text.trim() !== terms.sentence) {
+    throw new InviteError('consent_stale',
+      'Your price or plan changed since this link was sent. Please reload the page and check the terms again.', 409);
+  }
+
   const { stripe, account } = await resolve(mode);
 
   const { rows: sc } = await db().query(
@@ -228,8 +272,28 @@ export async function acceptInvite(token: string, base: string) {
       product_data: { name: 'Weekly service — your existing plan' },
     },
   }];
+  // The consent row first, then the Checkout. `startSubscription` will not open a session
+  // without the id, so the order is enforced rather than remembered.
+  const client = await db().connect();
+  let consentId: string;
+  try {
+    await client.query('begin');
+    consentId = await recordConsent(client, {
+      customerId: inv.customer_id, subscriptionId: inv.subscription_id, kind: 'renewal',
+      textShown: terms.sentence, priceCents: inv.price_cents, lane: 'prepay',
+      ip: consent.ip, userAgent: consent.userAgent,
+    });
+    await client.query('commit');
+  } catch (e) {
+    await client.query('rollback').catch(() => {});
+    throw e;
+  } finally {
+    client.release();
+  }
+
   const session = await startSubscription({
     mode,
+    consentId,
     customerId: stripeCustomerId,
     lineItems,
     couponId: null,

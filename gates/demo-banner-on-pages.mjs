@@ -113,17 +113,41 @@ if (cached && !force && cached.input_hash === inputHash && cached.result === 'PA
   process.exit(agrees ? 0 : 1);
 }
 
+/**
+ * Routes that are NOT admin and are still not for search. A customer reaches each of these by
+ * signing in or by finishing a booking — never from a search result — so `noindex` on them is
+ * correct in BOTH modes, and the "public pages are indexable" control must not count them.
+ *
+ * This list is a pin, not an exemption. Adding a route here says "no one can arrive at this page
+ * from Google", and the check below then REQUIRES it to be noindex — so a route added here
+ * carelessly fails the gate rather than escaping it.
+ *
+ * 2026-09-19: the gate went red on all three at once, because `/invite` arrived with step 4 and
+ * `/book/complete` with step 5 while the gate still assumed non-admin meant public. The site was
+ * right and the gate was out of date; it had run nowhere since either step landed.
+ */
+const PRIVATE_ROUTES = new Set([
+  '/account',       // the signed-in customer portal
+  '/invite',        // a one-time invite link Josue sends a named customer
+  '/book/complete', // the return page a Stripe Checkout redirects to
+]);
+
 /** Build the site the way the build script does: pull the state, then render. */
 function build(label) {
   execFileSync('node', ['scripts/pull-demo-state.mjs'], { stdio: 'pipe' });
   execFileSync('node', ['node_modules/.bin/astro', 'build'], { stdio: 'pipe' });
   const pages = globSync(`${DIST}/**/index.html`);
   if (!pages.length) throw new Error(`${label}: nothing in dist/`);
-  return pages.map((f) => ({
-    route: '/' + path.relative(DIST, path.dirname(f)).replace(/\\/g, '/'),
-    isAdmin: path.relative(DIST, f).split(path.sep)[0] === 'admin',
-    html: readFileSync(f, 'utf8'),
-  }));
+  return pages.map((f) => {
+    const route = '/' + path.relative(DIST, path.dirname(f)).replace(/\\/g, '/');
+    const isAdmin = path.relative(DIST, f).split(path.sep)[0] === 'admin';
+    return {
+      route,
+      isAdmin,
+      isPrivate: isAdmin || PRIVATE_ROUTES.has(route),
+      html: readFileSync(f, 'utf8'),
+    };
+  });
 }
 
 const hasBanner = (p) => p.html.includes('data-demo-banner');
@@ -169,7 +193,7 @@ try {
          stuckBanner.slice(0, 3).map((p) => p.route).join(', '))
     : ok('NEGATIVE CONTROL: no live page carries the demo banner', `${livePages.length} pages clean`);
 
-  const publicLive = livePages.filter((p) => !p.isAdmin);
+  const publicLive = livePages.filter((p) => !p.isPrivate);
   const wronglyNoindex = publicLive.filter((p) => isNoindex(p));
   wronglyNoindex.length
     ? no('NEGATIVE CONTROL: public pages are indexable when live',
@@ -177,11 +201,23 @@ try {
          wronglyNoindex.slice(0, 3).map((p) => p.route).join(', '))
     : ok('NEGATIVE CONTROL: public pages are indexable when live', `${publicLive.length} public pages`);
 
-  const adminLive = livePages.filter((p) => p.isAdmin);
-  const adminIndexable = adminLive.filter((p) => !isNoindex(p));
-  adminIndexable.length
-    ? no('admin stays noindex either way', `${adminIndexable.length} admin page(s) indexable`)
-    : ok('admin stays noindex either way', `${adminLive.length} admin pages`);
+  // The other half of the pin. Admin AND the named private routes must be noindex whichever mode
+  // the site is in — so `/account` appearing in a search result is a failure, not a shrug.
+  const privateLive = livePages.filter((p) => p.isPrivate);
+  const privateIndexable = privateLive.filter((p) => !isNoindex(p));
+  privateIndexable.length
+    ? no('admin and the private routes stay noindex either way',
+         `${privateIndexable.length} private page(s) indexable: ` +
+         privateIndexable.slice(0, 3).map((p) => p.route).join(', '))
+    : ok('admin and the private routes stay noindex either way',
+         `${privateLive.length} pages (${[...PRIVATE_ROUTES].join(', ')} + admin)`);
+
+  // A route that is pinned private but does not exist is a stale pin. It would silently stop
+  // protecting anything, so say so rather than passing on an empty set.
+  const missingPins = [...PRIVATE_ROUTES].filter((r) => !livePages.some((p) => p.route === r));
+  missingPins.length
+    ? no('every pinned private route still exists', `stale pin(s): ${missingPins.join(', ')}`)
+    : ok('every pinned private route still exists', `${PRIVATE_ROUTES.size} pinned`);
 
   // ---------------------------------------------------------------- the build fails loudly
   // A build that cannot read demo.mode must stop, not guess. Guessing `false` would ship a

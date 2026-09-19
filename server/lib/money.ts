@@ -62,6 +62,19 @@ export async function feePercentFor(mode: StripeMode): Promise<number> {
 
 export type SubscriptionCheckout = {
   mode: StripeMode;
+  /**
+   * The `consents` row for this subscription. REQUIRED, and the reason is structural rather
+   * than tidy: California's ARL (BPC §17602(a)(2)) makes it unlawful to charge for an automatic
+   * renewal without having obtained express consent to its terms first, and §17602(a)(6) makes
+   * us keep the evidence for three years. Putting it in the signature means the only way to
+   * open a subscription Checkout is to have already written the record - a compliance rule that
+   * fails at the type level and then again at runtime, instead of in a review nobody does.
+   *
+   * `chargeOnce()` deliberately has no equivalent. A one-time job neither renews nor continues,
+   * so the article does not reach it, and demanding a renewal consent for one would mean
+   * storing a record that a customer agreed to something they were never offered. R9 §0.
+   */
+  consentId: string;
   customerId: string;                 // the Stripe customer, on the connected account
   lineItems: Stripe.Checkout.SessionCreateParams.LineItem[];
   couponId?: string | null;
@@ -83,6 +96,8 @@ export type SubscriptionCheckout = {
  * with no card cancels rather than silently continuing unpaid.
  */
 export async function startSubscription(p: SubscriptionCheckout): Promise<Stripe.Checkout.Session> {
+  // TypeScript cannot see a `null!` that crossed an API boundary, so the runtime says no too.
+  if (!p.consentId) throw new Error('startSubscription: refusing to charge a renewal with no consent record');
   const { stripe, account } = await resolve(p.mode);
   const trial = p.trialPeriodDays && p.trialPeriodDays > 0
     ? {
@@ -98,10 +113,12 @@ export async function startSubscription(p: SubscriptionCheckout): Promise<Stripe
     subscription_data: {
       application_fee_percent: await feePercentFor(p.mode),
       description: p.description,
-      metadata: p.metadata,
+      // The consent id travels onto the Stripe object too, so a row in Stripe's dashboard can
+      // be traced back to the sentence the customer read without opening our database.
+      metadata: { ...p.metadata, consent_id: p.consentId },
       ...trial,
     },
-    metadata: p.metadata,
+    metadata: { ...p.metadata, consent_id: p.consentId },
     custom_text: { submit: { message: p.submitMessage } },
     success_url: p.successUrl,
     cancel_url: p.cancelUrl,

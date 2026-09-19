@@ -45,6 +45,8 @@ const check = (name, ok, detail = '') => { results.push({ name, ok }); console.l
 const browser = await chromium.launch();
 const errors = [];
 const outcomes = {};
+/** What each walk was shown on screen, so the stored record can be compared to it. */
+const sentences = {};
 const people = {};
 const c = new pg.Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: true } });
 await c.connect();
@@ -60,6 +62,7 @@ async function walk(shape) {
   };
   people[shape] = person;
   let outcome = 'unknown';
+  let consentSentence = null;
   try {
     // The hero: one field, a plain GET to /book. A pasted street address still works, which is
     // the promise P16 §2 makes about the ZIP field.
@@ -113,7 +116,38 @@ async function walk(shape) {
     if (shape === 'payafter') check('lane B shows nothing due today and the date of the first charge',
       /Due today\s*Nothing/i.test(review) && /first payment is/i.test(review));
 
-    await page.getByRole('button', { name: /(pay .* and book|save my card and book)/i }).click();
+    // ---- §17602(a)(4): the consent, on the real page ------------------------------------
+    // Step 6. A renewing plan cannot be bought without express affirmative consent to the
+    // renewal terms, so the pay button is disabled until the box is ticked. Proving the
+    // DISABLED state first is the point: a gate that only ticks the box would keep passing on
+    // the day somebody removes the requirement.
+    //
+    // A ONE-TIME JOB TAKES THE OTHER BRANCH, and it is an assertion rather than a skip. It
+    // renews nothing, so §17602 does not reach it, and a renewal checkbox over a single yard
+    // cleanup would be asking the customer to agree to something that was never offered.
+    const payBtn = page.getByRole('button', { name: /(pay .* and book|save my card and book)/i });
+    if (shape === 'onetime') {
+      check('onetime: no renewal consent is demanded for a job that never renews',
+        (await page.locator('[data-consent-block]').count()) === 0);
+      check('onetime: the pay button is live without one', !(await payBtn.isDisabled()));
+    } else {
+      const consentBox = page.locator('[data-consent-block] input[type=checkbox]');
+      check('the renewal terms are shown as their own block, before the button',
+        await page.locator('[data-consent-block]').isVisible());
+      const cites = await page.locator('[data-consent-cite]').evaluateAll((els) => els.map((e) => e.getAttribute('data-consent-cite')));
+      check(`all five §17602(a)(2) disclosures are on the page — ${cites.join(', ')}`,
+        ['a2A', 'a2B', 'a2C', 'a2D', 'a2E'].every((c) => cites.includes(c)));
+      check('the pay button is disabled until the renewal terms are agreed',
+        await payBtn.isDisabled());
+      await consentBox.check();
+      const sentence = (await page.locator('[data-consent-sentence]').innerText()).trim();
+      check(`the sentence names the monthly price — ${sentence.slice(0, 60)}…`,
+        sentence.includes(expectMonthly) && /cancel/i.test(sentence));
+      check('the pay button is enabled once it is', !(await payBtn.isDisabled()));
+      consentSentence = sentence;
+    }
+
+    await payBtn.click();
     await Promise.race([
       page.waitForURL(/checkout\.stripe\.com/, { timeout: 25000 }),
       page.getByRole('heading', { name: /booking received/i }).waitFor({ timeout: 25000 }),
@@ -141,6 +175,7 @@ async function walk(shape) {
     await page.screenshot({ path: `output/checkout-e2e-${shape}-failure.png` }).catch(() => {});
   }
   outcomes[shape] = outcome;
+  sentences[shape] = consentSentence;
   await page.close();
 }
 
@@ -158,10 +193,37 @@ try {
     if (shape === 'onetime') {
       check('onetime: frequency is one_time and the price is the tier price',
         r.frequency === 'one_time' && r.price_cents === oneTime.cents, `${r.frequency} ${r.price_cents}`);
+      // A one-time job renews nothing, so a consent row here would be a record of an agreement
+      // that was never offered. The absence is the assertion (R9 §0).
+      const { rows: none } = await c.query(
+        `select 1 from consents k where k.subscription_id = (
+           select s2.id from subscriptions s2 join customers c2 on c2.id = s2.customer_id where c2.email = $1 limit 1)`,
+        [people[shape].email]);
+      check('onetime: no renewal consent was recorded', none.length === 0, `${none.length} rows`);
+      check('onetime: no consent block was rendered', sentences[shape] === null);
     } else {
       check(`${shape}: frozen monthly price equals the resolver`, r.monthly_price_cents === pkg.monthly_price_cents);
       check(`${shape}: frozen first charge equals the resolver`, Number(r.first_charge) === quote.firstChargeCents);
       check(`${shape}: the lane is recorded on the row`, r.lane === shape, String(r.lane));
+
+      // ---- §17602(a)(6): the consent record, against what was on the screen --------------
+      // This is the assertion the whole of step 6 exists for, and it is the one a static gate
+      // cannot make: the sentence in the database is compared to the characters a real browser
+      // actually rendered, not to a second copy of the same template.
+      const { rows: cons } = await c.query(
+        `select k.text_shown, k.price_cents, k.lane, k.ip, k.user_agent
+           from consents k where k.subscription_id = (
+             select s2.id from subscriptions s2 join customers c2 on c2.id = s2.customer_id
+              where c2.email = $1 limit 1)`, [people[shape].email]);
+      check(`${shape}: exactly one consent record`, cons.length === 1, `${cons.length} rows`);
+      const k = cons[0] ?? {};
+      check(`${shape}: text_shown matches the rendered sentence byte for byte`,
+        k.text_shown === sentences[shape],
+        k.text_shown === sentences[shape] ? `${String(k.text_shown).length} chars` : `db="${k.text_shown}" screen="${sentences[shape]}"`);
+      check(`${shape}: the consent records the monthly price and the lane`,
+        k.price_cents === pkg.monthly_price_cents && k.lane === shape, `${k.price_cents} ${k.lane}`);
+      check(`${shape}: the consent is verifiable — a user agent was captured`,
+        Boolean(k.user_agent), String(k.user_agent).slice(0, 40));
     }
     if (outcomes[shape] === 'paid' && shape === 'payafter') {
       check('payafter: the subscription is active and trialing, with no money taken',

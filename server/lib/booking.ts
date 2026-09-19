@@ -24,6 +24,10 @@ import { currentMode, resolve, priceForPackage, couponForOffer, connection, prob
 // decides WHAT is being sold; it does not decide what AMTECH takes. gates/one-money-door.mjs.
 import { startSubscription, chargeOnce, feeCentsFor } from './money.js';
 import { resolveZip, sessionConverted } from './funnel.js';
+// The words, from the same module the browser renders them with. server/lib/consent.ts writes
+// the row; src/shared/consent.ts is the single author of the sentence. R9, and step 6.
+import { renewalTerms, acknowledgmentHtml } from '../../src/shared/consent.js';
+import { recordConsent } from './consent.js';
 import { openSessionForCustomer } from './customer-auth.js';
 import { quoteBooking, quoteOneTime, startDates, formatCents, weekdayName } from '../../src/shared/pricing.js';
 import type { ApiResponse } from './http.js';
@@ -53,6 +57,16 @@ export type BookingInput = {
   dog_names?: string;
   source?: string;
   idempotency_key: string;
+  /**
+   * The renewal sentence the customer actually read, sent back as a witness. The server
+   * re-renders it from its own rows and refuses the booking if the two differ - so this is
+   * never trusted as input, only compared. §17602(a)(4). Null on a one-time job, which has no
+   * renewal to consent to.
+   */
+  consent_text?: string | null;
+  /** Trimmed request metadata that makes the consent record verifiable. Set by the API layer. */
+  consent_ip?: string | null;
+  consent_user_agent?: string | null;
 };
 
 export class BookingError extends Error {
@@ -87,6 +101,7 @@ export function parseInput(body: Record<string, unknown>): BookingInput {
     dog_names: str(body.dog_names, 200),
     source: str(body.source, 120),
     idempotency_key: str(body.idempotency_key, 80),
+    consent_text: body.consent_text == null ? null : str(body.consent_text, 1000),
   };
   if (!input.address || !input.city) throw new BookingError('address', 'Please enter your address.');
   if (!input.package_id && !input.tier_id) throw new BookingError('package', 'Please choose a plan.');
@@ -195,8 +210,48 @@ export async function createBooking(input: BookingInput, base: string) {
     ? new Date(Date.parse(`${todayLA()}T12:00:00Z`) + trialDays * 86_400_000).toISOString().slice(0, 10)
     : null;
 
+  /**
+   * THE RENEWAL TERMS, RE-RENDERED HERE FROM OUR OWN ROWS. §17602(a)(4), R9 §2.
+   *
+   * The browser sent the sentence it showed. This does not trust it — it rebuilds the sentence
+   * from the catalog the server just read and compares. Two things fall out of that:
+   *
+   *  1. A browser cannot negotiate its own terms. Sending nicer words gets the booking refused,
+   *     not accepted, so `consents.text_shown` can never be a sentence nobody was shown.
+   *  2. If the published price moved between the page load and the click, the sentences differ
+   *     and the booking STOPS. That is the right failure: the alternative is charging a number
+   *     the customer never saw, which is exactly what §17602(a)(7) calls a misrepresentation.
+   *
+   * A one-time job gets `null` here and no consent row. It neither renews nor continues, so the
+   * article does not reach it, and a renewal sentence over it would be a false statement.
+   */
+  const settings = (await loadCatalog()).settings;
+  const terms = quote && quote.ok
+    ? renewalTerms({
+        lane: payAfter ? 'payafter' : 'prepay',
+        monthlyCents: quote.monthlyCents,
+        firstChargeCents: quote.firstChargeCents,
+        firstChargeOn,
+        packageName: quote.package.name,
+        priceMayChange: quote.flags.containsFromPrice,
+        cancelEmail: String(settings.get('business.email') ?? ''),
+        businessName: String(settings.get('business.name') ?? 'Scoop Dogg'),
+      })
+    : null;
+
+  if (terms) {
+    if (!input.consent_text) {
+      throw new BookingError('consent', 'Please tick the box agreeing to the renewal terms.');
+    }
+    if (input.consent_text.trim() !== terms.sentence) {
+      throw new BookingError('consent_stale',
+        'Your plan or its price changed while you were booking. Please refresh the page and check the terms again.', 409);
+    }
+  }
+
   const client = await db().connect();
   let customerId: string, propertyId: string, subscriptionId: string;
+  let consentId: string | null = null;
   try {
     await client.query('begin');
     const { rows: existing } = await client.query(
@@ -247,6 +302,21 @@ export async function createBooking(input: BookingInput, base: string) {
                         first_charge_on: firstChargeOn, tier_id: oneTime ? oneTime.tier.id : null }),
        paymentState]);
     subscriptionId = sub[0].id;
+
+    // §17602(a)(6). The consent row goes in THIS transaction — not before it (a consent for a
+    // booking that then rolled back is a record of nothing) and not after it (a committed
+    // subscription with no evidence behind it is the one state this table exists to prevent).
+    if (terms) {
+      consentId = await recordConsent(client, {
+        customerId, subscriptionId, kind: 'renewal',
+        textShown: terms.sentence,
+        priceCents: quote!.monthlyCents,
+        lane: payAfter ? 'payafter' : 'prepay',
+        ip: input.consent_ip ?? null,
+        userAgent: input.consent_user_agent ?? null,
+      });
+    }
+
     await appendEvent(client, {
       subjectKind: 'subscription', subjectId: subscriptionId, type: 'booking.created', to: state,
       actorKind: 'customer', actorId: customerId,
@@ -305,6 +375,10 @@ export async function createBooking(input: BookingInput, base: string) {
     }
     session = await startSubscription({
       mode,
+      // The consent is a parameter of opening a subscription, not a check somebody remembers to
+      // run. money.ts throws without it, so the only way to charge a renewal is to have written
+      // down what the customer agreed to first. §17602(a)(2).
+      consentId: consentId!,
       customerId: stripeCustomerId,
       lineItems,
       couponId,
@@ -386,8 +460,12 @@ export async function completeBooking(bookingId: string, sessionId: string | nul
     try {
       await client.query('begin');
       const { rowCount } = await client.query(
+        // `activated_at` is set once and never moved (migration 024): §17602(h) measures the
+        // annual reminder from the moment the plan started, and a column that a reactivation
+        // could push forward would quietly cancel a reminder that was already due.
         `update subscriptions set state = 'active', payment_state = $4, stripe_subscription_id = $2,
-                current_period_end = to_timestamp($3), updated_at = now()
+                current_period_end = to_timestamp($3), activated_at = coalesce(activated_at, now()),
+                updated_at = now()
           where id = $1 and state <> 'active'`,
         [bookingId, stripeSub?.id ?? null, periodEnd, trialing ? 'trialing' : 'ok']);
       if (rowCount) {
@@ -508,6 +586,36 @@ async function sendWelcome(bookingId: string) {
     ? `<p style="font-size:16px;line-height:1.6">Thanks for choosing Scoop Dogg. We'll be there on <strong>${startLabel}</strong>.</p>`
     : `<p style="font-size:16px;line-height:1.6">Thanks for choosing Scoop Dogg. Your first visit is <strong>${startLabel}</strong>, and after that we'll be there every <strong>${weekdayName(b.service_weekday)}</strong>.</p>`;
 
+  /**
+   * THE ACKNOWLEDGMENT. §17602(a)(3): an acknowledgment containing the renewal terms, the
+   * cancellation policy and how to cancel, "in a manner that is capable of being retained by the
+   * consumer". An email is that manner; §17602(i)(1) lets it follow the order rather than precede
+   * it. Until 2026-09-19 this email's entire cancellation content was one sentence about the
+   * account, which is neither the terms nor the policy (R9 §3).
+   *
+   * THE SENTENCE IS READ BACK FROM `consents`, NOT RECOMPOSED. If it were rebuilt here it could
+   * differ from what was agreed — a price moving between the booking and the send is all it
+   * would take — and an acknowledgment that restates terms nobody accepted is worse than none.
+   *
+   * §17602(c)(1) and (d)(3): online cancellation may sit behind a login only where a route that
+   * does not is also offered AND described in this acknowledgment. That is the email address,
+   * and it is why it is in here rather than only on the website.
+   */
+  let acknowledgment = '';
+  if (!oneTime) {
+    const { rows: cons } = await db().query(
+      `select text_shown from consents where subscription_id = $1 and kind = 'renewal' order by agreed_at desc limit 1`,
+      [bookingId]);
+    const agreed: string | null = cons[0]?.text_shown ?? null;
+    const settings = (await loadCatalog()).settings;
+    acknowledgment = acknowledgmentHtml({
+      agreedSentence: agreed,
+      cancelEmail: String(settings.get('business.email') ?? ''),
+      phone: String(settings.get('business.phone') ?? ''),
+      site: process.env.PUBLIC_SITE_URL ?? 'https://scoopdogg.vercel.app',
+    });
+  }
+
   await sendEmail({
     purpose: 'booking_welcome',
     recipients: { explicit: [b.email] },
@@ -521,6 +629,7 @@ async function sendWelcome(bookingId: string) {
         ${moneyRows}
       </table>
       ${oneTime ? '' : '<p style="font-size:16px;line-height:1.6">You can skip a week, pause or cancel anytime from your account.</p>'}
+      ${acknowledgment}
       <p><a href="${process.env.PUBLIC_SITE_URL ?? 'https://scoopdogg.vercel.app'}/account" style="display:inline-block;background:#F4A024;color:#0F2A1F;font-weight:600;padding:12px 20px;border-radius:10px;text-decoration:none">Go to your account</a></p>`),
   });
   await notifyOwner('booking_owner', `New customer: ${b.name} — ${b.package_name ?? 'one-time job'}`,

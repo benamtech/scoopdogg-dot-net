@@ -53,6 +53,59 @@ async function census() {
   };
 }
 
+/**
+ * The foreign-key graph, checked against the plan below.
+ *
+ * Any table with a foreign key onto `customers` or `subscriptions` will block their deletes, so
+ * every one of them has to be handled here. Rather than trust a comment, ask the database which
+ * tables those are and refuse if one is unaccounted for.
+ *
+ * A table can be accounted for in two ways: it appears in the plan, or it is named in
+ * KNOWN_NOT_DELETED with the reason. `events` is the standing example — it refuses DELETE at the
+ * database and the seed writes none.
+ */
+const KNOWN_NOT_DELETED = new Set([
+  'events',            // append-only; a trigger refuses DELETE and the seed writes none
+]);
+
+async function assertCoverage(planTables) {
+  const { rows } = await c.query(`
+    select distinct src.relname as child, tgt.relname as parent
+      from pg_constraint k
+      join pg_class src on src.oid = k.conrelid
+      join pg_class tgt on tgt.oid = k.confrelid
+     where k.contype = 'f' and tgt.relname in ('customers','subscriptions')
+       and src.relname <> tgt.relname`);
+  const missing = rows
+    .map((r) => r.child)
+    .filter((t, i, a) => a.indexOf(t) === i)
+    .filter((t) => !planTables.has(t) && !KNOWN_NOT_DELETED.has(t));
+  if (missing.length) {
+    console.error(`demo-clear.mjs does not know about ${missing.length} table(s) that reference customers or subscriptions:`);
+    for (const t of missing) {
+      const parents = rows.filter((r) => r.child === t).map((r) => r.parent).join(', ');
+      console.error(`  ${t}  ->  ${parents}`);
+    }
+    console.error('Add each to the plan (child-first) or to KNOWN_NOT_DELETED with a reason.');
+    console.error('Refusing to run: a half-finished cleanup against a live database is worse than none.');
+    process.exit(2);
+  }
+  console.log(`foreign-key coverage: ${rows.length} reference(s) from ${new Set(rows.map((r) => r.child)).size} table(s), all accounted for`);
+}
+
+/**
+ * How each plan entry's parameters are bound. ONE copy, because the dry run and the real run
+ * must send byte-identical statements — a dry run that binds differently is not a rehearsal.
+ *
+ * `ids` is ONE array parameter ($1::uuid[]). Passing the array itself as the parameter list
+ * bound each uuid as its own parameter — invisible with one demo customer, a crash with seven
+ * (found 2026-09-16; the transaction rolled back and nothing was removed). And the binding
+ * follows what the SQL ASKS FOR, not whether the list happens to be empty: skipping it on an
+ * empty list sent `= any($1::uuid[])` with nothing bound and died with "there is no parameter
+ * $1" instead of reporting that there was nothing to remove.
+ */
+const bindFor = (sql, params) => (sql.includes('$1::uuid[]') ? [params] : params);
+
 const before = await census();
 
 // The demo customers, resolved once. Every child delete keys off this list, so a row can
@@ -71,15 +124,34 @@ const plan = [
                           (select id from subscriptions where customer_id = any($1::uuid[]))`, ids],
   ['stripe_customers', `delete from stripe_customers where customer_id = any($1::uuid[])`, ids],
   // EVERY NEW TABLE THAT POINTS AT A CUSTOMER HAS TO BE NAMED HERE, child-first, or the
-  // customers delete fails on a foreign key and the cleanup stops halfway. Both of these were
-  // added on 2026-09-19 and both were found by a gate rather than by reading: customer_invites
-  // (018) references customers, properties and subscriptions; funnel_sessions (021) references
-  // subscriptions and service_areas.
+  // customers delete fails on a foreign key and the cleanup stops halfway.
+  //
+  // That sentence used to be the whole protection, and it failed three times in two days:
+  // customer_invites (018), funnel_sessions (021) and consents (023) each arrived, each broke
+  // this script on a foreign key, and each was found by running it rather than by anybody
+  // reading the comment. A comment asking the next person to remember is not a mechanism. So
+  // `assertCoverage()` below now reads the foreign-key graph and REFUSES TO RUN when a table
+  // references customers or subscriptions and is not named in this plan. It names the table.
+  // It does not invent a delete for it, because what to do with a new table is a decision.
   ['customer_invites', `delete from customer_invites where customer_id = any($1::uuid[])`, ids],
+  // The California consent records for demo bookings. Scoped to demo customers, which is what
+  // makes this safe: migration 023 keeps a real consent for three years, or one past
+  // termination, and a cleanup that could reach one would be destroying the evidence the table
+  // exists to hold. A consent belonging to a customer called "DEMO—..." is evidence of nothing.
+  ['consents',         `delete from consents where customer_id = any($1::uuid[])
+                          or subscription_id in (select id from subscriptions where customer_id = any($1::uuid[]))`, ids],
   // A demo booking's funnel session is measurement of a customer who does not exist. It goes with
   // the fixture rather than sitting in the growth board's denominator forever.
   ['funnel_sessions', `delete from funnel_sessions where subscription_id in
                          (select id from subscriptions where customer_id = any($1::uuid[]))`, ids],
+  // The three `assertCoverage()` found on its first run, 2026-09-19 — none of which anyone had
+  // noticed, and each of which would have stopped the cleanup dead the first time a demo
+  // booking touched it. offer_redemptions is the likeliest: every demo booking applies the
+  // half-off offer.
+  ['offer_redemptions', `delete from offer_redemptions where customer_id = any($1::uuid[])
+                           or subscription_id in (select id from subscriptions where customer_id = any($1::uuid[]))`, ids],
+  ['payment_methods',  `delete from payment_methods where customer_id = any($1::uuid[])`, ids],
+  ['sessions',         `delete from sessions where customer_id = any($1::uuid[])`, ids],
   ['invoices (by sub)', `delete from invoices where subscription_id in (select id from subscriptions where customer_id = any($1::uuid[]))`, ids],
   ['subscriptions',    `delete from subscriptions where customer_id = any($1::uuid[])`, ids],
   ['properties',       `delete from properties where customer_id = any($1::uuid[])`, ids],
@@ -91,23 +163,29 @@ const plan = [
   ['outbox (demo)',    `delete from outbox where demo = true`, []],
 ];
 
+// The plan's own table names, taken from the plan rather than typed a second time.
+await assertCoverage(new Set(plan.map(([label]) => label.replace(/ .*$/, ''))));
+
 if (dry) {
-  // Count, do not delete. Same predicates, turned into selects.
-  const counts = {
-    payments: await n(`select count(*)::int n from payments where customer_id = any($1::uuid[])`, [ids]),
-    invoice_lines: await n(`select count(*)::int n from invoice_lines where invoice_id in
-                             (select id from invoices where customer_id = any($1::uuid[]))`, [ids]),
-    invoices: await n(`select count(*)::int n from invoices where customer_id = any($1::uuid[])`, [ids]),
-    messages: await n(`select count(*)::int n from messages where customer_id = any($1::uuid[])`, [ids]),
-    visits: await n(`select count(*)::int n from visits where subscription_id in
-                       (select id from subscriptions where customer_id = any($1::uuid[]))`, [ids]),
-    subscriptions: await n(`select count(*)::int n from subscriptions where customer_id = any($1::uuid[])`, [ids]),
-    properties: await n(`select count(*)::int n from properties where customer_id = any($1::uuid[])`, [ids]),
-    customers: demoCustomers.length,
-    leads: await n(`select count(*)::int n from leads where name like $1`, [like]),
-    contact_messages: await n(`select count(*)::int n from contact_messages where name like $1`, [like]),
-    'outbox (demo)': await n(`select count(*)::int n from outbox where demo = true`, []),
-  };
+  // RUN THE REAL PLAN AND ROLL IT BACK.
+  //
+  // This used to be a second hand-written list of SELECTs mirroring the DELETEs, which meant
+  // two lists to keep in step and a dry run that under-reported the moment they diverged —
+  // the same defect as the plan itself had, one level down. A dry run whose numbers are not the
+  // real numbers is worse than no dry run, because it is believed.
+  //
+  // So: the actual statements, inside a transaction, counted, rolled back. The numbers are
+  // exact by construction and a new entry in the plan appears here without anybody adding it.
+  await c.query('begin');
+  const counts = {};
+  try {
+    for (const [label, sql, params] of plan) {
+      const r = await c.query(sql, bindFor(sql, params));
+      counts[label] = r.rowCount;
+    }
+  } finally {
+    await c.query('rollback');
+  }
   console.log('  would remove:');
   for (const [k, v] of Object.entries(counts)) console.log(`      ${k.padEnd(18)} ${v}`);
   console.log(`  would keep:   ${before.real_leads} real leads, ${before.real_customers} real customers, ` +
@@ -119,15 +197,7 @@ if (dry) {
 await c.query('begin');
 const removed = {};
 for (const [label, sql, params] of plan) {
-  // `ids` is ONE array parameter ($1::uuid[]). Passing the array itself as the parameter list
-  // bound each uuid as its own parameter - invisible with one demo customer, a crash with seven
-  // (found 2026-09-16; the transaction rolled back and nothing was removed).
-  const bind = sql.includes('$1::uuid[]') ? [params] : params;
-  // BIND BY WHAT THE SQL ASKS FOR, not by whether the list happens to be empty. Skipping the
-  // parameters when there are no demo customers left sent `... = any($1::uuid[])` to Postgres
-  // with nothing bound, and a second run - or a first run on a clean database - died with
-  // "there is no parameter $1" instead of reporting that there was nothing to remove.
-  const r = await c.query(sql, bind);
+  const r = await c.query(sql, bindFor(sql, params));
   removed[label] = r.rowCount;
 }
 await c.query('commit');

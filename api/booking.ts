@@ -12,6 +12,7 @@ import { sendJson, readJsonBody, safeError, type ApiRequest, type ApiResponse } 
 import { rateLimit, isOverLimit } from '../server/lib/admin-auth.js';
 import { BookingError, parseInput, priceBooking, createBooking, completeBooking, joinWaitlist } from '../server/lib/booking.js';
 import { resolveZip, track } from '../server/lib/funnel.js';
+import { requestFingerprint } from '../server/lib/consent.js';
 
 const routePath = (req: ApiRequest) =>
   (new URL(req.url || '/', 'https://local.test').searchParams.get('path') || '').replace(/^\/+|\/+$/g, '');
@@ -99,7 +100,13 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         safeError('booking:ratelimit', e);
         return sendJson(res, 503, { error: 'We could not take that just now. Please call us on (805) 869-8070.' });
       }
-      const result = await createBooking(parseInput(body), baseUrl(req));
+      // The consent record's "verification" (§17602(a)(6)) is the sentence plus who agreed and
+      // from where. The address and user-agent are read here, at the edge, and never from a
+      // field the browser could set.
+      const fp = requestFingerprint(req.headers as Record<string, string | undefined>);
+      const input = parseInput(body);
+      const result = await createBooking(
+        { ...input, consent_ip: fp.ip, consent_user_agent: fp.userAgent }, baseUrl(req));
       return sendJson(res, 200, result);
     }
     if (path === 'complete') {

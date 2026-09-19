@@ -39,7 +39,17 @@ export function compileServer({ quiet = true } = {}) {
       '--outDir', GATE_BUILD, '--rootDir', '.',
       '--target', 'es2022', '--module', 'nodenext', '--moduleResolution', 'nodenext',
       '--skipLibCheck', '--resolveJsonModule',
-      ...listTs('api'), ...listTs('server/lib'), 'src/shared/pricing.ts',
+      // src/shared is imported three ways and each resolver wants something different: Node's
+      // own type-stripper (`node --test tests/*.test.ts`) resolves the literal specifier and
+      // will not rewrite `.js` to `.ts`; `--module nodenext` will not accept a bare specifier.
+      // So the SOURCE says `./pricing.ts` — which Node and Vite both resolve — and tsc rewrites
+      // it to `.js` on the way out. Without these two flags, adding the second shared module
+      // made `npm test` and this compile mutually exclusive.
+      '--allowImportingTsExtensions', '--rewriteRelativeImportExtensions',
+      // src/shared is listed as a DIRECTORY for the same reason api/ and server/lib are: this
+      // line named pricing.ts alone until 2026-09-19, so consent.ts - which the server imports
+      // and a gate has to call - would have been missing with no error anyone would connect.
+      ...listTs('api'), ...listTs('server/lib'), ...listTs('src/shared'),
     ], { stdio: quiet ? 'pipe' : 'inherit', encoding: 'utf8' });
   } catch (e) {
     tscOutput = String(e.stdout || '') + String(e.stderr || '');

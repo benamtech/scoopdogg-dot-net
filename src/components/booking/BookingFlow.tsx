@@ -27,6 +27,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { quoteBooking, quoteOneTime, bookableServices, formatCents, tierPrice, type Catalog, type Tier } from '../../shared/pricing';
+import { renewalTerms } from '../../shared/consent';
 
 type Area = { slug: string; name: string; market: string; bookable: boolean };
 type ServiceInfo = { slug: string; name: string; what_includes: string[] };
@@ -42,6 +43,18 @@ type Props = {
   demo: boolean;
   guarantee: string | null;
   lanesEnabled: string;
+  /** `business.email` — the cancellation route that needs no login, §17602(c)(1). A row. */
+  businessEmail: string;
+  /** `business.name`. A row. */
+  businessName: string;
+  /**
+   * `booking.payafter_charge_offset_days`. The browser used to add exactly one day here while
+   * the server read this setting — harmless while it was 1, and the day somebody changed it the
+   * review step would have printed one date and Stripe charged on another. Since step 6 the
+   * consent sentence carries that date, so the two disagreeing now refuses the booking outright
+   * rather than printing a wrong date: a louder failure for the same latent bug.
+   */
+  payafterOffsetDays: number;
 };
 
 type Step = 'zip' | 'service' | 'size' | 'price' | 'day' | 'details' | 'review' | 'waitlist' | 'waitlisted' | 'request';
@@ -101,6 +114,13 @@ export default function BookingFlow(props: Props) {
   const [error, setError] = useState('');
   const [unserved, setUnserved] = useState('');
   const [requestInfo, setRequestInfo] = useState<{ start: string } | null>(null);
+  /**
+   * §17602(a)(4). Express affirmative consent to the renewal terms, separate from the rest of
+   * the transaction — so it is its own piece of state, it starts false, and it is deliberately
+   * NOT restored from sessionStorage with everything else: a consent recovered from a previous
+   * tab is a record of a click nobody can point to.
+   */
+  const [agreed, setAgreed] = useState(false);
   const idem = useRef<string>('');
   const zipRef = useRef<HTMLInputElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -197,6 +217,33 @@ export default function BookingFlow(props: Props) {
    */
   const priceSeen = isOneTime ? (oneTime?.ok ? oneTime.cents : null) : (pkg ? pkg.monthly_price_cents : null);
 
+  /**
+   * THE RENEWAL TERMS, from the same function the server writes into `consents.text_shown`.
+   *
+   * Null for a one-time job on purpose: §17601 defines the article around things that renew or
+   * continue, and a single cleanup does neither, so there is nothing to consent to and a
+   * renewal sentence over it would be a false statement (R9 §0). The review step reads the null
+   * and shows no checkbox.
+   */
+  const terms = useMemo(() => {
+    if (isOneTime || !quote || !quote.ok) return null;
+    if (lane === 'payafter' && !firstChargeOn) return null;   // the date is not optional
+    return renewalTerms({
+      lane,
+      monthlyCents: quote.monthlyCents,
+      firstChargeCents: quote.firstChargeCents,
+      firstChargeOn: lane === 'payafter' ? firstChargeOn : null,
+      packageName: quote.package.name,
+      priceMayChange: quote.flags.containsFromPrice,
+      cancelEmail: props.businessEmail,
+      businessName: props.businessName,
+    });
+  }, [isOneTime, quote?.ok && quote.package.id, quote?.ok && quote.firstChargeCents, lane, firstChargeOn]);
+
+  // A change to what is being agreed to un-agrees it. Switching lane after ticking the box would
+  // otherwise carry a tick for the prepay sentence onto the pay-after one.
+  useEffect(() => { setAgreed(false); }, [terms?.sentence]);
+
   const niceDate = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' });
 
   async function resolveZip(value: string) {
@@ -256,13 +303,18 @@ export default function BookingFlow(props: Props) {
   }, [step, priceSeen]);
 
   // Lane B's first charge is the day after the first visit, and the customer is shown the DATE.
+  // The offset is the setting the server uses, never a literal.
   useEffect(() => {
     if (!startDate) return setFirstChargeOn('');
-    setFirstChargeOn(new Date(Date.parse(`${startDate}T12:00:00Z`) + 86_400_000).toISOString().slice(0, 10));
-  }, [startDate]);
+    const offset = Math.max(1, Math.round(props.payafterOffsetDays));
+    setFirstChargeOn(new Date(Date.parse(`${startDate}T12:00:00Z`) + offset * 86_400_000).toISOString().slice(0, 10));
+  }, [startDate, props.payafterOffsetDays]);
 
   async function checkout() {
     if (!pkg && !tierId) return;
+    // Belt as well as braces: the button is disabled without the tick, and the server refuses
+    // the request without the sentence. Neither alone is the record §17602(a)(6) asks for.
+    if (terms && !agreed) return;
     setBusy(true); setError('');
     try {
       const r = await fetch('/api/booking/checkout', {
@@ -275,6 +327,10 @@ export default function BookingFlow(props: Props) {
           start_date: startDate, name, email, phone, gate_code: gate, access_notes: notes,
           source: document.referrer ? new URL(document.referrer).pathname : '/book',
           idempotency_key: idem.current,
+          // The sentence the customer actually read. The server re-renders it from its own rows
+          // and refuses the booking if the two differ, so this is a witness and not an input —
+          // a browser cannot talk itself into a cheaper set of terms by sending nicer words.
+          consent_text: terms ? terms.sentence : null,
         }),
       });
       const j = await r.json();
@@ -612,12 +668,54 @@ export default function BookingFlow(props: Props) {
                 )}
               </div>
 
+              {/*
+                §17602(a)(1) and (a)(4). The renewal terms, clear and conspicuous, in visual
+                proximity to the request for consent — then the consent, on its own line, before
+                the button. The order is the requirement: terms, then agreement, then pay.
+
+                "Clear and conspicuous" is defined in §17601 as larger or contrasting type set
+                off from the surrounding text. So this is text-base inside a bordered card, not
+                the text-sm grey line that used to carry "Then $120 a month" underneath the total.
+              */}
+              {terms && (
+                <div className="mt-6 rounded-lg border-2 border-forest-300 bg-paper p-5" data-consent-block>
+                  <p className="text-base font-semibold text-forest-900">Before you book — your plan renews</p>
+                  <ul className="mt-3 space-y-2">
+                    {terms.disclosures.map((d) => (
+                      <li key={d.cite} data-consent-cite={d.cite} className="flex gap-2.5 text-base text-ink-700">
+                        <span aria-hidden="true" className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-forest-500" />
+                        <span>{d.text}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <label className="mt-5 flex cursor-pointer items-start gap-3 border-t border-line pt-4">
+                    <input
+                      type="checkbox"
+                      required
+                      checked={agreed}
+                      onChange={(e) => {
+                        setAgreed(e.target.checked);
+                        if (e.target.checked) track('consent.recorded', { lane, price_cents_seen: priceSeen });
+                      }}
+                      className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer rounded-sm border-line-strong text-forest-600 focus-visible:shadow-focus"
+                      aria-describedby="consent-sentence"
+                    />
+                    <span id="consent-sentence" data-consent-sentence className="text-base text-forest-900">
+                      {terms.sentence}
+                    </span>
+                  </label>
+                </div>
+              )}
+
               <div className="mt-8 flex flex-col gap-3">
-                <Primary onClick={checkout}>
+                <Primary disabled={Boolean(terms) && !agreed} onClick={checkout}>
                   {!isOneTime && lane === 'payafter'
                     ? 'Save my card and book'
                     : `Pay ${formatCents(firstCharge, { forceDecimals: firstCharge % 100 !== 0 })} and book`}
                 </Primary>
+                {terms && !agreed && (
+                  <p className="text-sm text-ink-500" role="status">Tick the box above to continue.</p>
+                )}
                 <CancelAnytime />
                 <p className="flex items-center gap-2 text-sm text-ink-500">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
