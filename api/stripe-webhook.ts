@@ -10,6 +10,7 @@ import { db } from '../server/lib/db.js';
 import { stripeFor, probeAccount, type StripeMode } from '../server/lib/stripe.js';
 import { completeBooking } from '../server/lib/booking.js';
 import { appendEvent } from '../server/lib/events.js';
+import { sendPaymentFailed } from '../server/lib/comms.js';
 import { sendJson, safeError, type ApiRequest, type ApiResponse } from '../server/lib/http.js';
 
 async function rawBody(req: ApiRequest): Promise<Buffer> {
@@ -60,6 +61,10 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         if (sub && event.type === 'invoice.payment_failed') {
           await db().query(`update subscriptions set payment_state = 'past_due', updated_at = now() where id = $1`, [sub.id]);
           await appendEvent(db(), { subjectKind: 'subscription', subjectId: sub.id, type: 'invoice.payment_failed', actorKind: 'system', payload: { invoice: inv.id } });
+          // The webhook is the only place this is ever learned - nothing else watches a card.
+          // It must not take the handler down: Stripe retries a non-2xx, and a retried webhook
+          // whose only remaining work is an email would re-do the state change above.
+          await sendPaymentFailed(sub.id, String(inv.id ?? '')).catch((e) => safeError('webhook:payment-failed-notify', e));
         }
       }
     }

@@ -6,6 +6,7 @@ import { serviceLabel } from '../../lib/serviceLabel';
 import type { Lead } from '../../lib/types';
 import StatusBadge from '../../components/admin/StatusBadge';
 import AdminLayout from '../../components/admin/AdminLayout';
+import UnfinishedHour from '../../components/admin/UnfinishedHour';
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -56,6 +57,10 @@ export default function AdminDashboardPage() {
         <h1 className="font-serif text-2xl md:text-3xl text-dark">Dashboard</h1>
         <p className="text-dark/50 text-sm mt-1">Overview of your Scoop Dogg leads</p>
       </div>
+
+      {/* P16 §7 calls this "the admin's top block", and the admin's top is where the owner
+          lands. Answering inside the hour is ~7x; a day later is 60x worse. */}
+      <UnfinishedHour className="mb-6 md:mb-8" />
 
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3 md:gap-4 mb-6 md:mb-8">
         {stats.map((s) => {

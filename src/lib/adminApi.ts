@@ -91,7 +91,13 @@ export const adminApi = {
   disconnect: (mode: 'test' | 'live') => call<{ cleared: number; message: string }>('payments/disconnect', { method: 'POST', body: JSON.stringify({ mode }) }),
 
   // ---- today, the crew screen ----
-  today:      () => call<{ date: string; stops: Stop[] }>('today'),
+  today:      () => call<{ date: string; stops: Stop[]; completion: CompletionReadiness }>('today'),
+  // Marking a stop done is the one write a crew session may make. `told` reports what happened
+  // to the customer message afterwards - it is not an error if that half did not go out.
+  completeVisit: (visitId: string, body: { crew_notes?: string; photo_urls?: string[] } = {}) =>
+    call<{ visit: { id: string; state: string; completed_at: string; photos: number };
+           told: { sent: boolean; channel: string; reason?: string } }>(
+      'visits/complete', { method: 'POST', body: JSON.stringify({ visit_id: visitId, ...body }) }),
 };
 
 export interface ChecklistItem {
@@ -134,6 +140,15 @@ export interface PaymentsData {
   status: { live: ModeStatus; test: ModeStatus };
   packages: Array<{ slug: string; name: string; monthly_price_cents: number; source: string; derivation: string; version: number; published_test: boolean; published_live: boolean }>;
 }
+/**
+ * Whether the Mark-done action can be offered at all, and why not when it cannot.
+ * `visit.require_completion_photo` is on and this project has no photo storage, so the screen
+ * prints the reason rather than showing a button that always fails.
+ */
+export interface CompletionReadiness {
+  ready: boolean; requiresPhoto: boolean; reason: string | null;
+}
+
 export interface Stop {
   id: string; scheduled_for: string; state: string; crew_notes: string;
   customer_name: string; phone: string; address: string; city: string;

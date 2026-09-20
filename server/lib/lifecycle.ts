@@ -70,7 +70,21 @@ function noticeBody(opts: {
 const shell = (title: string, body: string) => `<div style="font-family:system-ui,-apple-system,sans-serif;max-width:560px;margin:0 auto;color:#1A1A1A">
   <h1 style="font-family:Georgia,serif;font-weight:400;font-size:26px;color:#0F2A1F;margin:24px 0 12px">${title}</h1>${body}</div>`;
 
-/** Has this notice already gone out for this subscription inside this window? */
+/**
+ * Has this notice already gone out for this subscription inside this window?
+ *
+ * IT DEPENDS ON THE SENDER PASSING `about`. This reads `payload->>'subscription_id'`, and until
+ * 2026-09-19 `sendEmail()` never wrote that key — measured across every outbox row in the
+ * database, zero carried it — so this returned false every time and the "idempotent on the
+ * outbox" promise in this file's header was not kept by anything. It had never misfired only
+ * because no subscription is a year old yet.
+ *
+ * `gates/lead-comms.mjs` now pins the pair: a sender whose `purpose` is checked here must pass
+ * `about`, or the gate names it. The two halves lived in different files, which is the same
+ * shape as the tsconfig/`_compile.mjs` split that killed the funnel on every deployment.
+ *
+ * `state <> 'failed'` is deliberate: a refused send must not block the retry.
+ */
 async function alreadySent(purpose: string, subscriptionId: string, sinceDays: number): Promise<boolean> {
   const { rows } = await db().query(
     `select 1 from outbox
@@ -101,6 +115,7 @@ export async function sendAnnualReminders(): Promise<{ considered: number; sent:
     if (await alreadySent('renewal_reminder', s.id, 300)) continue;
     const r = await sendEmail({
       purpose: 'renewal_reminder',
+      about: { subscription_id: s.id },
       recipients: { explicit: [s.email] },
       fromName: 'Scoop Dogg',
       subject: 'Your Scoop Dogg plan — your yearly reminder',
@@ -151,6 +166,7 @@ export async function sendPriceChangeNotice(p: {
   const was = formatCents(s.monthly_price_cents, { forceDecimals: s.monthly_price_cents % 100 !== 0 });
   const r = await sendEmail({
     purpose: 'price_change_notice',
+    about: { subscription_id: p.subscriptionId },
     recipients: { explicit: [s.email] },
     fromName: 'Scoop Dogg',
     subject: `Your Scoop Dogg price is changing on ${niceDate(p.effectiveOn)}`,
@@ -204,6 +220,7 @@ export async function sendPromoOrTermNotices(): Promise<{ owed: number; sent: nu
     const isPromo = Boolean(s.promo_ends_on);
     const r = await sendEmail({
       purpose: 'promo_or_term_notice',
+      about: { subscription_id: s.id },
       recipients: { explicit: [s.email] },
       fromName: 'Scoop Dogg',
       subject: isPromo

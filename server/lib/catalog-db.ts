@@ -22,6 +22,11 @@ export async function loadCatalog(): Promise<Catalog & { areas: AreaRow[]; setti
   // literal: the read compiles, the key exists in the database, and the value never
   // arrives. gates/settings-have-readers.mjs checks every key the server asks for
   // against this line.
-  const rows = await q<{ key: string; value: unknown }>(`select key, value from settings where key like 'schedule.%' or key like 'booking.%' or key like 'business.%' or key like 'billing.%' or key like 'notify.%' or key like 'subscription.%' or key like 'visit.%'`);
+  // `growth.%` and `reviews.%` joined it in step 9, for the same reason and before the same
+  // mistake: server/lib/comms.ts reads `growth.review_request_after_visits` (the threshold for
+  // the review request, a row with no reader since migration 018) and
+  // `reviews.google_profile_url` (the link it sends). Adding the read without adding the
+  // prefix would have made the sweep silently find nothing and report zero eligible.
+  const rows = await q<{ key: string; value: unknown }>(`select key, value from settings where key like 'schedule.%' or key like 'booking.%' or key like 'business.%' or key like 'billing.%' or key like 'notify.%' or key like 'subscription.%' or key like 'visit.%' or key like 'growth.%' or key like 'reviews.%'`);
   return { services, tiers, packages, offers, areas, settings: new Map(rows.map((r) => [r.key, r.value])) };
 }

@@ -12,14 +12,11 @@
  * and the reason rather than a zero. It is the same rule as the site's: degrade honestly.
  */
 import { useEffect, useState } from 'react';
-import { adminApi, type GrowthBoard, type Metric, type UnfinishedRow } from '../../lib/adminApi';
+import { adminApi, type GrowthBoard, type Metric } from '../../lib/adminApi';
 import AdminLayout from '../../components/admin/AdminLayout';
+import UnfinishedHour from '../../components/admin/UnfinishedHour';
 
 const money = (c: number) => `$${(c / 100).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
-const ago = (iso: string) => {
-  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
-  return mins < 1 ? 'just now' : mins < 60 ? `${mins} min ago` : `${Math.round(mins / 60)} h ago`;
-};
 
 function Tile({ label, metric, format = (n: number) => String(n), hint }: {
   label: string; metric: Metric; format?: (n: number) => string; hint?: string;
@@ -39,19 +36,14 @@ function Tile({ label, metric, format = (n: number) => String(n), hint }: {
 
 export default function AdminGrowthPage() {
   const [board, setBoard] = useState<GrowthBoard | null>(null);
-  const [hour, setHour] = useState<{ measured: boolean; note?: string; rows: UnfinishedRow[] } | null>(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
     const load = async () => {
-      try { setBoard(await adminApi.growth()); setHour(await adminApi.unfinished()); }
+      try { setBoard(await adminApi.growth()); }
       catch (e) { setError((e as Error).message); }
     };
     load();
-    // The hour block is only useful while it is fresh, so it re-reads itself. Nothing else here
-    // moves fast enough to be worth a timer.
-    const t = setInterval(async () => { try { setHour(await adminApi.unfinished()); } catch { /* keep the last */ } }, 60_000);
-    return () => clearInterval(t);
   }, []);
 
   const m = board?.metrics;
@@ -63,32 +55,7 @@ export default function AdminGrowthPage() {
         <p className="mt-2 text-base text-ink-500">This month, from your own rows. No tracking scripts, no analytics company.</p>
         {error && <p role="alert" className="mt-4 rounded-md bg-danger-100 px-4 py-3 text-danger">{error}</p>}
 
-        {/* Speed to lead. HBR across 2,241 firms: inside the hour is ~7x, a day is 60x worse. */}
-        <section className="mt-8 rounded-lg border-2 border-amber-500 bg-amber-100/40 p-6">
-          <h2 className="text-lg font-semibold text-forest-900">Unfinished in the last hour</h2>
-          {!hour ? <p className="mt-2 text-base text-ink-500">Loading…</p>
-            : !hour.measured ? <p className="mt-2 text-base text-ink-700">{hour.note} Once it does, anyone who starts and stops shows up here within the minute.</p>
-            : hour.rows.length === 0 ? <p className="mt-2 text-base text-ink-700">Nobody started and stopped in the last hour.</p>
-            : (
-              <ul className="mt-4 space-y-3">
-                {hour.rows.map((r) => (
-                  <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-paper px-4 py-3">
-                    <div className="min-w-0">
-                      <p className="text-base font-semibold text-forest-900">
-                        {r.name || 'Someone'} · {r.area}{r.postal_code ? ` ${r.postal_code}` : ''}
-                      </p>
-                      <p className="text-sm text-ink-500">
-                        {r.plan ?? 'no plan chosen'}{r.price_cents_seen ? ` · saw ${money(r.price_cents_seen)}/mo` : ''} · stopped at “{r.step ?? 'the start'}” · {ago(r.last_seen_at)}
-                      </p>
-                    </div>
-                    {r.sms_href
-                      ? <a href={r.sms_href} className="btn-primary btn-sm shrink-0">Text {String(r.name ?? '').split(' ')[0] || 'them'}</a>
-                      : <span className="text-sm text-ink-400">No number given</span>}
-                  </li>
-                ))}
-              </ul>
-            )}
-        </section>
+        <UnfinishedHour className="mt-8" />
 
         {m && (
           <>

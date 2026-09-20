@@ -17,6 +17,8 @@ import { probeAccount, createConnectedAccount, onboardingLink, publishAllPrices,
 import { checklist, setRouteDays, setOwnerSetting, setAreaBookable, confirmPrices } from '../server/lib/onboarding.js';
 import { growthBoard, unfinished } from '../server/lib/growth.js';
 import { createInvite, customerList, InviteError } from '../server/lib/invites.js';
+import { completeVisit, completionReadiness, VisitError } from '../server/lib/visits.js';
+import { sendVisitComplete, runCommsSweeps } from '../server/lib/comms.js';
 
 const routePath = (req: ApiRequest) =>
   (new URL(req.url || '/', 'https://local.test').searchParams.get('path') || '')
@@ -88,7 +90,9 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     // for every route somebody remembered and wrongly for the one they add next month. So crew
     // is an allowlist of paths and everything else is 403, including routes that do not exist
     // yet. gates/admin-roles.mjs proves it by asking for a route the list does not name.
-    const CREW_PATHS = new Set(['session', 'logout', 'today']);
+    // `visits/complete` is here because P4 gives the completion verb to the assigned crew: the
+    // person standing in the yard is the one who knows the yard is clean.
+    const CREW_PATHS = new Set(['session', 'logout', 'today', 'visits/complete']);
     if (session.role === 'crew' && !CREW_PATHS.has(path)) {
       return sendJson(res, 403, { error: 'Your account sees today\'s route only.' });
     }
@@ -106,12 +110,44 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
           order by p.city, p.address`);
       // The gate code is on this screen because the person at the gate needs it, and nowhere
       // else: visit.gate_code_visible_to is 'assigned_crew_only'.
-      return sendJson(res, 200, { date: new Date().toISOString().slice(0, 10), stops: rows });
+      //
+      // `completion` says whether the Mark-done action can be offered at all. The screen asks
+      // rather than assumes, so it can print the reason instead of showing a button that always
+      // fails - visit.require_completion_photo is on and there is no photo storage here yet.
+      return sendJson(res, 200, {
+        date: new Date().toISOString().slice(0, 10),
+        stops: rows,
+        completion: await completionReadiness(),
+      });
     }
 
     // ---- demo mode -------------------------------------------------------
     // Deliberately NOT behind requireSuper. It is the control that makes the system
     // exercisable at all, and the owner is the person who will be shown it.
+    // ---- mark a stop done ------------------------------------------------
+    // The messages are sent AFTER the transaction commits and their failure is swallowed: the
+    // yard is clean whether or not a mail provider is reachable, and the outbox row records
+    // what happened either way.
+    if (path === 'visits/complete' && req.method === 'POST') {
+      const body = await readJsonBody(req);
+      try {
+        const done = await completeVisit({
+          visitId: String(body.visit_id ?? ''),
+          completedBy: session.teamId,
+          photoUrls: Array.isArray(body.photo_urls) ? body.photo_urls.map(String) : [],
+          crewNotes: typeof body.crew_notes === 'string' ? body.crew_notes : '',
+        });
+        const told = await sendVisitComplete(done.id).catch((e) => {
+          safeError('admin:visit-complete-notify', e);
+          return { sent: false, channel: 'none', reason: 'notify failed' };
+        });
+        return sendJson(res, 200, { visit: done, told });
+      } catch (e) {
+        if (e instanceof VisitError) return sendJson(res, e.status, { error: e.message, code: e.code });
+        throw e;
+      }
+    }
+
     if (path === 'demo') {
       if (req.method === 'POST') {
         const body = await readJsonBody(req);
@@ -195,6 +231,10 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       // least as likely as the customer opening theirs, and the plan must not sit paused
       // waiting for whichever of them looks first.
       await expireDuePauses();
+      // The same reason, for the same absence of a scheduler: nothing on Vercel runs on a
+      // timer, so the card-expiry sweep and the review request happen when Josue opens his
+      // board. If he never opens it, nothing is sent - which is the safe direction.
+      await runCommsSweeps();
       const { rows: [m] } = await db().query(
         `select count(*) filter (where state = 'active')::int as active,
                 count(*) filter (where state = 'paused')::int as paused,

@@ -42,7 +42,11 @@ export type SendEmailArgs = {
     // The three California ARL notices (server/lib/lifecycle.ts). They are `purpose` values and
     // not a separate table because the retention, the delivery state and the reconciliation all
     // already work on `outbox`, and a notice we cannot prove we sent is not a notice.
-    | 'renewal_reminder' | 'price_change_notice' | 'promo_or_term_notice';
+    | 'renewal_reminder' | 'price_change_notice' | 'promo_or_term_notice'
+    // Loop 2 and loop 3 of P16 §7 (server/lib/comms.ts). Same reasoning as the notices above:
+    // `purpose` values on `outbox` rather than a table each, because the delivery state and the
+    // once-only check already work there.
+    | 'visit_complete' | 'payment_failed' | 'card_expiring' | 'cancel_confirmation' | 'review_request';
   /** Settings key holding the recipient list, or an explicit address for a sign-in code. */
   recipients: { settingKey: string } | { explicit: string[] };
   subject: string;
@@ -55,6 +59,21 @@ export type SendEmailArgs = {
   ccSettingKey?: string;
   /** Tag the row as belonging to a test run, so a cleanup can scope to exactly it. */
   mark?: string;
+  /**
+   * WHAT THIS MESSAGE IS ABOUT, written into the outbox payload so a later run can ask
+   * "did I already send this one?".
+   *
+   * It exists because the answer used to be no, always. `server/lib/lifecycle.ts` has an
+   * `alreadySent()` that reads `payload->>'subscription_id'`, and this function never wrote
+   * one — measured 2026-09-19 across all eight outbox rows in the database, zero carried the
+   * key. So every California renewal notice would have gone out again on every run, while the
+   * file's own header said "EVERY NOTICE IS IDEMPOTENT ON THE OUTBOX". It has never fired only
+   * because no subscription is a year old yet.
+   *
+   * Keys are flattened onto the payload rather than nested, so `payload->>'subscription_id'`
+   * — which is what the existing reader asks for — is what lands.
+   */
+  about?: { subscription_id?: string; customer_id?: string; visit_id?: string };
 };
 
 export type SendEmailResult = {
@@ -214,7 +233,7 @@ export async function sendEmail(args: SendEmailArgs): Promise<SendEmailResult> {
     const id = await writeOutbox({
       purpose: args.purpose,
       payload: { subject: args.subject, requested_to: requestedTo, requested_cc: requestedCc,
-                 mark: args.mark ?? null, reason: refusal },
+                 mark: args.mark ?? null, reason: refusal, ...(args.about ?? {}) },
       state: 'failed', demo: demo.mode, lastError: refusal,
     });
     console.warn(`[notify] refused to send ${args.purpose}: ${refusal}`);
@@ -236,6 +255,7 @@ export async function sendEmail(args: SendEmailArgs): Promise<SendEmailResult> {
     reply_to: args.replyTo ?? null,
     demo: demo.mode,
     mark: args.mark ?? null,
+    ...(args.about ?? {}),
   };
 
   const outboxId = await writeOutbox({

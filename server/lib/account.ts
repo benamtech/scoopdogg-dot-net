@@ -8,6 +8,7 @@ import { appendEvent } from './events.js';
 import { stripeFor, type StripeMode } from './stripe.js';
 import { loadCatalog } from './catalog-db.js';
 import { sendEmail } from './notify.js';
+import { sendCancelConfirmation } from './comms.js';
 import { safeError } from './http.js';
 import { catchUpForWeeks, formatCents, weekdayName, type CatchUp } from '../../src/shared/pricing.js';
 
@@ -292,6 +293,10 @@ export async function cancelPlan(customerId: string, subscriptionId: string, rea
     `update subscriptions set cancel_at_period_end = true, cancel_reason = $2, updated_at = now() where id = $1`,
     [subscriptionId, reason.slice(0, 500)]);
   await appendEvent(db(), { subjectKind: 'subscription', subjectId: subscriptionId, type: 'subscription.cancel_requested', actorKind: 'customer', actorId: customerId, payload: { reason: reason.slice(0, 200) } });
+  // Confirm it in writing (P16 §7, loop 2). Swallowed on purpose: the cancellation is already
+  // recorded and already sent to Stripe, and a customer who pressed Cancel must not see an
+  // error because a mail provider was unreachable. The outbox row carries the failure.
+  await sendCancelConfirmation(subscriptionId).catch((e) => safeError('account:cancel_confirmation', e));
   return { ends_at: s.current_period_end };
 }
 
