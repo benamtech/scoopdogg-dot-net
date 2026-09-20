@@ -1175,3 +1175,46 @@ export const ARTICLE_MAP: Record<string, ArticleData> = Object.fromEntries(
 );
 
 export const ARTICLE_SLUGS = ARTICLES.map((a) => a.slug);
+
+/**
+ * The full text of one guide: everything a reader sees, and nothing the layout adds.
+ *
+ * It exists because the first attempt at "which guides are about this city" measured the BUILT
+ * page and found all six naming all sixteen cities — the footer's "Where we work" column is in
+ * the bytes of every page on the site. Reading the data instead of the render is what makes the
+ * answer about the guide rather than about the chrome.
+ */
+function articleText(a: ArticleData): string {
+  return [
+    a.title, a.excerpt, a.openingAnswer,
+    ...a.sections.flatMap((s) => [
+      s.heading,
+      ...(s.paragraphs ?? []),
+      ...(s.bullets ?? []),
+      ...(s.numberedSteps ?? []),
+      ...(s.callout ? [s.callout.text] : []),
+      ...(s.subsections ?? []).flatMap((x) => [x.heading, ...x.paragraphs]),
+      ...(s.table ?? []).flatMap((t) => [t.question, t.answer]),
+    ]),
+    ...a.faqs.flatMap((f) => [f.q, f.a]),
+  ].join(' ');
+}
+
+/**
+ * The guides that NAME a city, for the city page to link (P15 §8, "every area page links its
+ * guides"). Grounded rather than templated: the list varies by city because the guides really
+ * do differ in which places they discuss, and a link list identical across sixteen city pages
+ * is the templated-location-page shape Google calls doorway abuse.
+ *
+ * Six of the sixteen cities are named in no guide at all (Malibu, Agoura Hills, Westlake
+ * Village, Newbury Park, Fillmore, Santa Paula). Those pages get an empty list and link the
+ * guide index instead. That is the honest answer — inventing a "related" guide for them would
+ * be writing a fact about content that does not mention them.
+ */
+export function articlesMentioning(cityName: string): ArticleData[] {
+  // "Ventura" needs the negative lookahead or every guide matches it through the phrase
+  // "Ventura County", which names the county and not the city. The first version of this
+  // returned all six guides for Ventura for exactly that reason.
+  const re = new RegExp(`\\b${cityName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b(?!\\s+County)`);
+  return ARTICLES.filter((a) => re.test(articleText(a)));
+}

@@ -18,6 +18,8 @@ import ReviewQuotes from '../../components/site/ReviewQuotes.astro';
 import Faq from '../../components/site/Faq.astro';
 import CloseCta from '../../components/site/CloseCta.astro';
 import { areas, areaBySlug, markets, services, headlinePrice, setting, headlineOffer } from '../../lib/catalog';
+import { questions } from '../../lib/questions';
+import { articlesMentioning } from '../../lib/articles';
 import { weekdayName } from '../../shared/pricing';
 import { SITE_URL } from '../../lib/constants';
 
@@ -46,6 +48,22 @@ const jsonLd = [
   ...(a.faqs?.length ? [{ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: a.faqs.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) }] : []),
 ];
 const check = 'M5 12l5 5 9-10';
+/**
+ * Cross-links out of a city page (P15 §8, "every area page links its guides and its city
+ * questions"). Two different rules, and the difference is deliberate:
+ *
+ *  - The GUIDES vary by city, because `articlesMentioning` reads the guides' own text. Six of
+ *    the sixteen cities are named in no guide and get an empty list — they link the index
+ *    instead. An identical six-link list on sixteen city pages is the templated-location-page
+ *    shape Google calls doorway abuse, and the whole reason `gates/city-pages.mjs` now measures
+ *    how close these pages are to each other.
+ *  - The QUESTIONS do NOT vary, because they are the questions about the service this page
+ *    sells, and every city page sells the same service. Pretending otherwise would mean
+ *    inventing a city-specific question that nobody asked. There are no per-city question
+ *    pages; this is the true version of "its city questions".
+ */
+const cityGuides = articlesMentioning(a.name);
+const cityQuestions = questions().filter((q) => q.service === 'weekly-pooper-scooper-service').slice(0, 6);
 ---
 <Site title={title} description={description} canonicalPath={`/areas/${a.slug}`} jsonLd={jsonLd}>
   <PageHero tone="cream"
@@ -140,5 +158,39 @@ const check = 'M5 12l5 5 9-10';
       </div>
     </Section>
   )}
+
+  <Section tone="white" size="sm" rule labelledby="city-knowledge">
+    <div class="grid gap-10 lg:grid-cols-12 lg:gap-12">
+      <div class="lg:col-span-4">
+        <p class="eyebrow mb-4">Before you book</p>
+        <h2 id="city-knowledge" class="text-h3 text-forest-900">Read up first</h2>
+        <p class="mt-4 text-base text-ink-500">
+          {cityGuides.length > 0
+            ? `Guides that cover ${a.name}, and the questions people ask before their first visit.`
+            : `The questions people ask before their first visit, and our guides for the whole area.`}
+        </p>
+      </div>
+      <div class="lg:col-span-8">
+        {cityGuides.length > 0 ? (
+          <ul class="grid gap-3 sm:grid-cols-2">
+            {cityGuides.map((g) => (
+              <li><a href={`/resources/${g.slug}`} class="card-lift flex h-full flex-col p-5">
+                <span class="text-micro font-semibold uppercase tracking-wide text-ink-400">Guide</span>
+                <span class="mt-1.5 text-base font-semibold text-forest-900">{g.title}</span>
+              </a></li>
+            ))}
+          </ul>
+        ) : (
+          <p><a href="/resources" class="link text-base">Read our guides for the area →</a></p>
+        )}
+        <ul class="mt-4 flex flex-wrap gap-2">
+          {cityQuestions.map((q) => (
+            <li><a href={`/questions/${q.slug}`} class="inline-flex rounded-full border border-line-strong px-4 py-2 text-sm text-forest-900 transition duration-fast hover:border-forest-500 hover:bg-forest-50">{q.q}</a></li>
+          ))}
+          <li><a href="/questions" class="inline-flex rounded-full bg-forest-700 px-4 py-2 text-sm font-medium text-white transition duration-fast hover:bg-forest-800">All questions →</a></li>
+        </ul>
+      </div>
+    </div>
+  </Section>
   <CloseCta source={`area-${a.slug}-close`} city={a.slug} title={`Clean yards in ${a.name}, every week.`} />
 </Site>

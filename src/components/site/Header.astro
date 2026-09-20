@@ -5,6 +5,16 @@
  *
  * "Sign in" is here from the first deploy (R5 §3: 14 of 22 scoopers link a customer login
  * from the homepage), and the one call to action is "See my price" (R5 §2).
+ *
+ * GUIDES IS IN THE NAV, not only in the footer (P15 §8). A crawler reaches a page by following
+ * a link and a page with no inbound internal link receives no internal PageRank at all — the
+ * mechanism is not correlational (R10 §5). `/resources` and `/questions` are 32 answer-shaped
+ * pages and the header is the one link every page on the site carries.
+ *
+ * The desktop and mobile lists are the SAME array. They drifted once — the mobile menu had
+ * About and Contact and the desktop nav did not — which is how a link ends up existing on one
+ * viewport and not the other. `gates/orphan-pages.mjs` reads the built bytes and cannot tell
+ * the two apart, so keeping one array is what makes the gate's answer true for both.
  */
 import Logo from './Logo.astro';
 import { business, headlineOffer, serviceRegion } from '../../lib/catalog';
@@ -16,7 +26,14 @@ const links = [
   { href: '/pricing', label: 'Pricing' },
   { href: '/how-it-works', label: 'How it works' },
   { href: '/areas', label: 'Areas' },
+  { href: '/resources', label: 'Guides' },
   { href: '/reviews', label: 'Reviews' },
+];
+/** Shown in the mobile menu only, where there is room for the full list. */
+const extra = [
+  { href: '/questions', label: 'Questions' },
+  { href: '/about', label: 'About Josue' },
+  { href: '/contact', label: 'Contact' },
 ];
 const isCurrent = (href: string) => current === href || (href !== '/' && current.startsWith(href + '/'));
 ---
@@ -67,11 +84,9 @@ const isCurrent = (href: string) => current === href || (href !== '/' && current
   <div id="mobile-menu" class="hidden border-t border-line bg-paper nav:hidden" data-menu>
     <nav aria-label="Mobile" class="container-site py-4">
       <ul class="flex flex-col">
-        {links.map((l) => (
+        {[...links, ...extra].map((l) => (
           <li><a href={l.href} class="block border-b border-line py-4 text-xl font-medium text-forest-800">{l.label}</a></li>
         ))}
-        <li><a href="/about" class="block border-b border-line py-4 text-xl font-medium text-forest-800">About Josue</a></li>
-        <li><a href="/contact" class="block border-b border-line py-4 text-xl font-medium text-forest-800">Contact</a></li>
       </ul>
       <div class="mt-6 grid grid-cols-2 gap-3">
         <a href="/account" class="btn-ghost">Sign in</a>

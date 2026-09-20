@@ -1,4 +1,13 @@
 ---
+/**
+ * The footer on every public page, and the site's second link surface.
+ *
+ * THE KNOWLEDGE COLUMN (P15 §8) is not decoration. `/questions` (26 pages) and `/gallery` were
+ * each reachable from exactly one page before it — the homepage band — which means one edit to
+ * one page could orphan thirty-two written pages again without anything going red. A footer
+ * link is carried by every page on the site, so the floor under those routes stops being a
+ * single point of failure. `gates/orphan-pages.mjs` holds the floor at two inbound links.
+ */
 import Logo from './Logo.astro';
 import { business, services, markets, growth } from '../../lib/catalog';
 
@@ -8,11 +17,15 @@ const company = [
   { href: '/about', label: 'About Josue' },
   { href: '/how-it-works', label: 'How it works' },
   { href: '/pricing', label: 'Pricing' },
-  { href: '/reviews', label: 'Reviews' },
-  { href: '/resources', label: 'Guides' },
   { href: '/contact', label: 'Contact' },
   ...(growth.commercial ? [{ href: '/commercial', label: 'HOAs & apartments' }] : []),
   ...(growth.careers ? [{ href: '/careers', label: 'Careers' }] : []),
+];
+const knowledge = [
+  { href: '/resources', label: 'Guides' },
+  { href: '/questions', label: 'Questions' },
+  { href: '/reviews', label: 'Reviews' },
+  { href: '/gallery', label: 'Before & after' },
 ];
 ---
 <footer class="tone-deep bg-tone-bg text-tone-fg">
@@ -40,19 +53,28 @@ const company = [
       </ul>
     </nav>
 
-    <nav aria-label="Company" class="lg:col-span-2">
+    <nav aria-label="Company" class="lg:col-span-3">
       <p class="eyebrow mb-5">Scoop Dogg</p>
       <ul class="space-y-2.5">
         {company.map((l) => <li><a href={l.href} class="text-base text-tone-fg hover:text-white">{l.label}</a></li>)}
       </ul>
     </nav>
 
-    <nav aria-label="Areas" class="lg:col-span-4">
-      <p class="eyebrow mb-5">Where we work</p>
-      <div class="grid grid-cols-2 gap-x-6 gap-y-5">
+    <nav aria-label="Guides and answers" class="lg:col-span-3">
+      <p class="eyebrow mb-5">Guides & answers</p>
+      <ul class="space-y-2.5">
+        {knowledge.map((l) => <li><a href={l.href} class="text-base text-tone-fg hover:text-white">{l.label}</a></li>)}
+      </ul>
+    </nav>
+  </div>
+
+  <div class="border-t border-white/10">
+    <nav aria-label="Areas" class="container-site py-section-sm">
+      <p class="eyebrow mb-6">Where we work</p>
+      <div class="grid gap-x-6 gap-y-7 sm:grid-cols-2 lg:grid-cols-4">
         {markets().map((m) => (
           <div>
-            <p class="mb-2 text-sm font-semibold capitalize text-white">{m.label}</p>
+            <p class="mb-2.5 text-sm font-semibold capitalize text-white">{m.label}</p>
             <ul class="space-y-1.5">
               {m.areas.map((a) => <li><a href={`/areas/${a.slug}`} class="text-sm text-tone-fg hover:text-white">{a.name}</a></li>)}
             </ul>

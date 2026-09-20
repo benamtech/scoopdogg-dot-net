@@ -75,11 +75,15 @@ function DemoBanner() {
     );
   }
 
+  // THE SAME TOKENS as the public demo banner in src/layouts/Base.astro. Both were hand-mixed
+  // separately and this one carried three raw hexes until step 8 — the last brand-token debt in
+  // the tree, and the reason the two demo banners were subtly different yellows. amber-700 on
+  // amber-100 is the pair measured for contrast (tailwind.config.js).
   return (
     <div
       data-demo-banner
       role="status"
-      className="bg-[#FFF4D6] border-b-2 border-[#E0B000] text-[#6B4E00] px-4 py-2.5 text-sm"
+      className="border-b-2 border-amber-600 bg-amber-100 px-4 py-2.5 text-sm text-amber-700"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span>
@@ -90,7 +94,7 @@ function DemoBanner() {
         <button
           onClick={toggle}
           disabled={busy}
-          className="border-2 border-[#6B4E00] px-3 py-1.5 text-xs font-semibold hover:bg-[#6B4E00] hover:text-[#FFF4D6] transition-colors disabled:opacity-50"
+          className="border-2 border-amber-700 px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-amber-700 hover:text-amber-100 disabled:opacity-50"
         >
           {busy ? 'Switching…' : 'Turn demo mode off'}
         </button>

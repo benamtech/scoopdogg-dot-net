@@ -18,6 +18,7 @@ import Faq from '../../components/site/Faq.astro';
 import ReviewQuotes from '../../components/site/ReviewQuotes.astro';
 import CloseCta from '../../components/site/CloseCta.astro';
 import { services, serviceBySlug, tiersFor, packagesForService, formatTierPrice, headlinePrice, trust, headlineOffer } from '../../lib/catalog';
+import { questions } from '../../lib/questions';
 import { SITE_URL } from '../../lib/constants';
 
 export function getStaticPaths() {
@@ -29,6 +30,18 @@ const tiers = tiersFor(s.slug);
 const pkgs = packagesForService(s.slug);
 const price = headlinePrice(s.slug);
 const related = (s.related_slugs ?? []).map((r) => serviceBySlug(r)).filter(Boolean).slice(0, 3) as typeof services;
+/**
+ * The question pages that belong to THIS service (P15 §8, "every service page links its
+ * questions"). Measured before this existed: the question pages' own `related` lists are
+ * computed greedily — same service, then same topic, then the rest, capped at five — so two
+ * pages (litter-robot cleaning, pet-area pressure washing) were crowded out of every list and
+ * had exactly ONE inbound link, the /questions index. A page whose only inbound link is an
+ * index is one edit away from being an orphan again.
+ *
+ * This band is the structural fix: a question is reachable from the service it is about, which
+ * is also the page a reader arrives on. `gates/orphan-pages.mjs` holds the floor at two.
+ */
+const serviceQuestions = questions().filter((q) => q.service === s.slug);
 const bookHref = pkgs.length ? `/book?service=${s.slug}` : `/contact?service=${s.slug}`;
 // Ben, 2026-09-16: the copy must not limit Scoop Dogg to one county.
 const widen = (t: string) => t.replace(/ in Ventura County\b/g, ' in Ventura & Santa Barbara Counties').replace(/\bServing Ventura County\b/g, 'Serving Ventura & Santa Barbara Counties').replace(/ across Ventura County\b/g, ' across Ventura & Santa Barbara Counties');
@@ -50,7 +63,7 @@ const jsonLd = [
 ];
 ---
 <Site title={title} description={description} canonicalPath={`/services/${s.slug}`} jsonLd={jsonLd}>
-  <PageHero tone="cream"
+  <PageHero
     tone="forest"
     eyebrow={pkgs.length ? 'Monthly plan' : 'One-time service'}
     title={heading}
@@ -114,7 +127,7 @@ const jsonLd = [
     <div class="mt-12"><ReviewQuotes limit={3} /></div>
   </Section>
 
-  {s.faqs?.length > 0 && (
+  {(s.faqs?.length > 0 || serviceQuestions.length > 0) && (
     <Section tone="white" labelledby="svc-faq">
       <div class="grid gap-12 lg:grid-cols-12">
         <div class="lg:col-span-4">
@@ -122,7 +135,23 @@ const jsonLd = [
           <h2 id="svc-faq" class="text-h2 text-forest-900">{s.short_name || s.name}: questions</h2>
           <a href={bookHref} class="btn-primary mt-8">{pkgs.length ? 'See my price' : 'Request this service'}</a>
         </div>
-        <div class="lg:col-span-8"><Faq items={s.faqs} /></div>
+        <div class="lg:col-span-8">
+          {s.faqs?.length > 0 && <Faq items={s.faqs} />}
+          {serviceQuestions.length > 0 && (
+            <div class={s.faqs?.length > 0 ? 'mt-10 border-t border-line pt-8' : ''}>
+              <h3 class="text-h3 text-forest-900">Answered in full</h3>
+              <ul class="mt-5 grid gap-3 sm:grid-cols-2">
+                {serviceQuestions.map((q) => (
+                  <li><a href={`/questions/${q.slug}`} class="card-lift group flex h-full items-start justify-between gap-4 p-5">
+                    <span class="text-base font-semibold text-forest-900">{q.q}</span>
+                    <span aria-hidden="true" class="shrink-0 text-orange-600 transition duration-fast group-hover:translate-x-0.5">→</span>
+                  </a></li>
+                ))}
+              </ul>
+              <p class="mt-6"><a href="/questions" class="link text-base">All questions</a></p>
+            </div>
+          )}
+        </div>
       </div>
     </Section>
   )}
