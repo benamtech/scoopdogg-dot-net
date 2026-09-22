@@ -16,6 +16,7 @@
  * No analytics vendor, no third-party script, no cookie banner: these are our own rows.
  */
 import { db } from './db.js';
+import { routeDensity, waitlistZips } from './density.js';
 
 export type Metric = { value: number | null; measured: boolean; note?: string };
 
@@ -69,6 +70,22 @@ export async function growthBoard() {
       from payments where state = 'succeeded' and kind = 'charge'
      group by 1 order by 1 desc`);
 
+  /**
+   * WHERE THE NEXT CUSTOMER SHOULD COME FROM (server/lib/density.ts).
+   *
+   * The metrics above count what happened. This is the only block on the board that says what to
+   * DO, and it is here rather than in a document because the answer changes every time a customer
+   * is added: the marginal cost of a stop in a city falls as that city fills, so the ranking is a
+   * function of the book of business and not of anybody's opinion about target markets.
+   *
+   * It is deliberately denominated in MINUTES OF DRIVING and not in dollars. Nobody has asked
+   * Josue what an hour of his time costs, so a margin here would be a number about a business
+   * nobody asked. `measured: false` on every money figure is the same discipline the rest of this
+   * file already keeps.
+   */
+  const density = await routeDensity().catch(() => ({ measured: false, areas: [], note: 'density unavailable' }));
+  const waitlist = await waitlistZips().catch(() => ({ measured: false, zips: [], note: 'density unavailable' }));
+
   return {
     instrumented: funnel,
     month: new Date().toISOString().slice(0, 7),
@@ -84,6 +101,10 @@ export async function growthBoard() {
     },
     fees_by_month: byMonth,
     fees_by_year: byYear,
+    // Cheapest marginal customer first. The top of this list is where a flyer, a neighbourhood
+    // page or an hour of Josue's attention is worth the most.
+    where_next: density,
+    waitlist: waitlist,
   };
 }
 

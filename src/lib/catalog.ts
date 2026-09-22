@@ -181,7 +181,12 @@ export const reviewSummary = {
   googleCount: setting<number | null>('reviews.google_count', null),
   // Published on the pre-elevation site as "5.0 average" and "5-Star Rated".
   rating: setting<number | null>('reviews.google_rating', 5.0),
-  profileUrl: setting<string>('reviews.google_profile_url', 'https://share.google/nt1A1k6dxX8r6KWni'),
+  // The canonical Maps place URL, derived in migration 028 from the feature id in Josue's own
+  // share link. The previous default was https://share.google/… which 302s to a Google SEARCH
+  // page; it appeared 30 times in a clean build, so every one of those was an external link to
+  // a redirect. This one answers 200 with no redirect. Read them here; ASK for one with
+  // reviews.google_review_url, which only server/lib/comms.ts uses.
+  profileUrl: setting<string>('reviews.google_profile_url', 'https://www.google.com/maps/place/?q=place_id:ChIJx2f0lVCt6YARL_qslmyUQKM'),
 };
 
 export const trust = {

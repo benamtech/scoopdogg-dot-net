@@ -207,7 +207,22 @@ for (const [f, what] of [['robots.txt','robots'], ['llms.txt','llms.txt'], ['sit
 {
   const r = readFileSync(path.join(DIST, 'robots.txt'), 'utf8');
   /Disallow:\s*\/\s*$/m.test(r) ? F('robots does not block the site', 'Disallow: / present') : P('robots does not block the site');
-  /Sitemap:/i.test(r) ? P('robots points at a sitemap') : W('robots points at a sitemap', 'no Sitemap line');
+
+  // A `Sitemap:` LINE IS NOT A SITEMAP. This read `/Sitemap:/` and passed for months while the
+  // line named https://scoopdogg.net/sitemap.xml, which 404s — @astrojs/sitemap writes
+  // sitemap-index.xml and sitemap-0.xml, and nothing ever wrote sitemap.xml. Measured on
+  // production 2026-09-22: robots.txt 200, the file it names 404. The gate could not see it
+  // because it checked that somebody had typed the word, not that the bytes were there.
+  const lines = [...r.matchAll(/^\s*Sitemap:\s*(\S+)\s*$/gim)].map((m) => m[1]);
+  if (!lines.length) W('robots points at a sitemap', 'no Sitemap line');
+  else {
+    const broken = lines.filter((u) => {
+      let p; try { p = new URL(u).pathname; } catch { p = u; }
+      try { return statSync(path.join(DIST, p.replace(/^\//, ''))).size <= 20; } catch { return true; }
+    });
+    broken.length ? F('robots points at a sitemap that exists', `${broken.join(', ')} is not in dist/`)
+                  : P('robots points at a sitemap that exists', lines.join(', '));
+  }
 }
 
 console.log(`\n══ ${pass} passed, ${warn} warnings, ${fail} failed ══\n`);

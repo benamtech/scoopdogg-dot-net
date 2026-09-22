@@ -98,6 +98,13 @@ export const adminApi = {
     call<{ visit: { id: string; state: string; completed_at: string; photos: number };
            told: { sent: boolean; channel: string; reason?: string } }>(
       'visits/complete', { method: 'POST', body: JSON.stringify({ visit_id: visitId, ...body }) }),
+  // The photo goes up BEFORE the completion, as its own request, and the completion is given the
+  // URL it returns. Two requests rather than one because the upload is the part that fails on a
+  // yard's worth of signal, and a failed upload must not also lose the crew notes or leave the
+  // caller guessing whether the visit was completed.
+  uploadVisitPhoto: (visitId: string, dataUrl: string) =>
+    call<{ photo: { id: string; url: string; bytes: number; deduped: boolean } }>(
+      'visits/photo', { method: 'POST', body: JSON.stringify({ visit_id: visitId, data_url: dataUrl }) }),
 };
 
 export interface ChecklistItem {
@@ -109,11 +116,38 @@ export interface ChecklistArea { slug: string; name: string; bookable: boolean; 
 /** `measured: false` and `value: 0` are different answers and the screen must never merge them. */
 export interface Metric { value: number | null; measured: boolean; note?: string }
 export interface FeeRow { period: string; collected_cents: number; fee_cents: number; payments: number }
+export interface AreaDensity {
+  slug: string; name: string; bookable: boolean; zips: number;
+  depot_miles: number; area_sq_mi: number; customers_now: number;
+  /** Driving minutes one more customer here adds. The acquisition number. */
+  marginal_drive_minutes: number;
+  /** That, over the reference service time. At or below 1.0 the stop is worth the drive. */
+  marginal_ratio: number;
+  /** null means "more customers than a day holds", which is not the same as a big number. */
+  customers_for_parity: number | null;
+  drive_minutes_per_visit_now: number | null;
+  margin_per_visit: Metric;
+}
+
 export interface GrowthBoard {
   instrumented: boolean; month: string;
   metrics: Record<'booking_intent_starts' | 'price_step_reached' | 'booked' | 'conversion_pct'
     | 'new_customers_this_month' | 'customers_now' | 'mrr_cents' | 'platform_fee_this_month_cents', Metric>;
   fees_by_month: FeeRow[]; fees_by_year: FeeRow[];
+  /**
+   * Where the next customer should come from (server/lib/density.ts). `measured: false` when
+   * migration 031 has not been applied to this database — the same rule as every Metric above:
+   * a board that cannot compute this says so instead of printing a plausible order.
+   */
+  where_next?: {
+    measured: boolean; note?: string; day_capacity?: number;
+    parameters?: { referenceServiceMinutes: number; referenceTier: string };
+    areas: AreaDensity[];
+  };
+  waitlist?: {
+    measured: boolean; note?: string;
+    zips: { postal_code: string; city_name: string; depot_miles: number; area_sq_mi: number; customers_for_parity: number | null }[];
+  };
 }
 export interface UnfinishedRow {
   id: string; postal_code: string | null; step: string | null; price_cents_seen: number | null;

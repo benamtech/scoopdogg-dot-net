@@ -40,6 +40,14 @@ export type Tier = {
    * (migration 026). NULL on every tier that is not a catch-up.
    */
   covers_last_cleaned?: string[] | null;
+  /**
+   * How long the work takes, in minutes. Josue's own number, on the row since migration 003.
+   *
+   * It had no reader until `server/lib/density.ts`, which compares it against the DRIVING a stop
+   * costs — the comparison that turns route density from a feeling into a ranking. Optional here
+   * because `src/shared` is shared with the browser and the booking island does not select it.
+   */
+  est_minutes?: number | null;
 };
 
 export type Package = {

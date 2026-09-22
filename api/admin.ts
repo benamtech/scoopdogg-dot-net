@@ -18,6 +18,7 @@ import { checklist, setRouteDays, setOwnerSetting, setAreaBookable, confirmPrice
 import { growthBoard, unfinished } from '../server/lib/growth.js';
 import { createInvite, customerList, InviteError } from '../server/lib/invites.js';
 import { completeVisit, completionReadiness, VisitError } from '../server/lib/visits.js';
+import { put, PhotoError } from '../server/lib/photos.js';
 import { sendVisitComplete, runCommsSweeps } from '../server/lib/comms.js';
 
 const routePath = (req: ApiRequest) =>
@@ -92,7 +93,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     // yet. gates/admin-roles.mjs proves it by asking for a route the list does not name.
     // `visits/complete` is here because P4 gives the completion verb to the assigned crew: the
     // person standing in the yard is the one who knows the yard is clean.
-    const CREW_PATHS = new Set(['session', 'logout', 'today', 'visits/complete']);
+    const CREW_PATHS = new Set(['session', 'logout', 'today', 'visits/complete', 'visits/photo']);
     if (session.role === 'crew' && !CREW_PATHS.has(path)) {
       return sendJson(res, 403, { error: 'Your account sees today\'s route only.' });
     }
@@ -113,7 +114,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       //
       // `completion` says whether the Mark-done action can be offered at all. The screen asks
       // rather than assumes, so it can print the reason instead of showing a button that always
-      // fails - visit.require_completion_photo is on and there is no photo storage here yet.
+      // fails. It reads the database rather than a hardcoded sentence about the project.
       return sendJson(res, 200, {
         date: new Date().toISOString().slice(0, 10),
         stops: rows,
@@ -128,6 +129,33 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     // The messages are sent AFTER the transaction commits and their failure is swallowed: the
     // yard is clean whether or not a mail provider is reachable, and the outbox row records
     // what happened either way.
+    // ---- upload the completion photo -------------------------------------
+    // A data URL and not multipart, because the browser has already had to decode the file into
+    // a canvas to resize it (server/lib/photos.ts does not resize: sharp in this bundle would be
+    // ~30MB to fix a problem a canvas solves for free). What comes back out of a canvas is a
+    // data URL, so accepting one means no multipart parser on either side.
+    //
+    // The limit is the byte cap plus base64's 33% plus room for the envelope. photos.put()
+    // enforces the real cap on the DECODED bytes, which is the number the setting names.
+    if (path === 'visits/photo' && req.method === 'POST') {
+      const body = await readJsonBody(req, 2 * 1024 * 1024);
+      const dataUrl = String((body as Record<string, unknown>).data_url ?? '');
+      const m = /^data:(image\/(?:jpeg|webp|png));base64,([A-Za-z0-9+/=]+)$/.exec(dataUrl);
+      if (!m) return sendJson(res, 400, { error: 'Send a JPEG, WebP or PNG as a base64 data URL.', code: 'bad_data_url' });
+      try {
+        const stored = await put({
+          visitId: String((body as Record<string, unknown>).visit_id ?? ''),
+          bytes: Buffer.from(m[2], 'base64'),
+          mime: m[1],
+          uploadedBy: session.teamId,
+        });
+        return sendJson(res, 200, { photo: stored });
+      } catch (e) {
+        if (e instanceof PhotoError) return sendJson(res, e.status, { error: e.message, code: e.code });
+        throw e;
+      }
+    }
+
     if (path === 'visits/complete' && req.method === 'POST') {
       const body = await readJsonBody(req);
       try {

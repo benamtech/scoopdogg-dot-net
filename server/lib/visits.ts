@@ -24,17 +24,26 @@
  *     bills. When per-visit billing exists, this is where it is decided.
  *   - `photo_urls` is required when `visit.require_completion_photo` is true, as specified.
  *
- * THE PHOTO REQUIREMENT IS ON AND CANNOT BE SATISFIED TODAY, and that is stated rather than
- * worked around. `visit.require_completion_photo` is `true` in settings and this project has no
- * photo storage — no blob client, no bucket, nothing in `package.json`. So this refuses, by
- * name, and the admin says why. The two ways out are both somebody's decision and neither is
- * mine: add storage, or set the row to `false` at /admin/settings, which Josue can do himself.
- * Refusing is the right failure: the setting is Josue's proof-of-care differentiator and his
- * chargeback evidence (R3 §3d, $15 a dispute), so quietly ignoring it would be the worse bug.
+ * THE PHOTO REQUIREMENT USED TO BE UNSATISFIABLE, AND THE STORAGE WAS BUILT RATHER THAN THE
+ * REQUIREMENT TURNED OFF. Until 2026-09-22 this file carried the sentence "this project has no
+ * photo storage" as a hardcoded truth and refused every completion — correctly, but it was the
+ * top of a chain nobody had traced: no storage, so no completed visit, so `count(v.id) >= 3` in
+ * comms.ts is never true, so the review request R8 §B2 calls the single highest-return growth
+ * item on this project could never fire. The recorded way out was "ask Josue: add storage or
+ * turn the row off". It was not his question. Turning the row off would have deleted his
+ * proof-of-care differentiator and his chargeback evidence (R3 §3d, $15 a dispute) to save us
+ * writing a table. Migration 029 and `server/lib/photos.ts` are the table.
+ *
+ * AND THE READINESS CHECK NOW ASKS INSTEAD OF ASSERTING. `photos.available()` reads
+ * `to_regclass('public.visit_photos')`, so a database that predates 029 still answers "not
+ * ready" honestly and the admin still says why — while a database that has it stops being told
+ * a stale sentence about itself. A hardcoded claim about the environment is exactly the shape
+ * this project keeps having to retract.
  */
 import { db } from './db.js';
 import { appendEvent } from './events.js';
 import { loadCatalog } from './catalog-db.js';
+import { available as photosAvailable, type Queryable } from './photos.js';
 
 export class VisitError extends Error {
   status: number;
@@ -68,20 +77,24 @@ export type CompleteVisitResult = {
  * Can a visit be completed at all right now? Asked by the admin BEFORE it offers the action, so
  * the screen can say why not instead of presenting a button that always errors.
  */
-export async function completionReadiness(): Promise<{ ready: boolean; requiresPhoto: boolean; reason: string | null }> {
+export async function completionReadiness(q: Queryable = db()): Promise<{ ready: boolean; requiresPhoto: boolean; reason: string | null }> {
   const { settings } = await loadCatalog();
   const requiresPhoto = settings.get('visit.require_completion_photo') === true;
-  // There is no uploader and no storage, so a required photo cannot be supplied from the admin.
-  // This is a measurement of the project, not a policy: when storage exists, drop this.
-  if (requiresPhoto) {
+  if (!requiresPhoto) return { ready: true, requiresPhoto: false, reason: null };
+
+  // ASK, do not assert. On a database that predates migration 029 this is still false and the
+  // admin still says why; on one that has it, the action is offered. `q` is here so
+  // `gates/visit-photos.mjs` can ask THIS function, inside a transaction that has the table,
+  // instead of re-implementing the rule it is checking.
+  if (!(await photosAvailable(q))) {
     return {
       ready: false,
       requiresPhoto: true,
-      reason: 'visit.require_completion_photo is on and this site has no photo storage yet. '
-        + 'Add storage, or turn the requirement off in Settings.',
+      reason: 'visit.require_completion_photo is on and this database has no photo storage yet '
+        + '(migration 029 has not been applied here). Apply it, or turn the requirement off in Settings.',
     };
   }
-  return { ready: true, requiresPhoto: false, reason: null };
+  return { ready: true, requiresPhoto: true, reason: null };
 }
 
 /**

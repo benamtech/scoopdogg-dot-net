@@ -33,6 +33,7 @@ import { db } from './db.js';
 import { sendEmail } from './notify.js';
 import { appendEvent } from './events.js';
 import { loadCatalog } from './catalog-db.js';
+import { prune as prunePhotos } from './photos.js';
 import { safeError } from './http.js';
 import { formatCents } from '../../src/shared/pricing.js';
 
@@ -60,7 +61,13 @@ type Business = { phone: string; email: string; reviewUrl: string | null };
 
 async function business(): Promise<Business> {
   const { settings } = await loadCatalog();
-  const url = settings.get('reviews.google_profile_url');
+  // `reviews.google_review_url`, NOT `reviews.google_profile_url`. They are two facts and they
+  // were one key until migration 028. The profile URL is where you go to READ the reviews, and
+  // /reviews and ReviewQuotes link it as "See us on Google". This message asks someone to WRITE
+  // one, and the measurement that split them is in 028: the old shared value resolved to a
+  // Google search results page, so a customer who had already agreed to leave a review arrived
+  // at a list and had to find the control themselves.
+  const url = settings.get('reviews.google_review_url');
   return {
     phone: String(settings.get('business.phone') ?? ''),
     email: String(settings.get('business.email') ?? ''),
@@ -323,32 +330,66 @@ export async function sendCancelConfirmation(subscriptionId: string): Promise<{ 
 // ---------------------------------------------------------------------------------------
 
 /**
- * Ask for a review once a customer has had enough visits to have an opinion worth writing.
+ * Ask for a review once a customer has had enough visits to have an opinion worth writing, AND
+ * enough time since the visit that earned the ask.
  *
  * The threshold is `growth.review_request_after_visits`, a row that has existed since migration
- * 018 with the value 3 and has had NO reader until now — found by reading the settings rows
+ * 018 with the value 3 and has had NO reader until step 9 — found by reading the settings rows
  * rather than by asking Josue what the number should be.
  *
- * It fires on the count of completed visits and on nothing else, once per customer, and offers
- * no incentive. There is no sentiment check anywhere in the query because there is nothing in
- * this system that knows how a customer feels — the only signal it has is that three visits
+ * THE DELAY IS `growth.review_request_delay_days`, AND IT IS NOT A PREFERENCE. Jung, Ryu, Han and
+ * Cho, Journal of Marketing 2023, two randomised field experiments over 300,000+ consumers:
+ * IMMEDIATE review reminders reduced the chance of a review being posted relative to an immediate
+ * control that got no reminder at all, and delayed reminders increased it against a delayed
+ * control. Reactance beats memory recall when the ask arrives straight after the experience.
+ * Timing moved WHETHER a review was written and barely moved rating, sentiment or length.
+ *
+ * This code used to send the moment the third visit completed — the one setting that paper
+ * measures as doing worse than silence. Migration 030 says why 5 days, what the finding does and
+ * does not transfer, and which date the clock starts on.
+ *
+ * It fires on the count of completed visits and the age of the third one, once per customer, and
+ * offers no incentive. There is no sentiment check anywhere in the query because there is nothing
+ * in this system that knows how a customer feels — the only signal it has is that three visits
  * happened.
  *
- * It needs `reviews.google_profile_url` in settings. Without it there is no link to send and
+ * It needs `reviews.google_review_url` in settings. Without it there is no link to send and
  * the sweep reports that rather than inventing one.
  */
-export async function eligibleForReviewRequest(after: number, q: Queryable = db()) {
+export async function eligibleForReviewRequest(after: number, q: Queryable = db(), delayDays = 0) {
+  // THE CLOCK STARTS ON THE QUALIFYING VISIT, NOT THE LATEST ONE. `row_number()` finds the Nth
+  // completion per customer and the delay is measured from that. Measuring from the most recent
+  // completion instead would reset a weekly customer's clock every seven days and the ask would
+  // never arrive — a delay that quietly means "never" is worse than no delay, and it is the
+  // obvious way to write this wrong.
+  //
+  // `delayDays = 0` reproduces the previous query exactly, so a database without migration 030
+  // behaves as before rather than differently-and-silently.
   const { rows } = await q.query(`
-    select c.id as customer_id, c.name, c.email, count(v.id) as done
-      from customers c
-      join subscriptions s on s.customer_id = c.id
-      join visits v on v.subscription_id = s.id and v.state = 'completed' and v.completed_at is not null
-     group by c.id, c.name, c.email
-    having count(v.id) >= $1`, [after]);
+    with completions as (
+      select c.id as customer_id, c.name, c.email, v.completed_at,
+             p.city as city, s.service_slug as service_slug,
+             row_number() over (partition by c.id order by v.completed_at) as rn
+        from customers c
+        join subscriptions s on s.customer_id = c.id
+        join visits v on v.subscription_id = s.id and v.state = 'completed' and v.completed_at is not null
+        join properties p on p.id = v.property_id
+    )
+    select customer_id, name, email, count(*) as done,
+           max(completed_at) filter (where rn = $1) as qualified_at,
+           -- The city and service the ASK will mention. min() rather than a second query: a
+           -- customer with two properties gets one of their own cities, which is true, and
+           -- inventing a "primary property" concept to pick between them is not worth a table.
+           min(city) as city, min(service_slug) as service_slug
+      from completions
+     group by customer_id, name, email
+    having count(*) >= $1
+       and max(completed_at) filter (where rn = $1) <= now() - ($2 || ' days')::interval`,
+    [after, String(delayDays)]);
   return rows;
 }
 
-export async function sendReviewRequests(): Promise<{ eligible: number; sent: number; blocked?: string }> {
+export async function sendReviewRequests(): Promise<{ eligible: number; sent: number; blocked?: string; after?: number; delayDays?: number }> {
   const { settings } = await loadCatalog();
   const after = Number(settings.get('growth.review_request_after_visits') ?? 0);
   if (!Number.isFinite(after) || after < 1) {
@@ -356,10 +397,14 @@ export async function sendReviewRequests(): Promise<{ eligible: number; sent: nu
   }
   const b = await business();
   if (!b.reviewUrl) {
-    return { eligible: 0, sent: 0, blocked: 'reviews.google_profile_url is not set, so there is no link to send' };
+    return { eligible: 0, sent: 0, blocked: 'reviews.google_review_url is not set, so there is no link to send' };
   }
 
-  const rows = await eligibleForReviewRequest(after);
+  // A missing row is 0 — the previous behaviour — and the receipt says which was used, so
+  // "the delay is not applied here" is visible rather than inferred.
+  const delayRaw = settings.get('growth.review_request_delay_days');
+  const delayDays = Number.isFinite(Number(delayRaw)) && Number(delayRaw) >= 0 ? Number(delayRaw) : 0;
+  const rows = await eligibleForReviewRequest(after, db(), delayDays);
 
   let sent = 0;
   for (const c of rows) {
@@ -372,8 +417,22 @@ export async function sendReviewRequests(): Promise<{ eligible: number; sent: nu
       recipients: { explicit: [c.email] },
       fromName: 'Scoop Dogg',
       subject: 'How are we doing?',
+      /**
+       * THE SECOND SENTENCE IS THE ONE THAT DOES THE WORK, and it is not a writing preference.
+       *
+       * In the largest published study of local rankings (3,269 businesses across four sectors),
+       * review COUNT is 26% of what decides the top ten and review KEYWORD RELEVANCE is a further
+       * 22% — Google reads review text semantically, so a review that says what was done and
+       * where is worth more than one that says "great service". This message used to invite
+       * neither.
+       *
+       * IT ASKS, IT DOES NOT SCRIPT. No suggested wording, no stars mentioned, no incentive, and
+       * the unhappy path goes to Josue's inbox and not to Google — which is a decision about
+       * Josue rather than about compliance: a customer with a problem should reach a person.
+       */
       html: shell(`${first(c.name) ? `${first(c.name)}, ` : ''}would you write us a line?`, `
         <p style="font-size:16px;line-height:1.6">We have been out to your yard ${Number(c.done)} times now. If it has been going well, a short review on Google helps other dog owners nearby find us — it is how most of them do.</p>
+        <p style="font-size:16px;line-height:1.6">If you mention what we actually do for you${c.city ? ` and that you are in ${esc(c.city)}` : ''}, it helps the right neighbours find us — that is the part Google reads.</p>
         <p style="font-size:16px;line-height:1.6"><a href="${esc(b.reviewUrl)}" style="color:#24593F"><strong>Leave a review</strong></a></p>
         <p style="font-size:15px;line-height:1.6;color:#5B6660">And if something has not been right, reply to this email instead and Josue will sort it.</p>
         ${signoff(b.phone, b.email)}`),
@@ -386,7 +445,7 @@ export async function sendReviewRequests(): Promise<{ eligible: number; sent: nu
       });
     }
   }
-  return { eligible: rows.length, sent };
+  return { eligible: rows.length, sent, after, delayDays };
 }
 
 /**
@@ -403,6 +462,33 @@ export async function runCommsSweeps(): Promise<Record<string, unknown>> {
   ] as const) {
     try { out[name] = await fn(); }
     catch (e) { safeError(`comms:${name}`, e); out[name] = { error: true }; }
+  }
+
+  /**
+   * PHOTO RETENTION RIDES HERE, and it is not really a comms sweep.
+   *
+   * It is here because this is the only mechanism on this project for "something that has to
+   * happen on a date" — `vercel.json` has no `crons` key — and a retention policy nothing calls
+   * is a retention policy that does not exist. `server/lib/photos.ts` had `prune()` written,
+   * gated and called by NOBODY when it was first committed, which is the exact defect this
+   * project keeps paying for (`rate_cards`, `photo_urls`, `alreadySent()`); it is caught here
+   * rather than in six months when the table is large.
+   *
+   * IT OWNS THE TRANSACTION because `prune()` deliberately does not: deleting the bytes and
+   * clearing the URLs that point at them must be atomic, and a function that opened its own
+   * client could not be rolled back by the gate that proves it.
+   */
+  const client = await db().connect();
+  try {
+    await client.query('begin');
+    out.photo_retention = await prunePhotos(client);
+    await client.query('commit');
+  } catch (e) {
+    await client.query('rollback').catch(() => {});
+    safeError('comms:photo_retention', e);
+    out.photo_retention = { error: true };
+  } finally {
+    client.release();
   }
   return out;
 }

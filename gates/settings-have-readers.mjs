@@ -22,7 +22,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { globSync } from 'node:fs';
 
-const CEILING = 7;   // published rows named nowhere. Lower it when you wire one; never raise it.
+const CEILING = 6;   // published rows named nowhere. Lower it when you wire one; never raise it.
 
 let pass = 0, fail = 0;
 const ok = (w, d = '') => { pass++; console.log(`  PASS  ${w}${d ? ` — ${d}` : ''}`); };
