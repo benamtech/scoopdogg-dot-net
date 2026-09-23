@@ -47,6 +47,7 @@
  */
 import { db } from './db.js';
 import { loadCatalog } from './catalog-db.js';
+import { ENOUGH_TIMED_STOPS, stopDurations } from './visits.js';
 
 export type Queryable = { query: (text: string, values?: unknown[]) => Promise<{ rows: any[] }> };
 
@@ -63,6 +64,8 @@ export type RouteParameters = {
   bhhK: number;
   /** The reference stop this file measures against. Josue's flagship package, from his own rows. */
   referenceServiceMinutes: number;
+  /** Where that number came from: a median of timed stops, or the estimate. Never assumed. */
+  referenceBasis: string;
   referenceTier: string;
 };
 
@@ -145,13 +148,30 @@ async function parameters(q: Queryable): Promise<RouteParameters | null> {
     ?? (tiers ?? []).find((t: any) => t.service_slug === 'weekly-pooper-scooper-service');
   if (!ref || !Number.isFinite(Number(ref.est_minutes))) return null;
 
+  /**
+   * THE REFERENCE STOP, MEASURED IF IT CAN BE (migration 035).
+   *
+   * Every number this file produces is denominated in the reference stop: the marginal ratio, the
+   * parity threshold, "one more customer in Malibu costs 110 minutes of driving for 15 minutes of
+   * work". Until 035 that 15 was `est_minutes`, whose own column comment asks to be replaced with
+   * "the median of real visit durations" — so the growth board's whole ranking rested on a guess
+   * that nothing could check. `stopDurations()` is the median; it is used once there are enough
+   * stops behind it, and `referenceBasis` says which was used rather than leaving a reader to
+   * assume.
+   */
+  const timed = await stopDurations(q).catch(() => null);
+  const measuredEnough = !!timed && timed.service_measured >= ENOUGH_TIMED_STOPS && timed.service_minutes !== null;
+
   return {
     depot: { lat, lon, source: raw.get('routing.depot_source') ?? null },
     circuity: Number.isFinite(num('routing.road_circuity')) ? num('routing.road_circuity') : 1.3,
     linehaulMph: Number.isFinite(num('routing.speed_linehaul_mph')) ? num('routing.speed_linehaul_mph') : 40,
     localMph: Number.isFinite(num('routing.speed_local_mph')) ? num('routing.speed_local_mph') : 22,
     bhhK: Number.isFinite(num('routing.bhh_k')) ? num('routing.bhh_k') : 0.75,
-    referenceServiceMinutes: Number(ref.est_minutes),
+    referenceServiceMinutes: measuredEnough ? Number(timed!.service_minutes) : Number(ref.est_minutes),
+    referenceBasis: measuredEnough
+      ? `median of ${timed!.service_measured} timed stops`
+      : `service_tiers.est_minutes — an estimate; ${timed?.service_measured ?? 0} of ${ENOUGH_TIMED_STOPS} stops timed so far`,
     referenceTier: `${ref.service_slug} / ${ref.label}`,
   };
 }
@@ -166,6 +186,60 @@ export async function geocoded(q: Queryable = db()): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/**
+ * Has migration 032 given us the POPULATION centre as well as the polygon's internal point?
+ *
+ * WHY THIS IS A QUESTION AND NOT AN ASSUMPTION. Migration 031 wrote the ZCTA internal point, and
+ * its own column comment said what that is: a representative coordinate inside the polygon, "not
+ * a population centroid". This file used it as the place the customers are anyway — and for ZCTA
+ * 93001, which is Ventura PLUS the Channel Islands, the internal point is in the ocean 39.9 miles
+ * from a depot inside Ventura. The growth board ranked the depot's own city as the most expensive
+ * in the network to serve, and `where_next` is the recommendation that number drives.
+ *
+ * Asking rather than asserting is the same discipline `photos.available()` keeps: on a database
+ * that predates 032 this returns false and the ranking still works off the polygon, saying so.
+ */
+export async function populatedCentres(q: Queryable = db()): Promise<boolean> {
+  try {
+    const { rows } = await q.query(
+      `select count(*)::int as n from information_schema.columns
+        where table_name = 'area_postal_codes' and column_name in ('populated_lat', 'populated_lon', 'populated_sq_mi', 'population')`);
+    return Number(rows[0]?.n) === 4;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The SQL for "where is this ZIP and how much ground do its people cover", in whichever of the
+ * two vocabularies the database actually has.
+ *
+ * THE AVERAGE IS POPULATION-WEIGHTED, and that is a second fix rather than a detail. An area's
+ * centre was `avg(latitude)` over its ZIPs — every ZIP counting the same whether 37,000 people
+ * live in it or 63 do. Ventura's own 90263 (Pepperdine, 63 residents) pulled as hard as 93001
+ * (37,236). With `population` on the row there is no reason to keep guessing.
+ *
+ * AREA falls back per ZIP: `populated_sq_mi` is null where the tract decomposition was too coarse
+ * to see a population footprint at all (migration 032 says which, and why), and the polygon's
+ * land area is the honest answer there rather than a fabricated one.
+ */
+function geoColumns(populated: boolean) {
+  return populated
+    ? {
+      basis: 'population' as const,
+      lat: 'sum(z.populated_lat * z.population)::float8 / nullif(sum(z.population), 0)::float8',
+      lon: 'sum(z.populated_lon * z.population)::float8 / nullif(sum(z.population), 0)::float8',
+      land: 'sum(coalesce(z.populated_sq_mi, z.land_sq_mi))::float8',
+      zipLat: 'populated_lat::float8', zipLon: 'populated_lon::float8',
+      zipLand: 'coalesce(populated_sq_mi, land_sq_mi)::float8',
+    }
+    : {
+      basis: 'polygon' as const,
+      lat: 'avg(z.latitude)::float8', lon: 'avg(z.longitude)::float8', land: 'sum(z.land_sq_mi)::float8',
+      zipLat: 'latitude::float8', zipLon: 'longitude::float8', zipLand: 'land_sq_mi::float8',
+    };
 }
 
 export type AreaDensity = {
@@ -201,6 +275,8 @@ export type AreaDensity = {
 export async function routeDensity(q: Queryable = db()): Promise<{
   measured: boolean;
   note?: string;
+  /** `population` once migration 032 is applied, `polygon` before it. Printed, not assumed. */
+  geo_basis?: 'population' | 'polygon';
   parameters?: RouteParameters;
   day_capacity?: number;
   /** How many active subscriptions the whole ranking rests on. See `note`. */
@@ -216,6 +292,7 @@ export async function routeDensity(q: Queryable = db()): Promise<{
   }
   const { settings } = await loadCatalog();
   const cap = Number(settings.get('schedule.day_capacity')) || 20;
+  const g = geoColumns(await populatedCentres(q));
 
   // One query: the geometry per area and the customers actually on it. `properties.postal_code`
   // is joined through `area_postal_codes` rather than through `properties.city` — a typed city
@@ -223,9 +300,9 @@ export async function routeDensity(q: Queryable = db()): Promise<{
   const { rows } = await q.query(`
     select a.slug, a.name, a.bookable,
            count(distinct z.postal_code)::int                as zips,
-           avg(z.latitude)::float8                           as lat,
-           avg(z.longitude)::float8                          as lon,
-           sum(z.land_sq_mi)::float8                         as land,
+           ${g.lat}                                          as lat,
+           ${g.lon}                                          as lon,
+           ${g.land}                                         as land,
            coalesce(cust.n, 0)::int                          as customers_now
       from service_areas a
       join area_postal_codes z on z.area_slug = a.slug
@@ -287,7 +364,7 @@ export async function routeDensity(q: Queryable = db()): Promise<{
         + 'thin basis for a decision. Check the Customers column before acting on the order.'
       : undefined;
 
-  return { measured: true, parameters: p, day_capacity: cap, total_customers: total, areas, ...(note ? { note } : {}) };
+  return { measured: true, geo_basis: g.basis, parameters: p, day_capacity: cap, total_customers: total, areas, ...(note ? { note } : {}) };
 }
 
 /**
@@ -301,7 +378,13 @@ export async function routeDensity(q: Queryable = db()): Promise<{
 export async function waitlistZips(q: Queryable = db()): Promise<{
   measured: boolean;
   note?: string;
-  zips: { postal_code: string; city_name: string; depot_miles: number; area_sq_mi: number; customers_for_parity: number | null }[];
+  geo_basis?: 'population' | 'polygon';
+  zips: {
+    postal_code: string; city_name: string; depot_miles: number; area_sq_mi: number;
+    /** The POLYGON's distance, always. See below — 93042 is why this is a second column. */
+    polygon_miles: number;
+    customers_for_parity: number | null;
+  }[];
 }> {
   if (!(await geocoded(q))) return { measured: false, zips: [], note: 'no coordinates yet (migration 031).' };
   const p = await parameters(q);
@@ -309,18 +392,35 @@ export async function waitlistZips(q: Queryable = db()): Promise<{
   const { settings } = await loadCatalog();
   const cap = Number(settings.get('schedule.day_capacity')) || 20;
 
+  /**
+   * TWO DISTANCES, AND 93042 IS WHY.
+   *
+   * ZIP 93042 is San Nicolas Island, sixty miles out to sea, and migration 031's header names it
+   * as the reason land area cannot be used to derive coverage. Its POLYGON sits in the ocean. Its
+   * PEOPLE do not: the 2020 ZCTA also covers the Point Mugu end of the naval air station, and all
+   * 1,075 of them live there, 16 miles from the depot. Both sentences are true and they are about
+   * different things, so the row carries both rather than one overwriting the other.
+   *
+   * The RANKING uses the population centre, because "is this ZIP worth opening next" is a question
+   * about customers and driving. `polygon_miles` is what lets a reader — and
+   * `gates/route-density.mjs` — still tell an island from a suburb.
+   */
+  const w = geoColumns(await populatedCentres(q));
   const { rows } = await q.query(
-    `select postal_code, city_name, latitude::float8 as lat, longitude::float8 as lon, land_sq_mi::float8 as land
+    `select postal_code, city_name, ${w.zipLat} as lat, ${w.zipLon} as lon, ${w.zipLand} as land,
+            latitude::float8 as poly_lat, longitude::float8 as poly_lon
        from area_postal_codes where area_slug is null order by postal_code`);
 
   return {
     measured: true,
+    geo_basis: w.basis,
     zips: rows.map((r) => {
       const rMi = miles(p.depot, { lat: r.lat, lon: r.lon });
       return {
         postal_code: r.postal_code,
         city_name: r.city_name,
         depot_miles: Math.round(rMi * 10) / 10,
+        polygon_miles: Math.round(miles(p.depot, { lat: r.poly_lat, lon: r.poly_lon }) * 10) / 10,
         area_sq_mi: Math.round(Number(r.land) * 10) / 10,
         customers_for_parity: customersForParity(rMi, Number(r.land), p, cap),
       };

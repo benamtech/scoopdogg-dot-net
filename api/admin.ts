@@ -17,7 +17,7 @@ import { probeAccount, createConnectedAccount, onboardingLink, publishAllPrices,
 import { checklist, setRouteDays, setOwnerSetting, setAreaBookable, confirmPrices } from '../server/lib/onboarding.js';
 import { growthBoard, unfinished } from '../server/lib/growth.js';
 import { createInvite, customerList, InviteError } from '../server/lib/invites.js';
-import { completeVisit, completionReadiness, VisitError } from '../server/lib/visits.js';
+import { completeVisit, completionReadiness, markArrived, markEnRoute, stopDurations, VisitError } from '../server/lib/visits.js';
 import { put, PhotoError } from '../server/lib/photos.js';
 import { sendVisitComplete, runCommsSweeps } from '../server/lib/comms.js';
 
@@ -93,7 +93,11 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     // yet. gates/admin-roles.mjs proves it by asking for a route the list does not name.
     // `visits/complete` is here because P4 gives the completion verb to the assigned crew: the
     // person standing in the yard is the one who knows the yard is clean.
-    const CREW_PATHS = new Set(['session', 'logout', 'today', 'visits/complete', 'visits/photo']);
+    // `visits/en-route` and `visits/arrived` join the list for the same reason `visits/complete`
+    // is on it: the person standing in the yard is the only one who knows when the van got there.
+    // They are the writers for `en_route_at` and `arrived_at`, which had none until migration 035.
+    const CREW_PATHS = new Set(['session', 'logout', 'today', 'visits/complete', 'visits/photo',
+      'visits/en-route', 'visits/arrived']);
     if (session.role === 'crew' && !CREW_PATHS.has(path)) {
       return sendJson(res, 403, { error: 'Your account sees today\'s route only.' });
     }
@@ -102,6 +106,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     if (path === 'today') {
       const { rows } = await db().query(
         `select v.id, v.scheduled_for::text as scheduled_for, v.state, v.crew_notes,
+                v.en_route_at, v.arrived_at, v.completed_at,
                 c.name as customer_name, c.phone, p.address, p.city, p.gate_code, p.access_notes
            from visits v
            join subscriptions s on s.id = v.subscription_id
@@ -119,6 +124,9 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         date: new Date().toISOString().slice(0, 10),
         stops: rows,
         completion: await completionReadiness(),
+        // What the stops recorded so far actually say. Zero measured is the honest state on the
+        // day 035 lands, and the screen can say that instead of showing a median of nothing.
+        durations: await stopDurations(),
       });
     }
 
@@ -152,6 +160,24 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         return sendJson(res, 200, { photo: stored });
       } catch (e) {
         if (e instanceof PhotoError) return sendJson(res, e.status, { error: e.message, code: e.code });
+        throw e;
+      }
+    }
+
+    /**
+     * THE STOP CLOCK (migration 035). Two taps on the screen that already exists, and between
+     * them the only measurement that can settle what a visit is worth: `arrived_at` to
+     * `completed_at` is the service time that `service_tiers.est_minutes` has been an estimate
+     * of since somebody wrote "replace with the median of real visit durations" in its column
+     * comment. Neither is required to close a visit — see server/lib/visits.ts.
+     */
+    if ((path === 'visits/en-route' || path === 'visits/arrived') && req.method === 'POST') {
+      const body = await readJsonBody(req);
+      try {
+        const mark = path === 'visits/en-route' ? markEnRoute : markArrived;
+        return sendJson(res, 200, { visit: await mark(String(body.visit_id ?? ''), session.teamId) });
+      } catch (e) {
+        if (e instanceof VisitError) return sendJson(res, e.status, { error: e.message, code: e.code });
         throw e;
       }
     }

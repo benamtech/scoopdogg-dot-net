@@ -21,6 +21,8 @@
 import { db } from './db.js';
 import { appendEvent } from './events.js';
 
+export type Queryable = { query: (text: string, values?: unknown[]) => Promise<{ rows: any[] }> };
+
 export type ZipAnswer =
   | { known: true; served: true; postal_code: string; area_slug: string; area_name: string; city_name: string }
   | { known: true; served: false; postal_code: string; area_slug: null; city_name: string }
@@ -82,25 +84,84 @@ export type TrackInput = {
   name?: string | null;
   email?: string | null;
   phone?: string | null;
+  /** The referrer's host, or a reserved verifier value when `trusted`. See `normaliseSource`. */
+  source?: string | null;
+  /** True only for server-side callers. A browser never sets this. */
+  trusted?: boolean;
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export async function track(input: TrackInput): Promise<{ recorded: boolean; event: string | null }> {
+/**
+ * The reserved values of `funnel_sessions.source`, in ONE place.
+ *
+ * `'gate'` is written at the time by a verifier; `'gate-retro'` was attributed afterwards by
+ * migration 033 to the 25 rows that existed when the fault was found. `growth.ts` filters both
+ * out of every number a client sees, and `gates/funnel-source.mjs` plants one and fails if the
+ * board moves.
+ *
+ * MEASURED, 2026-09-23: all 25 rows in the table were ours and nothing could tell. A client
+ * dashboard whose first number is a count of AMTECH's continuous integration is a dashboard that
+ * lies to the owner, and it lies more the more carefully we test.
+ */
+export const VERIFIER_SOURCES = ['gate', 'gate-retro'] as const;
+
+/**
+ * A referrer host, or nothing.
+ *
+ * TAKES A WHOLE REFERRER AND KEEPS THE HOST. The column groups channels — google.com,
+ * instagram.com, nextdoor.com — and a full URL would make every visit its own channel. Paths and
+ * query strings are dropped on the way in rather than filtered on the way out, so a search term
+ * or a session id in somebody's referrer never lands in this client's database at all.
+ *
+ * REFUSES A RESERVED VALUE FROM UNTRUSTED INPUT. `trusted` is true only where the caller is
+ * server-side code — a verifier calling `track()` directly, or the API recognising the verifier
+ * header. A browser that sends `source: 'gate'` gets null, not a hidden session.
+ *
+ * THIS IS NOT A TRUST BOUNDARY and the migration says so too. Nothing stops a determined visitor
+ * setting the header; the cost is one person leaving themselves out of a count on their own
+ * client's dashboard. There is no secret here and a check for an attack nobody is running would
+ * be the wrong shape.
+ */
+export function normaliseSource(raw: unknown, { trusted = false } = {}): string | null {
+  let v = String(raw ?? '').trim().toLowerCase();
+  if (!v) return null;
+  if ((VERIFIER_SOURCES as readonly string[]).includes(v)) return trusted ? v : null;
+  // A full URL keeps only its host; a bare host stays a bare host.
+  if (v.includes('/') || v.includes(':')) {
+    try { v = new URL(v.includes('//') ? v : `https://${v}`).hostname; } catch { return null; }
+  }
+  v = v.replace(/^www\./, '');
+  // The column's own check constraint, applied before the insert rather than caught after it.
+  return /^[a-z0-9][a-z0-9.-]{0,79}$/.test(v) ? v : null;
+}
+
+/**
+ * `q` IS WHY THIS TAKES A SECOND ARGUMENT, and it was added after a gate wrote to a client's live
+ * database by accident. `gates/funnel-source.mjs` plants a session inside its own transaction and
+ * rolls back; calling this without `q` took a SEPARATE connection out of the pool, so the planted
+ * rows landed outside that transaction and survived it. The rows happened to fail on a column the
+ * live table did not have yet, which is luck and not a design.
+ *
+ * So: pass a client and this runs ON it and the caller owns the transaction. Pass nothing — every
+ * caller in the product — and it takes one from the pool and owns the transaction itself. The
+ * statements are identical either way, which is the point: a gate that re-implemented them would
+ * pass on a day the shipped path was wrong.
+ */
+export async function track(input: TrackInput, q?: Queryable): Promise<{ recorded: boolean; event: string | null }> {
   const id = String(input.session_id ?? '');
   if (!UUID.test(id)) return { recorded: false, event: null };
   const step = String(input.step ?? '');
   const eventType = EVENT_FOR[step] ?? null;
+  const source = normaliseSource(input.source, { trusted: input.trusted === true });
 
-  const client = await db().connect();
-  try {
-    await client.query('begin');
+  const run = async (client: Queryable) => {
     // The row is upserted with COALESCE so a later step never erases what an earlier one learned:
     // the price seen at the price step must survive the customer walking back and forward.
     await client.query(
       `insert into funnel_sessions (id, postal_code, area_slug, city_name, service_slug, package_id,
-                                    price_cents_seen, lane, step, name, email, phone)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+                                    price_cents_seen, lane, step, name, email, phone, source)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
        on conflict (id) do update set
          postal_code      = coalesce(excluded.postal_code, funnel_sessions.postal_code),
          area_slug        = coalesce(excluded.area_slug, funnel_sessions.area_slug),
@@ -113,11 +174,17 @@ export async function track(input: TrackInput): Promise<{ recorded: boolean; eve
          name             = coalesce(excluded.name, funnel_sessions.name),
          email            = coalesce(excluded.email, funnel_sessions.email),
          phone            = coalesce(excluded.phone, funnel_sessions.phone),
+         -- WHERE THEY CAME FROM IS DECIDED ONCE, at the first step of the session. Every later
+         -- track() call is a fetch from the site's own page, so letting a later value win would
+         -- overwrite 'google.com' with 'scoopdogg.net' on the second click and turn every channel
+         -- into direct traffic.
+         source           = coalesce(funnel_sessions.source, excluded.source),
          last_seen_at     = now()`,
       [id, input.postal_code ?? null, input.area_slug ?? null, input.city_name ?? null,
        input.service_slug ?? null, input.package_id ?? null,
        Number.isFinite(Number(input.price_cents_seen)) ? Number(input.price_cents_seen) : null,
-       input.lane ?? null, step || null, input.name ?? null, input.email ?? null, input.phone ?? null]);
+       input.lane ?? null, step || null, input.name ?? null, input.email ?? null, input.phone ?? null,
+       source]);
 
     let recorded = false;
     if (eventType) {
@@ -127,7 +194,7 @@ export async function track(input: TrackInput): Promise<{ recorded: boolean; eve
         `select 1 from events where subject_kind = 'booking' and subject_id = $1 and event_type = $2 limit 1`,
         [id, eventType]);
       if (!seen.length) {
-        await appendEvent(client, {
+        await appendEvent(client as never, {
           subjectKind: 'booking', subjectId: id, type: eventType, to: step,
           actorKind: step === 'texted' ? 'owner' : 'customer',
           payload: {
@@ -139,8 +206,17 @@ export async function track(input: TrackInput): Promise<{ recorded: boolean; eve
         recorded = true;
       }
     }
-    await client.query('commit');
     return { recorded, event: eventType };
+  };
+
+  if (q) return run(q);
+
+  const client = await db().connect();
+  try {
+    await client.query('begin');
+    const r = await run(client);
+    await client.query('commit');
+    return r;
   } catch (e) {
     await client.query('rollback').catch(() => {});
     throw e;

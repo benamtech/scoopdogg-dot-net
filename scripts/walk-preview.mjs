@@ -20,6 +20,21 @@ import { chromium } from 'playwright';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { loadEnv } from './_env.mjs';
 
+/**
+ * EVERY SESSION THIS FILE CREATES IS MARKED AS OURS (migration 033).
+ *
+ * A browser-driven verifier walks the real funnel, so it writes real `funnel_sessions` rows into
+ * the client's database — and until 033 nothing distinguished them. Measured 2026-09-23: all 25
+ * rows in the table were ours, and the growth board was reporting AMTECH's continuous integration
+ * as this client's booking-intent sessions.
+ *
+ * `api/booking.ts` maps this header to `source = 'gate'` and `server/lib/growth.ts` filters it out
+ * of every number an owner sees. Deleting the rows afterwards is still worth doing and is not
+ * enough on its own: a walk that fails halfway leaves its rows behind, and that is exactly the
+ * walk somebody is staring at the board during.
+ */
+const VERIFIER_HEADER = { 'x-scoopdogg-verifier': 'gate' };
+
 loadEnv();
 const base = (process.argv[2] || '').replace(/\/$/, '');
 if (!base) { console.error('usage: node scripts/walk-preview.mjs <deployment-url>'); process.exit(2); }
@@ -35,7 +50,7 @@ const shot = async (page, name) => {
 };
 
 const browser = await chromium.launch();
-const page = await browser.newPage({
+const page = await browser.newPage({ extraHTTPHeaders: VERIFIER_HEADER,
   viewport: { width: 390, height: 844 },                       // iPhone 14, portrait
   deviceScaleFactor: 3,
   userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',

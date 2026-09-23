@@ -16,13 +16,13 @@ const jsonLd = {
 };
 const initials = (n: string) => n.split(' ').map((p) => p[0]).slice(0, 2).join('');
 ---
-<Site title="Reviews | Scoop Dogg Pooper Scooper Reviews" description={`Read ${reviewSummary.count} Google reviews from Scoop Dogg customers across Ventura & Santa Barbara Counties — what weekly poop scooping, turf care and yard cleanups are actually like.`} canonicalPath="/reviews" jsonLd={jsonLd}>
+<Site title="Reviews | Scoop Dogg Pooper Scooper Reviews" description={`Read ${reviewSummary.shown} Google reviews from Scoop Dogg customers across Ventura & Santa Barbara Counties — what weekly poop scooping, turf care and yard cleanups are actually like.`} canonicalPath="/reviews" jsonLd={jsonLd}>
   <PageHero tone="forest" eyebrow="Reviews" title="Dog owners say it best" lede="Real Google reviews from real Scoop Dogg customers, in their own words.">
     <div slot="aside" class="tone-white rounded-xl bg-paper p-7 shadow-lg sm:p-9">
       {reviewSummary.rating && (
         <div class="flex items-center gap-5">
           <span class="font-serif text-hero leading-none text-forest-900">{reviewSummary.rating.toFixed(1)}</span>
-          <span class="flex flex-col gap-1.5"><Stars rating={reviewSummary.rating} size={22} /><span class="text-base text-ink-500">{reviewSummary.count} Google reviews</span></span>
+          <span class="flex flex-col gap-1.5"><Stars rating={reviewSummary.rating} size={22} /><span class="text-base text-ink-500">{reviewSummary.label}</span></span>
         </div>
       )}
       <div class="mt-7 grid gap-3 sm:grid-cols-2">

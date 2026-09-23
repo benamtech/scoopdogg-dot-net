@@ -21,7 +21,7 @@ export const GET: APIRoute = () => {
   L.push(`> Locally owned pooper scooper and turf care company run by its owner, Josue. Monthly plans on the same day every week, booked and paid online, managed from a customer account.${headlineOffer ? ` ${headlineOffer.name} on weekly scooping.` : ''} No contract.`, '');
   L.push(`- Phone (call or text): ${business.phone}`, `- Email: ${business.email}`, `- See a price and book: ${SITE_URL}/book`, `- Customer account: ${SITE_URL}/account`);
   if (trust.insured) L.push(`- Insured${trust.backgroundChecked ? ', background-checked' : ''}`);
-  if (reviewSummary.rating) L.push(`- ${reviewSummary.rating.toFixed(1)} on Google, ${reviewSummary.count} reviews: ${SITE_URL}/reviews`);
+  if (reviewSummary.rating) L.push(`- ${reviewSummary.rating.toFixed(1)} on Google, ${reviewSummary.label}: ${SITE_URL}/reviews`);
   if (trust.guarantee) L.push(`- ${trust.guarantee}`);
   L.push('');
 

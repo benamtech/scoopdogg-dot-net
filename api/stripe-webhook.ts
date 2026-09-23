@@ -11,6 +11,7 @@ import { stripeFor, probeAccount, type StripeMode } from '../server/lib/stripe.j
 import { completeBooking } from '../server/lib/booking.js';
 import { appendEvent } from '../server/lib/events.js';
 import { sendPaymentFailed } from '../server/lib/comms.js';
+import { CARD_EVENTS, handleCardEvent, markDefaultCard } from '../server/lib/cards.js';
 import { sendJson, safeError, type ApiRequest, type ApiResponse } from '../server/lib/http.js';
 
 async function rawBody(req: ApiRequest): Promise<Buffer> {
@@ -68,6 +69,16 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         }
       }
     }
+    // THE CARD ON FILE. `payment_methods` had readers since migration 005 and no writer at all:
+    // the card-expiry warning has never been able to fire because the table has never held a row
+    // outside a gate's rolled-back transaction. This is the writer, and the events it needs are
+    // named once in server/lib/cards.ts so `scripts/register-webhook.mjs` cannot drift from it.
+    // A card is learned here and nowhere else — nothing else on this site watches one.
+    if ((CARD_EVENTS as readonly string[]).includes(event.type)) {
+      const r = await handleCardEvent(event, mode);
+      console.log(`[stripe-webhook] ${event.type} -> ${r.recorded ? r.action : `skipped: ${r.reason}`}`);
+    }
+
     // THE CONNECTED ACCOUNT'S OWN STATUS (P18 §1.3). The admin re-reads Stripe on every load of
     // the Payments screen, but nobody is looking at that screen the afternoon a document expires
     // and card_payments goes to 'inactive'. This is what notices in between. v2 accounts emit v1
@@ -98,6 +109,12 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     // row that says trialing forever would tell the customer's account screen the wrong story.
     if (event.type === 'customer.subscription.updated') {
       const s = obj as unknown as Stripe.Subscription;
+      // Which card this plan bills, from the only authority on that question. `is_default` is
+      // `not null default false`, so without this every card on file would read "not the
+      // default" — true of nothing, and wrong the moment a customer has two.
+      const dpm = typeof s.default_payment_method === 'string' ? s.default_payment_method : s.default_payment_method?.id;
+      const scust = typeof s.customer === 'string' ? s.customer : s.customer?.id;
+      if (dpm && scust) await markDefaultCard(scust, dpm).catch((e) => safeError('webhook:default-card', e));
       if (s.status === 'active') {
         const { rows } = await db().query(
           `update subscriptions set payment_state = 'ok', updated_at = now()

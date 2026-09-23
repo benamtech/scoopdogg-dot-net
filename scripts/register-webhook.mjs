@@ -27,6 +27,12 @@ const url = arg('--url', 'https://scoopdogg.net/api/stripe-webhook');
 
 // P16 §9, P17 §11 and P18 §1: exactly what api/stripe-webhook.ts handles, and nothing else. An
 // endpoint subscribed to events nobody handles is a retry queue filling up with 200s.
+//
+// THE OTHER HALF OF THAT SENTENCE HAD NEVER BEEN CHECKED: a handler with no subscription is a
+// feature that silently does not exist, which is what happened to the card on file. The four
+// `payment_method.*` lines are the trigger for `server/lib/cards.ts`, and
+// `gates/card-on-file.mjs` now pins this list and that handler to the same constant so neither
+// can move without the other.
 const EVENTS = [
   'checkout.session.completed',
   'invoice.paid',
@@ -35,6 +41,10 @@ const EVENTS = [
   'customer.subscription.deleted',
   'customer.subscription.trial_will_end',
   'account.updated',
+  'payment_method.attached',
+  'payment_method.automatically_updated',
+  'payment_method.updated',
+  'payment_method.detached',
 ];
 
 function fromBrainEnv(name) {

@@ -86,7 +86,7 @@ const jsonLd = [
         )}
         {reviewSummary.rating && (
           <a href="/reviews" class="mt-5 flex items-center gap-3 text-base text-tone-fg hover:text-white">
-            <Stars rating={reviewSummary.rating} size={16} /><span><strong class="font-semibold text-white">{reviewSummary.rating.toFixed(1)}</strong> · {reviewSummary.count} Google reviews</span>
+            <Stars rating={reviewSummary.rating} size={16} /><span><strong class="font-semibold text-white">{reviewSummary.rating.toFixed(1)}</strong> · {reviewSummary.label}</span>
           </a>
         )}
       </aside>

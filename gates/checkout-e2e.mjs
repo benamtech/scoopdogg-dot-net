@@ -52,6 +52,21 @@ const stamp = Date.now().toString().slice(-6);
 const results = [];
 const check = (name, ok, detail = '') => { results.push({ name, ok }); console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? ` — ${detail}` : ''}`); };
 
+/**
+ * EVERY SESSION THIS FILE CREATES IS MARKED AS OURS (migration 033).
+ *
+ * A browser-driven verifier walks the real funnel, so it writes real `funnel_sessions` rows into
+ * the client's database — and until 033 nothing distinguished them. Measured 2026-09-23: all 25
+ * rows in the table were ours, and the growth board was reporting AMTECH's continuous integration
+ * as this client's booking-intent sessions.
+ *
+ * `api/booking.ts` maps this header to `source = 'gate'` and `server/lib/growth.ts` filters it out
+ * of every number an owner sees. Deleting the rows afterwards is still worth doing and is not
+ * enough on its own: a walk that fails halfway leaves its rows behind, and that is exactly the
+ * walk somebody is staring at the board during.
+ */
+const VERIFIER_HEADER = { 'x-scoopdogg-verifier': 'gate' };
+
 const browser = await chromium.launch();
 const errors = [];
 const outcomes = {};
@@ -63,7 +78,7 @@ await c.connect();
 
 /** One walk. `shape` is 'prepay' | 'payafter' | 'onetime'. */
 async function walk(shape) {
-  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  const page = await browser.newPage({ extraHTTPHeaders: VERIFIER_HEADER, viewport: { width: 1280, height: 900 } });
   page.on('pageerror', (e) => errors.push(e.message));
   const person = {
     name: `DEMO—E2E ${shape} ${stamp}`,

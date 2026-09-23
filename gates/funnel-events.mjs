@@ -42,12 +42,27 @@ const sessionRow = async (id) => (await c.query(`select * from funnel_sessions w
 const sid = (page) => page.evaluate(() => JSON.parse(sessionStorage.getItem('sd-booking-v2') || '{}').idem || null);
 const settle = () => new Promise((r) => setTimeout(r, 900));   // the track call is fire-and-forget
 
+/**
+ * EVERY SESSION THIS FILE CREATES IS MARKED AS OURS (migration 033).
+ *
+ * A browser-driven verifier walks the real funnel, so it writes real `funnel_sessions` rows into
+ * the client's database — and until 033 nothing distinguished them. Measured 2026-09-23: all 25
+ * rows in the table were ours, and the growth board was reporting AMTECH's continuous integration
+ * as this client's booking-intent sessions.
+ *
+ * `api/booking.ts` maps this header to `source = 'gate'` and `server/lib/growth.ts` filters it out
+ * of every number an owner sees. Deleting the rows afterwards is still worth doing and is not
+ * enough on its own: a walk that fails halfway leaves its rows behind, and that is exactly the
+ * walk somebody is staring at the board during.
+ */
+const VERIFIER_HEADER = { 'x-scoopdogg-verifier': 'gate' };
+
 const browser = await chromium.launch();
 const errors = [];
 try {
   // ---- WALK A: a ZIP we know and do not serve ------------------------------------------------
   {
-    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });   // a phone
+    const page = await browser.newPage({ extraHTTPHeaders: VERIFIER_HEADER, viewport: { width: 390, height: 844 } });   // a phone
     page.on('pageerror', (e) => errors.push(e.message));
     await page.goto(`${BASE}/book`, { waitUntil: 'networkidle' });
     await page.fill('#bk-zip', '93041');                       // Port Hueneme: known, not served
@@ -83,7 +98,7 @@ try {
 
   // ---- WALK B: a recurring plan, on lane B ----------------------------------------------------
   {
-    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    const page = await browser.newPage({ extraHTTPHeaders: VERIFIER_HEADER, viewport: { width: 390, height: 844 } });
     page.on('pageerror', (e) => errors.push(e.message));
     await page.goto(`${BASE}/book`, { waitUntil: 'networkidle' });
     await page.fill('#bk-zip', '93030');                        // Oxnard
@@ -144,7 +159,7 @@ try {
 
   // ---- WALK C: a one-time job, which could not be booked at all before ------------------------
   {
-    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    const page = await browser.newPage({ extraHTTPHeaders: VERIFIER_HEADER, viewport: { width: 390, height: 844 } });
     page.on('pageerror', (e) => errors.push(e.message));
     await page.goto(`${BASE}/book`, { waitUntil: 'networkidle' });
     await page.fill('#bk-zip', '93030');

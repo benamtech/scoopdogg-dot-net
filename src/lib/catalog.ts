@@ -176,8 +176,26 @@ export { formatCents, formatTierPrice };
  * every one is overridden the moment its setting exists in the database. The list of
  * assumptions for Ben to veto is in portal/P13-THE-EXPERIENCE.md §6.
  */
+/**
+ * THE REVIEW COUNT HAS ONE HOME, and it did not until 2026-09-23.
+ *
+ * `content/catalog.json` holds 18 review quotes. The Google Business Profile holds 42 (measured
+ * by `scripts/pull-review-count.mjs`, two instruments agreeing, 2026-09-23). The 18 were always a
+ * hand-curated set for the page and nothing claimed otherwise — but the field was called `count`,
+ * `reviews.google_count` had never been written, and SIX surfaces put the 18 in front of a
+ * visitor next to the word Google: /reviews twice including its meta description, ProofBar,
+ * ReviewQuotes, every question page, and llms.txt, which is the file AI answer engines read.
+ *
+ * The site was publishing 43% of its own strongest asset, on the trust signal R5 scored as table
+ * stakes. The number was not wrong anywhere; the NAME was, and six readers took the invitation.
+ *
+ * So `count` is gone. `quotes` is what this repo holds, `googleCount` is what Google holds, and
+ * `label` is the only thing a page should render — because the honest sentence differs depending
+ * on which of the two we have, and asking six pages to remember that is how this happened.
+ */
 export const reviewSummary = {
-  count: data.reviews.length,
+  /** How many quotes this repo carries. A curated subset. NOT the Google total. */
+  quotes: data.reviews.length,
   googleCount: setting<number | null>('reviews.google_count', null),
   // Published on the pre-elevation site as "5.0 average" and "5-Star Rated".
   rating: setting<number | null>('reviews.google_rating', 5.0),
@@ -187,6 +205,22 @@ export const reviewSummary = {
   // a redirect. This one answers 200 with no redirect. Read them here; ASK for one with
   // reviews.google_review_url, which only server/lib/comms.ts uses.
   profileUrl: setting<string>('reviews.google_profile_url', 'https://www.google.com/maps/place/?q=place_id:ChIJx2f0lVCt6YARL_qslmyUQKM'),
+  /** When the live profile was last read. `null` means never, and the gate says so. */
+  checkedOn: setting<string | null>('reviews.google_checked_on', null),
+
+  /**
+   * The count to put in front of a visitor, and the sentence to put it in.
+   *
+   * Every surface uses `label`. A page that builds its own string out of `quotes` is the defect
+   * this replaced, and `gates/review-count.mjs` fails on one.
+   */
+  get shown(): number { return this.googleCount ?? this.quotes; },
+  get shownIsGoogle(): boolean { return this.googleCount != null; },
+  get label(): string {
+    return this.googleCount != null
+      ? `${this.googleCount} Google reviews`
+      : `${this.quotes} reviews on this page`;
+  },
 };
 
 export const trust = {

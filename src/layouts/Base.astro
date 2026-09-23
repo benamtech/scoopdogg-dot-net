@@ -172,6 +172,31 @@ const schema = jsonLd
       })();
     </script>
     )}
+
+    <!--
+      WHERE THIS VISIT CAME FROM, captured once and kept for the session (migration 033).
+
+      `document.referrer` is the ONLY place the original referrer survives, and it survives for
+      exactly one page load: click through to a second page of this site and it becomes
+      scoopdogg.net. So the first page of a session writes it down and every later page leaves it
+      alone — which is why this is here, in the layout every page uses, and not in the booking
+      island the visitor may never reach.
+
+      IT IS NOT A COOKIE AND NOT AN IDENTIFIER. One hostname, in sessionStorage, gone when the tab
+      closes, never read by anything but our own /api/booking/track. Same-site referrers are
+      dropped rather than stored, so an internal click reads as direct rather than as a channel.
+      P19 §2's "no analytics vendor, no third-party script, no cookie banner" still holds.
+    -->
+    <script is:inline>
+      try {
+        if (!sessionStorage.getItem('sd_src')) {
+          var ref = document.referrer || '';
+          var host = '';
+          try { host = ref ? new URL(ref).hostname.replace(/^www\./, '') : ''; } catch (e) { host = ''; }
+          if (host && host !== location.hostname.replace(/^www\./, '')) sessionStorage.setItem('sd_src', host);
+        }
+      } catch (e) { /* measurement is never load-bearing */ }
+    </script>
   </head>
   <body class={`bg-paper text-ink-900 font-sans antialiased ${bodyClass}`}>
     {DEMO_MODE && (

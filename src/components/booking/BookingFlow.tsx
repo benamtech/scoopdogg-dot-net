@@ -141,13 +141,20 @@ export default function BookingFlow(props: Props) {
 
   const payAfterOffered = props.lanesEnabled.includes('payafter');
 
+  /**
+   * The referrer host this session arrived on, written once by the layout's inline script and
+   * read here. Not recomputed from `document.referrer`: by the time the booking island mounts,
+   * the referrer is usually this site's own previous page, and every channel would read direct.
+   */
+  const sessionSource = () => { try { return sessionStorage.getItem('sd_src') || null; } catch { return null; } };
+
   // ---- the funnel's own measurement. Never blocks anything, never throws. ----
   const track = (stepName: string, extra: Record<string, unknown> = {}) => {
     if (!idem.current) return;
     try {
       fetch('/api/booking/track', {
         method: 'POST', headers: { 'content-type': 'application/json' }, keepalive: true,
-        body: JSON.stringify({ session_id: idem.current, step: stepName, postal_code: zip || null, area_slug: city || null, city_name: cityName || null, ...extra }),
+        body: JSON.stringify({ session_id: idem.current, step: stepName, source: sessionSource(), postal_code: zip || null, area_slug: city || null, city_name: cityName || null, ...extra }),
       }).catch(() => {});
     } catch { /* measurement is never load-bearing */ }
   };
@@ -193,7 +200,7 @@ export default function BookingFlow(props: Props) {
     try {
       fetch('/api/booking/track', {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ session_id: idem.current, step: stepName, ...extra }),
+        body: JSON.stringify({ session_id: idem.current, step: stepName, source: sessionSource(), ...extra }),
       }).catch(() => {});
     } catch { /* never load-bearing */ }
   };

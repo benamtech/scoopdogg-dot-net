@@ -40,10 +40,11 @@ const no = (w, d = '') => { fail++; console.log(`  FAIL  ${w}${d ? ` — ${d}` :
 const check = (c, w, d = '') => (c ? ok(w, d) : no(w, d));
 
 const MIGRATION = 'migrations/031_where_the_zips_actually_are.sql';
+const POPULATED = 'migrations/032_where_the_customers_actually_are.sql';
 
 const out = compileServer();
 const density = await import(`${process.cwd()}/${out}/server/lib/density.js`.replace(`${process.cwd()}/${process.cwd()}`, process.cwd()));
-const { driveMinutes, marginalDriveMinutes, customersForParity, miles, routeDensity, waitlistZips, geocoded } = density;
+const { driveMinutes, marginalDriveMinutes, customersForParity, miles, routeDensity, waitlistZips, geocoded, populatedCentres } = density;
 
 // ---- A. the model's properties, on synthetic geometry, no database ------------------------
 console.log('A. the closed form behaves like the closed form');
@@ -51,7 +52,7 @@ console.log('A. the closed form behaves like the closed form');
   const P = {
     depot: { lat: 34.2954755, lon: -119.2912215, source: 'gate' },
     circuity: 1.3, linehaulMph: 40, localMph: 22, bhhK: 0.75,
-    referenceServiceMinutes: 15, referenceTier: 'gate',
+    referenceServiceMinutes: 15, referenceBasis: 'gate fixture', referenceTier: 'gate',
   };
   const near = { r: 8, A: 20 }, far = { r: 34, A: 20 }, sprawl = { r: 8, A: 200 };
 
@@ -110,7 +111,61 @@ console.log('\nB. the real areas, the real rows');
       ok('031 is already applied on this database');
     }
 
+    /**
+     * THE DEPOT'S OWN CITY MUST BE THE NEAREST CITY, and under 031 it is not.
+     *
+     * Run BEFORE 032 as well as after, because a gate that only ever sees the fixed state cannot
+     * tell anyone it would have caught the bug.
+     *
+     * SAID PRECISELY, because the first version of this check overstated it and the numbers
+     * corrected it. The 39.9-mile error is at ZIP level: ZCTA 93001 is Ventura plus the Channel
+     * Islands and its internal point is in the ocean. The AREA called ventura averages several
+     * ZIPs, so the offshore one is diluted to 10.4 miles rather than 40 — far enough to lose the
+     * city its own top spot to Oak View, not far enough to look absurd on the board. That is the
+     * more dangerous version of the fault, and it is what this asserts.
+     */
+    const before032 = await routeDensity(c);
+    const ventura031 = before032.areas.find((a) => a.slug === 'ventura');
+    const nearest031 = before032.areas.reduce((a, b) => (a.depot_miles < b.depot_miles ? a : b));
+    const { rows: [z93001] } = await c.query(
+      `select 3958.8 * 2 * asin(sqrt(power(sin(radians(latitude - 34.2954755) / 2), 2)
+              + cos(radians(34.2954755)) * cos(radians(latitude))
+              * power(sin(radians(longitude - (-119.2912215)) / 2), 2))) as mi
+         from area_postal_codes where postal_code = '93001'`);
+    check(Number(z93001.mi) > 35,
+      'BEFORE 032: ZIP 93001 — the depot’s own ZIP — sits ~40 miles out in the ocean',
+      `${Number(z93001.mi).toFixed(1)}mi from a depot inside Ventura, because ZCTA 93001 includes the Channel Islands`);
+    check(!!ventura031 && nearest031.slug !== 'ventura',
+      'and the depot’s own city is therefore NOT the nearest area on the board',
+      ventura031 ? `ventura ${ventura031.depot_miles}mi, beaten by ${nearest031.slug} at ${nearest031.depot_miles}mi — this is the bug, reproduced`
+        : 'ventura missing');
+
+    if (!(await populatedCentres(c))) {
+      const popBody = readFileSync(POPULATED, 'utf8')
+        .replace(/^[ \t]*begin[ \t]*;[ \t]*$/gim, '').replace(/^[ \t]*commit[ \t]*;[ \t]*$/gim, '');
+      await c.query(popBody);
+    }
+    check(await populatedCentres(c) === true, '032 gives the ZIPs a population centre', 'applied in this transaction, rolled back');
+
     const board = await routeDensity(c);
+    check(board.geo_basis === 'population',
+      'and the board reads it rather than the polygon', `geo_basis=${board.geo_basis}`);
+
+    const venturaNow = board.areas.find((a) => a.slug === 'ventura');
+    const nearestNow = board.areas.reduce((a, b) => (a.depot_miles < b.depot_miles ? a : b));
+    check(!!venturaNow && nearestNow.slug === 'ventura',
+      'AFTER 032: the depot’s own city is the nearest city in the network',
+      venturaNow ? `ventura ${venturaNow.depot_miles}mi (was ${ventura031.depot_miles}mi); nearest is ${nearestNow.slug}` : 'ventura missing');
+    check(!!venturaNow && venturaNow.depot_miles < 5,
+      'and it is a few miles away, not ten', `ventura ${venturaNow?.depot_miles}mi from a depot inside Ventura`);
+    const { rows: [p93001] } = await c.query(
+      `select 3958.8 * 2 * asin(sqrt(power(sin(radians(populated_lat - 34.2954755) / 2), 2)
+              + cos(radians(34.2954755)) * cos(radians(populated_lat))
+              * power(sin(radians(populated_lon - (-119.2912215)) / 2), 2))) as mi
+         from area_postal_codes where postal_code = '93001'`);
+    check(Number(p93001.mi) < 2, 'and ZIP 93001 comes ashore',
+      `${Number(z93001.mi).toFixed(1)}mi -> ${Number(p93001.mi).toFixed(1)}mi`);
+
     check(board.measured === true && board.areas.length === 16,
       'every service area gets a number', `${board.areas.length} areas`);
     /**
@@ -189,15 +244,37 @@ console.log('\nB. the real areas, the real rows');
       'every known-and-not-served ZIP is ranked', `${wl.zips.length} ZIPs`);
     const wm = wl.zips.map((x) => x.depot_miles);
     check(wm.length === 21 && wm.every((v, i) => i === 0 || v >= wm[i - 1]), 'nearest first', `${wm.length} ZIPs, ${wm[0]}mi to ${wm[wm.length - 1]}mi`);
+    /**
+     * 93042, AND WHY IT NOW TAKES TWO NUMBERS.
+     *
+     * This check used to read "San Nicolas Island is still sixty miles out to sea" off
+     * `depot_miles`, and it was right about the polygon. It was not a statement about customers:
+     * the 2020 ZCTA also covers the Point Mugu end of the naval air station, and every one of
+     * 93042's 1,075 residents lives there, sixteen miles from the depot. So the gate asserts BOTH
+     * — the land is an island, the people are on the mainland — which is strictly more than it
+     * checked before and is what the waitlist actually needs to know.
+     */
     const island = wl.zips.find((x) => x.postal_code === '93042');
-    check(!!island && island.depot_miles > 50,
-      'and San Nicolas Island is still sixty miles out to sea',
-      island ? `93042 at ${island.depot_miles}mi — the waitlist can tell an island from a suburb` : '93042 missing');
+    check(!!island && island.polygon_miles > 50,
+      'the waitlist can still tell an island from a suburb',
+      island ? `93042's land is ${island.polygon_miles}mi out` : '93042 missing');
+    check(!!island && island.depot_miles < 25,
+      'and it ranks by where 93042’s people actually live, at Point Mugu',
+      island ? `${island.depot_miles}mi for ${island.city_name}` : '93042 missing');
 
     // ---- negative controls
     console.log('\nnegative controls');
     const { rows: [{ n: nz }] } = await c.query(`select count(*)::int as n from area_postal_codes where latitude is null`);
     check(nz === 0, 'no served ZIP is missing a coordinate', 'a null would drop a city out of the board silently');
+    await c.query(`alter table area_postal_codes drop column populated_lat`);
+    check(await populatedCentres(c) === false, 'with a population column gone, populatedCentres() says so');
+    const backToPolygon = await routeDensity(c);
+    const v2 = backToPolygon.areas.find((a) => a.slug === 'ventura');
+    const n3 = backToPolygon.areas.reduce((a, b) => (a.depot_miles < b.depot_miles ? a : b));
+    check(backToPolygon.geo_basis === 'polygon' && n3.slug !== 'ventura' && v2.depot_miles > ventura031.depot_miles - 0.1,
+      'and the bug comes straight back — so the check above is not a constant',
+      `ventura ${v2.depot_miles}mi, nearest ${n3.slug} ${n3.depot_miles}mi`);
+
     await c.query(`alter table area_postal_codes drop column latitude`);
     check(await geocoded(c) === false, 'with a coordinate column gone, geocoded() says so');
     const gone = await routeDensity(c);

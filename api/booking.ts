@@ -57,6 +57,23 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
           name: body.name ? String(body.name) : null,
           email: body.email ? String(body.email) : null,
           phone: body.phone ? String(body.phone) : null,
+          /**
+           * WHERE THEY CAME FROM (migration 033). Two inputs and neither is trusted by default:
+           *
+           *   body.source          the browser's `document.referrer`, which is the only place the
+           *                        ORIGINAL referrer survives — the Referer header on this POST is
+           *                        the site's own page and would make every channel read "direct".
+           *   x-scoopdogg-verifier the header a browser-driven gate sets on itself, so a gate run
+           *                        lands as 'gate' instead of as this client's customer.
+           *
+           * `trusted` is the header, and `normaliseSource()` refuses a reserved word from anything
+           * else — a visitor typing `source: 'gate'` into the request body gets null, not an
+           * invisible session. It is not a trust boundary; see the migration.
+           */
+          source: String(req.headers['x-scoopdogg-verifier'] ?? '') === 'gate'
+            ? 'gate'
+            : (body.source ? String(body.source) : null),
+          trusted: String(req.headers['x-scoopdogg-verifier'] ?? '') === 'gate',
         });
         return sendJson(res, 200, r);
       } catch (e) {

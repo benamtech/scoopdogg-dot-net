@@ -265,7 +265,7 @@ const check = 'M5 12l5 5 9-10';
     phoneHref={business.phoneHref}
     rating={reviewSummary.rating}
     reviewCount={reviewSummary.googleCount}
-    quoteCount={reviewSummary.count}
+    quoteCount={reviewSummary.quotes}
     offer={offer ?? null}
   />
 
@@ -379,11 +379,7 @@ const check = 'M5 12l5 5 9-10';
                     "all 27 reviews" 300px lower while the database held 18. ONE number, from
                     ONE row — reviews.google_count when Josue has entered it, otherwise the
                     quotes we can actually show, described as exactly that. */}
-                <span class="text-base text-ink-500">
-                  {reviewSummary.googleCount
-                    ? `${reviewSummary.googleCount} Google reviews`
-                    : `${reviewSummary.count} reviews on this page`}
-                </span>
+                <span class="text-base text-ink-500">{reviewSummary.label}</span>
               </span>
             </div>
           )}

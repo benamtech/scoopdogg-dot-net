@@ -6,7 +6,7 @@
  */
 import { reviewSummary, trust } from '../../lib/catalog';
 const items = [
-  reviewSummary.rating ? { icon: 'star', strong: `${reviewSummary.rating.toFixed(1)} on Google`, rest: `${reviewSummary.count} reviews` } : null,
+  reviewSummary.rating ? { icon: 'star', strong: `${reviewSummary.rating.toFixed(1)} on Google`, rest: reviewSummary.label } : null,
   trust.insured && trust.backgroundChecked ? { icon: 'shield', strong: 'Insured', rest: 'and background-checked' } : trust.insured ? { icon: 'shield', strong: 'Fully insured', rest: '' } : null,
   { icon: 'calendar', strong: 'Same day', rest: 'every week' },
   { icon: 'x', strong: 'Cancel anytime', rest: 'from your account' },
