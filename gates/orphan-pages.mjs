@@ -59,6 +59,7 @@ const PRIVATE = {
   '/admin/payments': 'as above',
   '/admin/growth': 'as above',
   '/admin/setup': 'as above',
+  '/admin/team': 'as above',
 };
 
 let pass = 0, fail = 0;
