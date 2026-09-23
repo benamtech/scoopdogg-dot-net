@@ -50,11 +50,18 @@ const shot = async (page, name) => {
 };
 
 const browser = await chromium.launch();
-const page = await browser.newPage({ extraHTTPHeaders: VERIFIER_HEADER,
+/**
+ * ONE HEADER OBJECT, NOT TWO KEYS. The first version of this file set `extraHTTPHeaders` twice —
+ * the verifier marker, then the preview's auth token in a spread after it — and the second key
+ * REPLACED the first. So on every run that could actually reach a preview, the walk stopped
+ * marking itself as ours and wrote its sessions into the client's funnel as customers: the exact
+ * contamination migration 033 exists to end, on exactly the runs that matter.
+ */
+const page = await browser.newPage({
   viewport: { width: 390, height: 844 },                       // iPhone 14, portrait
   deviceScaleFactor: 3,
   userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
-  ...(token ? { extraHTTPHeaders: { 'x-vercel-trusted-oidc-idp-token': token } } : {}),
+  extraHTTPHeaders: { ...VERIFIER_HEADER, ...(token ? { 'x-vercel-trusted-oidc-idp-token': token } : {}) },
 });
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));

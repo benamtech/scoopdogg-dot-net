@@ -57,6 +57,40 @@ const baseAstro = readFileSync('src/layouts/Base.astro', 'utf8');
 check(/sessionStorage\.setItem\('sd_src'/.test(baseAstro) && /sessionSource\(\)/.test(readFileSync('src/components/booking/BookingFlow.tsx', 'utf8')),
   'the referrer is captured on the first page and sent with the funnel', 'document.referrer survives exactly one page load');
 
+/**
+ * EVERY BROWSER THAT DRIVES THE FUNNEL MARKS ITSELF, IN ONE HEADER OBJECT.
+ *
+ * scripts/walk-preview.mjs set `extraHTTPHeaders` twice — the verifier marker, then the preview's
+ * auth token in a spread after it — and in JavaScript the second key replaces the first. So on
+ * every run that could reach a preview, the walk wrote its sessions into the client's funnel as
+ * customers. Per file it looked correct: the marker was right there. This reads every file that
+ * types into the booking form and checks the marker is set and never shadowed.
+ */
+{
+  const { globSync } = await import('node:fs');
+  // A funnel driver is a file that launches a browser AND enters a ZIP somewhere. Visiting /book
+  // writes nothing until a ZIP exists, so a layout check that only looks at the page is not one.
+  // This file is not one either: it names the selectors in a pattern and never launches a browser.
+  const drivers = [...globSync('gates/*.mjs'), ...globSync('scripts/*.mjs')]
+    .filter((f) => {
+      const b = readFileSync(f, 'utf8');
+      // Entering a ZIP is what writes a session: the booking form's field, the hero's address
+      // field (which posts to /book), or a URL that arrives carrying one.
+      return /chromium\.launch\(/.test(b) && /#bk-zip|input\[name=address\]|[?&]zip=/.test(b);
+    });
+  const unmarked = [], shadowed = [];
+  for (const f of drivers) {
+    const body = readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ');
+    if (!/x-scoopdogg-verifier/.test(body)) unmarked.push(f);
+    for (const m of body.matchAll(/new(?:Page|Context)\(\{([\s\S]*?)\}\);/g)) {
+      if ((m[1].match(/extraHTTPHeaders/g) ?? []).length > 1) shadowed.push(f);
+    }
+  }
+  check(drivers.length >= 3 && unmarked.length === 0, 'every browser that fills the booking form marks itself as ours',
+    unmarked.length ? unmarked.join(', ') : `${drivers.length} files: ${drivers.join(', ')}`);
+  check(shadowed.length === 0, 'and none sets extraHTTPHeaders twice in one page', shadowed.length ? shadowed.join(', ') : 'the second key would replace the marker');
+}
+
 // ---- B. the normaliser, on its own ---------------------------------------------------------
 console.log('\nB. a referrer becomes a host, and a reserved word needs permission');
 const out = compileServer();
