@@ -25,14 +25,19 @@
  * visible here.
  *
  * ==========================================================================================
- * WHAT THIS FILE WILL NOT DO, AND IT IS THE MOST IMPORTANT PART.
+ * MONEY IS AN ASSUMPTION HERE, AND THE FILE SAYS SO EVERY TIME IT PRINTS ONE.
  *
- * It will not put a dollar figure on any of this. Nobody has asked Josue what an hour of his time
- * or a mile of his van costs, so `routing.cost_per_hour_cents` and `routing.cost_per_mile_cents`
- * are deliberately NOT seeded by migration 031, and every money-denominated figure here reports
- * `measured: false`. It would take one plausible-looking $25/hour to start printing per-city
- * margins that are claims about a business nobody asked, and this project has a standing rule
- * about that (AGENTS.md 7, 14) and a growth board built around `measured` for exactly this reason.
+ * Until migration 036 this file put no dollar figure on anything: nobody had asked Josue what an
+ * hour of his time costs, so `routing.cost_per_hour_cents` was deliberately absent and every
+ * money figure was `measured: false`. That was honest and it left the board with a column that
+ * could never fill. 036 sets the hour at $70, decided rather than asked, from R14: $70 is what an
+ * hour of a real California landscaping business should earn, and Pet Butler's FY2025 Item 19
+ * puts the measured average across 39 pet-waste route businesses at $70.02.
+ *
+ * So a money figure here is `measured: false, assumed: true`, with the value AND the basis on the
+ * row (`routing.cost_per_hour_basis`). It is still never `measured: true`: nothing about it came
+ * from Josue's books. The day he names his own number it is one row, and this file does not
+ * change. With no cost row at all the old behaviour holds — value null, "not set".
  *
  * WHAT IT REPORTS INSTEAD NEEDS NO COST AT ALL: DRIVING MINUTES, against the service minutes
  * already recorded on every tier as `est_minutes`. "One more customer in Malibu costs 110 minutes
@@ -51,10 +56,14 @@ import { ENOUGH_TIMED_STOPS, stopDurations } from './visits.js';
 
 export type Queryable = { query: (text: string, values?: unknown[]) => Promise<{ rows: any[] }> };
 
-/** Same shape as growth.ts, so the admin board renders one kind of number. */
-export type Metric = { value: number | null; measured: boolean; note?: string };
+/**
+ * Same shape as growth.ts, so the admin board renders one kind of number — plus `assumed`, for a
+ * value that is printed on a stated basis rather than measured. `note` then carries the basis.
+ */
+export type Metric = { value: number | null; measured: boolean; assumed?: boolean; note?: string };
 const metric = (value: number | null, measured: boolean, note?: string): Metric =>
   ({ value: measured ? value : null, measured, ...(note ? { note } : {}) });
+const assumption = (value: number, basis: string): Metric => ({ value, measured: false, assumed: true, note: basis });
 
 export type RouteParameters = {
   depot: { lat: number; lon: number; source: string | null };
@@ -67,6 +76,12 @@ export type RouteParameters = {
   /** Where that number came from: a median of timed stops, or the estimate. Never assumed. */
   referenceBasis: string;
   referenceTier: string;
+  /** What that stop earns, in cents: the reference tier's own per-visit price. */
+  referenceRevenueCents: number | null;
+  /** What an hour of Josue's time is taken to cost. An ASSUMPTION (migration 036), or null if unset. */
+  costPerHourCents: number | null;
+  /** Where that number came from, in words the board prints beside it. */
+  costBasis: string | null;
 };
 
 /** Great-circle miles. Straight-line; `circuity` is what turns it into road miles. */
@@ -173,6 +188,10 @@ async function parameters(q: Queryable): Promise<RouteParameters | null> {
       ? `median of ${timed!.service_measured} timed stops`
       : `service_tiers.est_minutes — an estimate; ${timed?.service_measured ?? 0} of ${ENOUGH_TIMED_STOPS} stops timed so far`,
     referenceTier: `${ref.service_slug} / ${ref.label}`,
+    referenceRevenueCents: Number.isFinite(Number(ref.price_cents)) ? Number(ref.price_cents) : null,
+    costPerHourCents: Number.isFinite(num('routing.cost_per_hour_cents')) && num('routing.cost_per_hour_cents') > 0
+      ? num('routing.cost_per_hour_cents') : null,
+    costBasis: raw.get('routing.cost_per_hour_basis') ?? null,
   };
 }
 
@@ -261,9 +280,28 @@ export type AreaDensity = {
   customers_for_parity: number | null;
   /** Total driving per visit at today's count, which is what a route day actually feels like. */
   drive_minutes_per_visit_now: number | null;
-  /** Anything denominated in money. Unmeasured until somebody asks Josue what an hour costs. */
+  /**
+   * What the NEXT visit here earns after its time is paid for at `costPerHourCents`: the
+   * reference stop's price, less (service + marginal driving) minutes at that rate. Assumed,
+   * never measured — see the header — and null when no cost is set.
+   */
   margin_per_visit: Metric;
 };
+
+/**
+ * The next visit's price, less its minutes at the assumed hourly cost. Negative is common and is
+ * the point: a first customer thirty miles out costs more time than a $23 visit pays for, and a
+ * second one next door nearly breaks even (R14 §A, at the estimate).
+ */
+export function marginPerVisit(marginalDriveMin: number, p: RouteParameters): Metric {
+  if (p.costPerHourCents === null || p.referenceRevenueCents === null) {
+    return metric(null, false,
+      'routing.cost_per_hour_cents is not set, so no visit is given a dollar margin.');
+  }
+  const minutes = p.referenceServiceMinutes + marginalDriveMin;
+  const value = Math.round(p.referenceRevenueCents - (minutes / 60) * p.costPerHourCents);
+  return assumption(value, p.costBasis ?? `assumed at $${(p.costPerHourCents / 100).toFixed(2)} an hour`);
+}
 
 /**
  * Every area, with the marginal cost of one more customer in it, cheapest first.
@@ -335,8 +373,7 @@ export async function routeDensity(q: Queryable = db()): Promise<{
       marginal_ratio: Math.round((marginal / p.referenceServiceMinutes) * 100) / 100,
       customers_for_parity: customersForParity(rMi, land, p, cap),
       drive_minutes_per_visit_now: n > 0 ? Math.round(driveMinutes(n, rMi, land, p) / n) : null,
-      margin_per_visit: metric(null, false,
-        'routing.cost_per_hour_cents is not set. Nobody has asked Josue what his hour costs, so this is unknown rather than estimated.'),
+      margin_per_visit: marginPerVisit(marginal, p),
     };
   }).sort((a, b) => a.marginal_drive_minutes - b.marginal_drive_minutes);
 

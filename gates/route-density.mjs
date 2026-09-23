@@ -22,7 +22,9 @@
  *   6. The parity threshold is ordered by distance.
  *   7. The ranking RESPONDS to the book of business. A far city with customers can outrank a near
  *      one without — which is the whole difference between this and a static target-market list.
- *   8. Nothing is denominated in money, because nobody has asked Josue what an hour costs.
+ *   8. Money is an ASSUMPTION and says so. With no cost row there is no dollar figure at all;
+ *      with migration 036's $70 hour every margin is `assumed`, never `measured`, carries its
+ *      basis, and falls as the driving rises.
  *
  * It runs against migration 031's own schema, applied inside a transaction and rolled back, so it
  * is green before the migration is applied anywhere — the same trick as gates/visit-photos.mjs and
@@ -40,6 +42,7 @@ const no = (w, d = '') => { fail++; console.log(`  FAIL  ${w}${d ? ` — ${d}` :
 const check = (c, w, d = '') => (c ? ok(w, d) : no(w, d));
 
 const MIGRATION = 'migrations/031_where_the_zips_actually_are.sql';
+const HOUR = 'migrations/036_an_hour_is_given_a_price.sql';
 const POPULATED = 'migrations/032_where_the_customers_actually_are.sql';
 
 const out = compileServer();
@@ -206,12 +209,38 @@ console.log('\nB. the real areas, the real rows');
       'a first customer in Oxnard is cheaper than a first customer in Malibu',
       `${by.oxnard.marginal_drive_minutes} min vs ${by.malibu.marginal_drive_minutes} min of driving, for ${board.parameters.referenceServiceMinutes} min of work`);
 
-    // 8. no money anywhere
-    check(board.areas.length === 16 && board.areas.every((a) => a.margin_per_visit.measured === false && a.margin_per_visit.value === null),
-      'no area is given a dollar margin', 'nobody has asked Josue what his hour costs');
-    const { rows: costRows } = await c.query(`select count(*)::int as n from settings where key like 'routing.cost_%'`);
-    check(costRows[0].n === 0, 'and no cost row was seeded to make one possible',
-      'the absence is the invariant, not an oversight');
+    /**
+     * 8. MONEY IS AN ASSUMPTION, AND THE BOARD SAYS SO.
+     *
+     * Both worlds, in this one transaction, whatever the database's history: first with every
+     * `routing.cost_%` row deleted (the world before 036), then with 036 applied. A gate that only
+     * read today's board could not tell "labelled an assumption" from "labelled anything at all".
+     */
+    await c.query(`delete from settings where key like 'routing.cost_%'`);
+    const noCost = await routeDensity(c);
+    check(noCost.areas.length === 16 && noCost.areas.every((a) => a.margin_per_visit.value === null && !a.margin_per_visit.measured && !a.margin_per_visit.assumed),
+      'with no hourly cost set, no area is given a dollar margin', `${noCost.areas.length} areas, all null`);
+
+    await c.query(readFileSync(HOUR, 'utf8')
+      .replace(/^[ \t]*begin[ \t]*;[ \t]*$/gim, '').replace(/^[ \t]*commit[ \t]*;[ \t]*$/gim, ''));
+    const priced = await routeDensity(c);
+    const { rows: [basisRow] } = await c.query(`select value #>> '{}' as v from settings where key = 'routing.cost_per_hour_basis'`);
+    check(priced.areas.length === 16 && priced.areas.every((a) => a.margin_per_visit.assumed === true && a.margin_per_visit.measured === false && Number.isFinite(a.margin_per_visit.value)),
+      'with 036, every area gets a margin, and every one is assumed, never measured',
+      `${priced.areas.length} areas at ${priced.parameters.costPerHourCents / 100}/hour`);
+    check(!!basisRow && priced.areas.every((a) => a.margin_per_visit.note === basisRow.v) && /assumption/i.test(basisRow.v),
+      'and each carries the basis row verbatim, which calls itself an assumption', basisRow?.v.slice(0, 50));
+    const mv = priced.areas.map((a) => a.margin_per_visit.value);
+    check(mv.length === 16 && mv.every((v, i) => i === 0 || v <= mv[i - 1]),
+      'margins fall as the driving rises — the board is cheapest-first, so dearest-last',
+      `${mv[0]} .. ${mv[mv.length - 1]} cents`);
+    const a0 = priced.areas[0], P0 = priced.parameters;
+    const expect = P0.referenceRevenueCents - ((P0.referenceServiceMinutes + a0.marginal_drive_minutes) / 60) * P0.costPerHourCents;
+    check(Math.abs(a0.margin_per_visit.value - expect) <= P0.costPerHourCents / 120,
+      'and the arithmetic is price less minutes at the hourly rate',
+      `${a0.slug}: ${P0.referenceRevenueCents} - (${P0.referenceServiceMinutes}+${a0.marginal_drive_minutes})min at ${P0.costPerHourCents}/h = ${a0.margin_per_visit.value} (±half a minute of rounding)`);
+    const { rows: [mile] } = await c.query(`select count(*)::int as n from settings where key = 'routing.cost_per_mile_cents'`);
+    check(mile.n === 0, 'and no per-mile cost was added on top', 'the drive is already paid for by the hour');
 
     /**
      * 7. THE RANKING RESPONDS TO THE BOOK OF BUSINESS.

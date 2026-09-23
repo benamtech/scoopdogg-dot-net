@@ -127,7 +127,8 @@ export interface ChecklistItem {
 }
 export interface ChecklistArea { slug: string; name: string; bookable: boolean; service_weekdays: number[] }
 /** `measured: false` and `value: 0` are different answers and the screen must never merge them. */
-export interface Metric { value: number | null; measured: boolean; note?: string }
+/** `assumed`: printed on a stated basis rather than measured, and `note` is that basis. */
+export interface Metric { value: number | null; measured: boolean; assumed?: boolean; note?: string }
 export interface FeeRow { period: string; collected_cents: number; fee_cents: number; payments: number }
 export interface AreaDensity {
   slug: string; name: string; bookable: boolean; zips: number;
@@ -159,7 +160,7 @@ export interface GrowthBoard {
     /** How many active subscriptions the order rests on. One is enough to move a town to the top. */
     total_customers?: number;
     /** `referenceBasis` says whether the minutes are timed stops or the estimate. */
-    parameters?: { referenceServiceMinutes: number; referenceTier: string; referenceBasis?: string };
+    parameters?: { referenceServiceMinutes: number; referenceTier: string; referenceBasis?: string; costPerHourCents?: number | null; costBasis?: string | null };
     areas: AreaDensity[];
   };
   waitlist?: {

@@ -143,10 +143,10 @@ export async function growthBoard(q: Queryable = db()) {
    * is added: the marginal cost of a stop in a city falls as that city fills, so the ranking is a
    * function of the book of business and not of anybody's opinion about target markets.
    *
-   * It is deliberately denominated in MINUTES OF DRIVING and not in dollars. Nobody has asked
-   * Josue what an hour of his time costs, so a margin here would be a number about a business
-   * nobody asked. `measured: false` on every money figure is the same discipline the rest of this
-   * file already keeps.
+   * It ranks on MINUTES OF DRIVING, which are facts through a model. The one money figure in it,
+   * `margin_per_visit`, prices those minutes at migration 036's assumed $70 hour and comes back
+   * `measured: false, assumed: true` with its basis — the same discipline the rest of this file
+   * keeps, with the assumption named instead of hidden.
    */
   const density = await routeDensity(q).catch(() => ({ measured: false, areas: [], note: 'density unavailable' }));
   const waitlist = await waitlistZips(q).catch(() => ({ measured: false, zips: [], note: 'density unavailable' }));

@@ -150,10 +150,10 @@ export default function AdminGrowthPage() {
               * costs falls as a city fills, so a city with twelve customers can be a better place
               * to find the thirteenth than an empty city half the distance away.
               *
-              * IT IS IN MINUTES, NOT DOLLARS, on purpose. Nobody has asked Josue what an hour of
-              * his time costs, so a margin here would be a number about his business that nobody
-              * asked him for. Driving minutes against the 15 minutes a one-dog scoop takes is
-              * enough to rank, and it is made only of facts.
+              * IT RANKS IN MINUTES, which are facts through a model. The one dollar column prices
+              * those minutes at an ASSUMED hour (migration 036), and the line under the heading
+              * says so with its basis — a margin shown without that would read as a figure from
+              * Josue's own books, which it is not.
               */}
             {board.where_next?.measured && board.where_next.areas.length > 0 && (
               <>
@@ -172,6 +172,13 @@ export default function AdminGrowthPage() {
                   <p className="mt-1 text-sm text-ink-500">
                     The visit length is an estimate for now. It switches to your real times once enough stops have been
                     timed with <strong>On my way</strong> and <strong>I'm here</strong> on the Today screen.
+                  </p>
+                )}
+                {board.where_next.areas[0]?.margin_per_visit.assumed && (
+                  <p className="mt-1 text-sm text-ink-500">
+                    <strong>After your time</strong> is what the next visit there earns once its minutes are paid for at{' '}
+                    ${((board.where_next.parameters?.costPerHourCents ?? 0) / 100).toFixed(0)} an hour.{' '}
+                    {board.where_next.areas[0].margin_per_visit.note}
                   </p>
                 )}
                 {board.where_next.geo_basis === 'polygon' && (
@@ -197,6 +204,7 @@ export default function AdminGrowthPage() {
                         <th className="px-4 py-3">Miles out</th>
                         <th className="px-4 py-3">Driving for one more</th>
                         <th className="px-4 py-3">Worth a route day at</th>
+                        {board.where_next.areas[0]?.margin_per_visit.assumed && <th className="px-4 py-3">After your time</th>}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-line">
@@ -214,6 +222,11 @@ export default function AdminGrowthPage() {
                               ? <span className="text-ink-400" title="More than a day holds, so this town only works alongside another one.">not on its own</span>
                               : `${a.customers_for_parity} customers`}
                           </td>
+                          {a.margin_per_visit.assumed && a.margin_per_visit.value !== null && (
+                            <td className="px-4 py-3 tabular-nums" title={a.margin_per_visit.note}>
+                              {a.margin_per_visit.value < 0 ? '−' : '+'}{money(Math.abs(a.margin_per_visit.value))}
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>
