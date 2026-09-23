@@ -185,6 +185,25 @@ const jsonLd = [
     image: `${SITE_URL}/brand/mark-512.png`,
     logo: `${SITE_URL}/brand/mark-512.png`,
     address: { '@type': 'PostalAddress', addressLocality: 'Ventura', addressRegion: 'CA', addressCountry: 'US' },
+    /**
+     * sameAs — THE ONE LINE THAT CONNECTS THIS PAGE TO THE THING AI SEARCH ACTUALLY CITES.
+     *
+     * Chen, Wang, Chen & Koudas (arXiv:2509.08919) measured the citation mix of AI answers against
+     * Google's: GPT cited EARNED media 72-92% of the time across three sectors and brand-owned
+     * 18-27%, where Google sits near 33-44% brand-owned. Their guidance for a niche player is to
+     * make the brand-owned surface machine-parseable and to be identifiable with the third-party
+     * entity that does get cited. For a local service that entity is the Google Business Profile.
+     *
+     * `sameAs` is the assertion that this page and that profile are one business. It costs one
+     * line. (Caveat kept honest: their sectors were automotive, consumer electronics and software,
+     * not local services — the direction was consistent across every engine, the magnitude here is
+     * nobody's measurement. R11 §C1.)
+     *
+     * It reads the SETTINGS ROW, not a literal, so it cannot drift from the link /reviews shows.
+     * `geo` is deliberately absent: the coordinate lives in `routing.%`, which is server-only on
+     * purpose, and Google already has it from the profile this now points at.
+     */
+    sameAs: [reviewSummary.profileUrl],
     areaServed: [
       { '@type': 'AdministrativeArea', name: 'Ventura County, CA' },
       { '@type': 'AdministrativeArea', name: 'Santa Barbara County, CA' },

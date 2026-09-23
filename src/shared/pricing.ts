@@ -146,7 +146,12 @@ export type BookingInput = {
   packageId: string;
   /** Tier ids of one-time services added to the first visit. */
   extraTierIds?: string[];
-  /** Other package ids in the same booking, for "when combined with" offers. */
+  /**
+   * Other monthly package ids in the same booking. CHARGED, and summed into `monthlyCents`.
+   *
+   * The name predates the behaviour: it was once only a hint for "when combined with" offers, and
+   * that is exactly what made it a leak. See the note in `quoteBooking`.
+   */
   withPackageIds?: string[];
 };
 
@@ -168,7 +173,7 @@ export type Quote = {
   discountCents: number;
   appliedOffers: { id: string; name: string; percent_off: number; cents: number; service_slug: string }[];
   flags: { priceIsDerived: boolean; containsFromPrice: boolean };
-} | { ok: false; reason: 'unknown_package' | 'extra_requires_quote' | 'unknown_extra' };
+} | { ok: false; reason: 'unknown_package' | 'extra_requires_quote' | 'unknown_extra' | 'duplicate_package' };
 
 export function offersFor(catalog: Catalog, serviceSlug: string, bookedServiceSlugs: string[]): Offer[] {
   return catalog.offers.filter((o) =>
@@ -182,12 +187,46 @@ export function quoteBooking(catalog: Catalog, input: BookingInput): Quote {
   const pkg = catalog.packages.find((p) => p.id === input.packageId);
   if (!pkg) return { ok: false, reason: 'unknown_package' };
   const tier = pkg.tier_id ? catalog.tiers.find((t) => t.id === pkg.tier_id) : undefined;
+  /**
+   * `withPackageIds` NAMES PACKAGES THAT ARE BEING BOUGHT, AND THEY ARE CHARGED FOR.
+   *
+   * It did not used to be. Until 2026-09-22 this list was resolved, its service slugs were put
+   * into `booked` so that offers requiring another service would match, and its PRICES WERE NEVER
+   * ADDED. `monthlyCents` was `pkg.monthly_price_cents` alone.
+   *
+   * That was a live revenue leak, reachable from the public endpoint — `api/booking.ts` forwards
+   * `with_package_ids` verbatim. Measured against the live catalog:
+   *
+   *     turf-weekly-small-area alone                 -> monthly $150.00, first charge $150.00
+   *     + with_package_ids:[scoop-weekly-1-dog]      -> monthly $150.00, first charge  $75.00
+   *
+   * The offer "Turf maintenance: first month half off with scooping" requires
+   * `weekly-pooper-scooper-service`, and merely CLAIMING it satisfied the requirement: $75 off,
+   * and the scooping was never billed — not in the first month and not in any month after.
+   *
+   * A parameter that unlocks a bundle discount without buying the bundle is worse than a missing
+   * feature, because the missing feature costs nothing and this cost money to anyone who found it.
+   * So every named package is now a recurring line of its own and `monthlyCents` is the sum.
+   *
+   * WHAT THIS IS NOT. It is not the multi-service BOOKING flow — `createBooking()` still writes a
+   * single `subscriptions` row, so the funnel does not yet offer a second monthly plan (that needs
+   * a row per service, a consent record that shows the real total under BPC §17602, and a
+   * reconciliation path for one Stripe subscription covering several of our rows). This function
+   * being honest is the prerequisite for that, not the thing itself, and `gates/bundle-price.mjs`
+   * holds the line until it exists.
+   */
   const others = (input.withPackageIds ?? []).map((id) => catalog.packages.find((p) => p.id === id)).filter(Boolean) as Package[];
+  if (others.length !== (input.withPackageIds ?? []).length) return { ok: false, reason: 'unknown_package' };
+  if (others.some((p) => p.id === pkg.id)) return { ok: false, reason: 'duplicate_package' };
   const booked = [pkg.service_slug, ...others.map((p) => p.service_slug)];
 
   const lines: QuoteLine[] = [{
     kind: 'package', label: pkg.name, cents: pkg.monthly_price_cents, recurring: true, ref: pkg.id,
   }];
+  for (const other of others) {
+    lines.push({ kind: 'package', label: other.name, cents: other.monthly_price_cents, recurring: true, ref: other.id });
+  }
+  const monthlyCents = pkg.monthly_price_cents + others.reduce((a, p) => a + p.monthly_price_cents, 0);
 
   let extrasCents = 0;
   for (const id of input.extraTierIds ?? []) {
@@ -216,8 +255,10 @@ export function quoteBooking(catalog: Catalog, input: BookingInput): Quote {
     ok: true,
     package: pkg,
     lines,
-    monthlyCents: pkg.monthly_price_cents,
-    firstChargeCents: pkg.monthly_price_cents - discountCents + extrasCents,
+    // The SUM of every recurring line, not the primary package alone. See the note on
+    // `withPackageIds` above for the leak this closes.
+    monthlyCents,
+    firstChargeCents: monthlyCents - discountCents + extrasCents,
     extrasCents,
     discountCents,
     appliedOffers: applied,

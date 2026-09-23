@@ -80,8 +80,42 @@ test('turf offer applies only when combined with scooping', () => {
   assert.ok(alone.ok && combined.ok);
   if (alone.ok && combined.ok) {
     assert.equal(alone.firstChargeCents, 15200);
-    assert.equal(combined.firstChargeCents, 7600);
+
+    /**
+     * THIS NUMBER USED TO BE 7600, AND THAT ASSERTION WAS PINNING A REVENUE LEAK.
+     *
+     * 7600 is half of the turf package and nothing else: the offer's 50% was applied, and the
+     * scooping package named in `withPackageIds` was never charged. The test agreed with the code,
+     * so neither could see it. Measured on the live catalog the same shape read: turf $150 alone,
+     * $75 combined — $75 off for naming a service the customer was not buying, reachable from the
+     * public endpoint because api/booking.ts forwards `with_package_ids` verbatim.
+     *
+     * The honest arithmetic, from this fixture: turf 15200 + scooping 8700 = 23900 a month, less
+     * 50% of the turf line (7600) on the first month = 16300. The discount is real, it is just
+     * earned now.
+     */
+    assert.equal(combined.monthlyCents, 15200 + 8700);
+    assert.equal(combined.discountCents, 7600);
+    assert.equal(combined.firstChargeCents, 16300);
+
+    // Adding a service must never lower the bill. This is the invariant the old number violated,
+    // stated directly so it cannot be re-broken by a plausible-looking edit to the total.
+    assert.ok(combined.firstChargeCents > alone.firstChargeCents);
+    assert.ok(combined.monthlyCents > alone.monthlyCents);
+
+    // Every recurring line has a package behind it, and they sum to the monthly.
+    const recurring = combined.lines.filter((l) => l.recurring);
+    assert.equal(recurring.length, 2);
+    assert.equal(recurring.reduce((t, l) => t + l.cents, 0), combined.monthlyCents);
   }
+
+  // The same package twice is a mistake, not a discount.
+  assert.deepEqual(quoteBooking(catalog, { packageId: 'pt', withPackageIds: ['pt'] }),
+    { ok: false, reason: 'duplicate_package' });
+  // An id that resolves to nothing must refuse, not silently drop — dropping it charges the
+  // customer less than the quote they were shown.
+  assert.deepEqual(quoteBooking(catalog, { packageId: 'pt', withPackageIds: ['nope'] }),
+    { ok: false, reason: 'unknown_package' });
 });
 
 test('an extra that needs a quote refuses the checkout instead of charging zero', () => {

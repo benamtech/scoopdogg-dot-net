@@ -101,6 +101,19 @@ export default function BookingFlow(props: Props) {
   const [tierId, setTierId] = useState('');        // a one-time job
   const [lastCleaned, setLastCleaned] = useState('');
   const [deepClean, setDeepClean] = useState('');
+  /**
+   * One-time jobs added to the FIRST visit. Tier ids, priced by the same quoteBooking() the
+   * server re-runs, so the browser cannot invent a total.
+   *
+   * WHY HERE AND NOT AFTER. P14 §A2 lever 3 said "add-on attach happens HERE, not after", and
+   * only the catch-up ever used it. The partitioned-pricing literature (Morwitz, Greenleaf &
+   * Johnson 1998, and the 2018 meta-analysis) is specific about the shape that works: itemising
+   * a secondary component raises the attention paid to it and raises demand — but it lowers
+   * recalled total cost, and perceived price COMPLEXITY lowers fairness perception. So the rule
+   * this UI follows is: itemise each addition, and never let the running total leave the screen.
+   * The sticky bar at the bottom of this component is that total, and it already existed.
+   */
+  const [addOns, setAddOns] = useState<string[]>([]);
   const [lane, setLane] = useState<Lane>('prepay');
   const [dates, setDates] = useState<DateOption[] | null>(null);
   const [startDate, setStartDate] = useState('');
@@ -203,7 +216,36 @@ export default function BookingFlow(props: Props) {
   const pkg = catalog.packages.find((p) => p.id === packageId);
   const oneTime = tierId ? quoteOneTime(catalog, tierId) : null;
   const deepTiers = useMemo(() => catalog.tiers.filter((t) => t.service_slug === DEEP_CLEAN && !t.requires_quote && t.price_cents), []);
-  const quote = pkg ? quoteBooking(catalog, { packageId: pkg.id, extraTierIds: deepClean ? [deepClean] : [] }) : null;
+  /**
+   * WHAT MAY BE ADDED: the cheapest genuinely-priced tier of every OTHER service.
+   *
+   * Four exclusions and each is a rule this project already holds elsewhere:
+   *   - the service being booked (it is not an addition to itself)
+   *   - `requires_quote` — there is no price to charge
+   *   - `price_is_from` — a floor is never a final number (gates/from-price-never-final.mjs)
+   *   - the catch-up tiers, which `covers_last_cleaned` marks and the question above owns
+   * Cheapest tier per service, so this is a list of services and not a list of 34 sizes. A
+   * customer who wants the larger size says so to Josue; offering four sizes of eight services
+   * at the price step is a configurator, not an offer.
+   */
+  const addOnOptions = useMemo(() => {
+    const byService = new Map<string, typeof catalog.tiers[number]>();
+    for (const t of catalog.tiers) {
+      if (t.service_slug === service) continue;
+      if (t.requires_quote || t.price_is_from || !t.price_cents) continue;
+      if (t.covers_last_cleaned?.length) continue;
+      const cur = byService.get(t.service_slug);
+      if (!cur || t.price_cents < (cur.price_cents ?? Infinity)) byService.set(t.service_slug, t);
+    }
+    return [...byService.values()].sort((a, b) => (a.price_cents ?? 0) - (b.price_cents ?? 0));
+  }, [service, catalog.tiers]);
+
+  /** Everything charged on the first invoice beyond the plan: the catch-up, then the additions. */
+  const extraTierIds = useMemo(
+    () => [...(deepClean ? [deepClean] : []), ...addOns],
+    [deepClean, addOns]);
+
+  const quote = pkg ? quoteBooking(catalog, { packageId: pkg.id, extraTierIds }) : null;
   const serviceInfo = props.services.find((s) => s.slug === service);
   const isOneTime = Boolean(tierId && !packageId);
   const firstCharge = isOneTime ? (oneTime?.ok ? oneTime.cents : null) : (quote && quote.ok ? quote.firstChargeCents : null);
@@ -298,7 +340,7 @@ export default function BookingFlow(props: Props) {
     try {
       const r = await fetch('/api/booking/price', {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ city, postal_code: zip, package_id: pkg?.id ?? '', tier_id: tierId, extra_tier_ids: deepClean ? [deepClean] : [] }),
+        body: JSON.stringify({ city, postal_code: zip, package_id: pkg?.id ?? '', tier_id: tierId, extra_tier_ids: extraTierIds }),
       });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || 'Could not load days');
@@ -342,7 +384,7 @@ export default function BookingFlow(props: Props) {
         body: JSON.stringify({
           address: address || `ZIP ${zip}`, city, postal_code: zip,
           package_id: pkg?.id ?? '', tier_id: tierId,
-          extra_tier_ids: deepClean ? [deepClean] : [], last_cleaned: lastCleaned,
+          extra_tier_ids: extraTierIds, last_cleaned: lastCleaned,
           lane: isOneTime ? 'prepay' : lane, session_id: idem.current,
           start_date: startDate, name, email, phone, gate_code: gate, access_notes: notes,
           source: document.referrer ? new URL(document.referrer).pathname : '/book',
@@ -533,6 +575,65 @@ export default function BookingFlow(props: Props) {
                   <p className="mt-2 font-serif text-h1 text-forest-900">{formatCents(oneTime.cents)}</p>
                   <p className="mt-1 text-base text-ink-500">{oneTime.tier.label} · one visit, paid when you book</p>
                 </div>
+              )}
+
+              {/*
+                ANYTHING ELSE WHILE HE IS THERE.
+                
+                The van is already in the street and the gate is already open, so a one-time job
+                added here costs Josue the work and none of the driving — which is the whole of
+                server/lib/density.ts's argument applied to a single visit rather than a route.
+                
+                It is offered, never pre-ticked, and every line shows its own price with the
+                running total in the bar below. The evidence for that shape: itemising a secondary
+                component raises attention to it and raises demand, but partitioned prices lower
+                recalled totals and price COMPLEXITY lowers perceived fairness (Morwitz, Greenleaf
+                & Johnson 1998; meta-analysis 2018). Itemise, and keep the total on screen.
+                
+                And NOT a monthly second plan. quoteBooking() prices those correctly now, but
+                createBooking() still writes one subscriptions row, so offering a second monthly
+                plan here would take money for something the system cannot deliver. R11 §F has the
+                design; this is the half that is true today.
+              */}
+              {!isOneTime && pkg && addOnOptions.length > 0 && (
+                <fieldset className="mt-8">
+                  <legend className="text-lg font-semibold text-forest-900">Anything else while he's there?</legend>
+                  <p className="mt-1 text-base text-ink-500">
+                    One-time jobs on your first visit. He is already at your gate, so there is no second trip.
+                  </p>
+                  <div className="mt-3 space-y-2">
+                    {addOnOptions.map((t) => {
+                      const svc = props.services.find((x) => x.slug === t.service_slug);
+                      const on = addOns.includes(t.id);
+                      return (
+                        <label key={t.id}
+                          className={`flex cursor-pointer items-center justify-between gap-4 rounded-lg border px-4 py-3 transition duration-fast ${on ? 'border-forest-600 bg-forest-50' : 'border-line-strong bg-paper hover:border-forest-400'}`}>
+                          <span className="flex min-w-0 items-center gap-3">
+                            <input
+                              type="checkbox"
+                              checked={on}
+                              onChange={() => setAddOns((a) => (a.includes(t.id) ? a.filter((x) => x !== t.id) : [...a, t.id]))}
+                              className="h-5 w-5 shrink-0 accent-forest-600"
+                            />
+                            <span className="min-w-0">
+                              <span className="block text-base font-medium text-forest-900">{svc?.name ?? t.service_slug}</span>
+                              <span className="block text-sm text-ink-500">{t.label}</span>
+                            </span>
+                          </span>
+                          <span className="shrink-0 text-base font-semibold text-forest-800">
+                            +{formatCents(t.price_cents ?? 0)}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {addOns.length > 0 && quote && quote.ok && (
+                    <p className="mt-3 text-base text-forest-900">
+                      <strong className="font-semibold">{formatCents(quote.extrasCents)}</strong> added to your first visit.
+                      Your monthly stays {formatCents(quote.monthlyCents)}.
+                    </p>
+                  )}
+                </fieldset>
               )}
 
               {/* Add-on attach happens HERE, not after (P14 §A2 lever 3). */}

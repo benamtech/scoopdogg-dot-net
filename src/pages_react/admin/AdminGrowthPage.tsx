@@ -96,6 +96,14 @@ export default function AdminGrowthPage() {
                   {board.where_next.parameters?.referenceServiceMinutes ?? 15} minutes a weekly one-dog scoop takes.
                   Cheapest first. This re-orders itself as you sign people up.
                 </p>
+                {/*
+                  THE BASIS, NOT JUST THE ANSWER. One customer is enough to move their town to the
+                  top — correct arithmetic, thin evidence. Printing the order without the count is
+                  how a single test booking becomes a market judgement.
+                */}
+                {board.where_next.note && (
+                  <p className="mt-2 rounded-md bg-amber-100 px-4 py-2.5 text-sm text-amber-700">{board.where_next.note}</p>
+                )}
                 <div className="mt-4 overflow-x-auto rounded-lg border border-line bg-paper">
                   <table className="w-full text-left text-sm">
                     <thead className="border-b border-line bg-cream text-ink-500">

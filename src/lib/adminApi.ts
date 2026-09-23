@@ -141,6 +141,8 @@ export interface GrowthBoard {
    */
   where_next?: {
     measured: boolean; note?: string; day_capacity?: number;
+    /** How many active subscriptions the order rests on. One is enough to move a town to the top. */
+    total_customers?: number;
     parameters?: { referenceServiceMinutes: number; referenceTier: string };
     areas: AreaDensity[];
   };

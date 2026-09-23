@@ -1,5 +1,5 @@
 {
-  "pulled_at": "2026-09-22T20:23:57.078Z",
+  "pulled_at": "2026-09-23T01:35:13.754Z",
   "source": "database",
   "services": [
     {
@@ -2331,6 +2331,7 @@
     "schedule.day_capacity": 20,
     "booking.start_window_days": 14,
     "booking.card_required": true,
-    "billing.monthly_factor": "52/12"
+    "billing.monthly_factor": "52/12",
+    "reviews.google_profile_url": "https://www.google.com/maps/place/?q=place_id:ChIJx2f0lVCt6YARL_qslmyUQKM"
   }
 }

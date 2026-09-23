@@ -203,6 +203,8 @@ export async function routeDensity(q: Queryable = db()): Promise<{
   note?: string;
   parameters?: RouteParameters;
   day_capacity?: number;
+  /** How many active subscriptions the whole ranking rests on. See `note`. */
+  total_customers?: number;
   areas: AreaDensity[];
 }> {
   if (!(await geocoded(q))) {
@@ -261,7 +263,31 @@ export async function routeDensity(q: Queryable = db()): Promise<{
     };
   }).sort((a, b) => a.marginal_drive_minutes - b.marginal_drive_minutes);
 
-  return { measured: true, parameters: p, day_capacity: cap, areas };
+  /**
+   * HOW MANY CUSTOMERS THE ORDER RESTS ON, said out loud.
+   *
+   * The arithmetic is right at any count, but its MEANING is not. With one customer in the book,
+   * that one row moves its town to the top — correctly, because the second stop in a town you
+   * already drive to genuinely is the cheapest next customer. A reader who does not know the
+   * count will read "Santa Barbara first" as a market judgement instead of as one subscription.
+   *
+   * Measured 2026-09-22: exactly one active subscription exists, in Santa Barbara 93101, and it
+   * belongs to a row named BEN PALASKAS — a test booking. It put Santa Barbara at the top of the
+   * board at 13 minutes against Oak View's 36. The board was not wrong; the input was not a
+   * customer. The query already excludes `DEMO—%` names and this row is not marked that way, so
+   * the honest move is to report the count rather than to invent a filter for test rows nobody
+   * has agreed the shape of.
+   */
+  const total = areas.reduce((t, a) => t + a.customers_now, 0);
+  const note = total === 0
+    ? 'No customers yet, so this is purely distance and area — the order will change as people sign up.'
+    : total <= 3
+      ? `This order rests on ${total} active ${total === 1 ? 'subscription' : 'subscriptions'}. `
+        + 'One customer is enough to move their town to the top, which is correct arithmetic and a '
+        + 'thin basis for a decision. Check the Customers column before acting on the order.'
+      : undefined;
+
+  return { measured: true, parameters: p, day_capacity: cap, total_customers: total, areas, ...(note ? { note } : {}) };
 }
 
 /**
