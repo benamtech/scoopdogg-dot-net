@@ -34,48 +34,72 @@ export interface Props {
   caption?: string;
   /** A short label for the control, so two videos on a page do not both say "background video". */
   label?: string;
+  /**
+   * The video's own pixel size. Given, the band takes the video's shape and is never drawn
+   * wider than `width` — so it is never upscaled. Omitted, it is a full-width 16:9 band.
+   *
+   * Why this exists: before-after.mp4 is a 480px-wide portrait clip, and as a full-width 16:9
+   * band on a desktop it was cropped to a strip and blown up ~2.5x, which read as low
+   * resolution. A video's size is a fact about the file; the layout should
+   * follow it rather than a fixed aspect.
+   */
+  width?: number;
+  height?: number;
   class?: string;
 }
-const { src, posterImage, caption, label = 'animation', class: extra = '' } = Astro.props;
+const { src, posterImage, caption, label = 'animation', width, height, class: extra = '' } = Astro.props;
+const sized = !!(width && height);
 const uid = `mb-${Math.random().toString(36).slice(2, 8)}`;
 ---
-<figure class={`relative overflow-hidden rounded-xl bg-forest-900 ${extra}`} data-media-band id={uid}>
-  {posterImage && (
-    <Image
-      data-media-poster
-      src={posterImage}
-      alt=""
-      aria-hidden="true"
-      widths={[390, 640, 960]}
-      sizes="(min-width: 1024px) 900px, 100vw"
-      format="webp"
-      quality={62}
-      loading="lazy"
-      decoding="async"
-      class="absolute inset-0 h-full w-full object-cover transition-opacity duration-500"
-    />
-  )}
-  <video
-    data-media-player
-    data-src={src}
-    muted
-    loop
-    playsinline
-    preload="none"
-    aria-label={caption ?? label}
-    class="relative aspect-video w-full object-cover"
-  ></video>
+<figure
+  class={`relative overflow-hidden rounded-xl bg-forest-900 ${sized ? 'mx-auto w-full' : ''} ${extra}`}
+  style={sized ? `max-width:${width}px` : undefined}
+  data-media-band
+  id={uid}
+>
+  {/* The button belongs to the VIDEO, not the figure: pinned to the figure's bottom it sat on
+       the caption, which at a native 480px width it covered. */}
+  <div class="relative">
+    {posterImage && (
+      <Image
+        data-media-poster
+        src={posterImage}
+        alt=""
+        aria-hidden="true"
+        widths={[390, 640, 960]}
+        sizes={sized ? `(min-width: ${width}px) ${width}px, 100vw` : '(min-width: 1024px) 900px, 100vw'}
+        format="webp"
+        quality={62}
+        loading="lazy"
+        decoding="async"
+        class="absolute inset-0 h-full w-full object-cover transition-opacity duration-500"
+      />
+    )}
+    <video
+      data-media-player
+      data-src={src}
+      muted
+      loop
+      playsinline
+      preload="none"
+      aria-label={caption ?? label}
+      class={`relative block w-full object-cover ${sized ? '' : 'aspect-video'}`}
+      style={sized ? `aspect-ratio:${width} / ${height}` : undefined}
+      width={width}
+      height={height}
+    ></video>
 
-  <button
-    type="button"
-    data-media-toggle
-    hidden
-    class="absolute bottom-3 right-3 z-10 inline-flex items-center gap-2 rounded-full border border-white/40 bg-forest-900/70 px-3.5 py-1.5 text-sm font-medium text-white backdrop-blur transition hover:bg-forest-900/90 focus-visible:shadow-focus"
-  >
-    <svg data-icon-pause width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
-    <svg data-icon-play class="hidden" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
-    <span data-media-toggle-label>Pause {label}</span>
-  </button>
+    <button
+      type="button"
+      data-media-toggle
+      hidden
+      class="absolute bottom-3 right-3 z-10 inline-flex items-center gap-2 rounded-full border border-white/40 bg-forest-900/70 px-3.5 py-1.5 text-sm font-medium text-white backdrop-blur transition hover:bg-forest-900/90 focus-visible:shadow-focus"
+    >
+      <svg data-icon-pause width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
+      <svg data-icon-play class="hidden" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+      <span data-media-toggle-label>Pause {label}</span>
+    </button>
+  </div>
 
   {caption && <figcaption class="bg-forest-900 px-4 py-3 text-sm text-forest-100">{caption}</figcaption>}
 </figure>
