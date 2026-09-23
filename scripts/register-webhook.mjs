@@ -42,6 +42,9 @@ const EVENTS = [
   'customer.subscription.trial_will_end',
   'account.updated',
   'payment_method.attached',
+  // Stripe's current name for a network reissue, and the one it actually delivers. Asking for
+  // either registers both; handling only the old one loses every card update (see cards.ts).
+  'payment_method.card_automatically_updated',
   'payment_method.automatically_updated',
   'payment_method.updated',
   'payment_method.detached',
@@ -73,8 +76,17 @@ const existing = await stripe('webhook_endpoints?limit=100');
 if (existing.status !== 200) { console.error(`  cannot list endpoints: ${existing.status} ${existing.json?.error?.message ?? ''}`); process.exit(1); }
 const match = (existing.json.data ?? []).find((e) => e.url === url);
 console.log(`  mode ${mode}  ${existing.json.data?.length ?? 0} endpoint(s) on the platform`);
+/**
+ * `application` IS THE CONNECT MARKER, AND THIS HAD IT BACKWARDS. An endpoint created with
+ * `connect: true` is associated with the platform's Connect application, so Stripe returns
+ * `application: "ca_…"` on it; an account-level endpoint returns null. This line printed
+ * `connect=true` for exactly the endpoints that were NOT Connect endpoints — including AMTECH's
+ * own provisioning rail — which is the reading that would let somebody register a useless
+ * endpoint and believe it was fine. Measured against the live API on 2026-09-23.
+ */
+const isConnect = (e) => typeof e.application === 'string' && e.application.startsWith('ca_');
 for (const e of existing.json.data ?? []) {
-  console.log(`    ${e.status.padEnd(8)} connect=${String(e.application === null && e.metadata?.connect !== 'false')}  ${e.url}  (${e.enabled_events.length} events)`);
+  console.log(`    ${e.status.padEnd(8)} connect=${String(isConnect(e))}  ${e.url}  (${e.enabled_events.length} events)`);
 }
 
 if (match) {

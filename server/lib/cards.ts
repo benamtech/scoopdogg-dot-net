@@ -45,15 +45,22 @@ export type Queryable = { query: (text: string, values?: unknown[]) => Promise<{
  * agree. They stopped agreeing the moment a handler was added. `gates/card-on-file.mjs` reads
  * this constant and pins both to it, so a writer can no longer land without its trigger.
  *
- *   attached               a card was put on file. THE ROW IS BORN HERE.
- *   automatically_updated  the card network reissued it — new number, new expiry, same customer.
- *                          This is the event that keeps `exp_year` from going stale, and it is
- *                          the reason the expiry warning can be trusted at all.
- *   updated                a detail changed (billing address, nickname). Cheap to fold in.
- *   detached               the card came off. `detached_at` is what takes it out of the sweep.
+ *   attached                    a card was put on file. THE ROW IS BORN HERE.
+ *   card_automatically_updated  the card network reissued it — new number, new expiry, same
+ *                               customer. THIS is the name Stripe actually sends; subscribing to
+ *                               `automatically_updated` makes Stripe register BOTH, which is how
+ *                               the twelfth event appeared on an endpoint asked for eleven, and
+ *                               how we found we were not handling the one that matters. It is the
+ *                               event that keeps `exp_year` from going stale, and therefore the
+ *                               reason the expiry warning can be trusted at all.
+ *   automatically_updated       the older name. Kept: a webhook that only handles the current
+ *                               spelling breaks silently the day an old endpoint replays.
+ *   updated                     a detail changed (billing address, nickname). Cheap to fold in.
+ *   detached                    the card came off. `detached_at` takes it out of the sweep.
  */
 export const CARD_EVENTS = [
   'payment_method.attached',
+  'payment_method.card_automatically_updated',
   'payment_method.automatically_updated',
   'payment_method.updated',
   'payment_method.detached',

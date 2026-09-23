@@ -7,7 +7,7 @@
  */
 import type Stripe from 'stripe';
 import { db } from '../server/lib/db.js';
-import { stripeFor, probeAccount, type StripeMode } from '../server/lib/stripe.js';
+import { stripeFor, probeAccount, publishPricesWhenReady, type StripeMode } from '../server/lib/stripe.js';
 import { completeBooking } from '../server/lib/booking.js';
 import { appendEvent } from '../server/lib/events.js';
 import { sendPaymentFailed } from '../server/lib/comms.js';
@@ -87,6 +87,15 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     if (event.type === 'account.updated') {
       const fresh = await probeAccount(mode).catch(() => null);
       console.log(`[stripe-webhook] account.updated ${event.account ?? ''} -> card_payments=${fresh?.card_payments ?? 'unread'} ready=${fresh?.ready ?? 'unread'}`);
+      // THE MOMENT THE ACCOUNT CAN TAKE A CARD, IT HAS PRICES. Before this, finishing Stripe
+      // onboarding left the site live, pointed at a real account, and unable to take a booking
+      // because no Price existed on it — and the only thing that fixed that was a button
+      // somebody had to remember. Idempotent, and it does nothing until Stripe says active.
+      const pub = await publishPricesWhenReady(mode, 'webhook:account.updated').catch((e) => {
+        safeError('webhook:publish-prices', e);
+        return null;
+      });
+      if (pub) console.log(`[stripe-webhook] prices: ${pub.attempted ? `${pub.created} created` : `skipped — ${pub.reason}`}`);
     }
 
     // LANE B, THREE DAYS OUT. Stripe sends this before it charges a trialing subscription. We

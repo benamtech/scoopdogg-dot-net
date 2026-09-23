@@ -206,6 +206,72 @@ export async function publishAllPrices(mode: StripeMode) {
   return out;
 }
 
+/**
+ * Publish the price list to the connected account as soon as that account can take a card —
+ * and never before, never twice, and never by anybody remembering to.
+ *
+ * THE GAP THIS CLOSES, measured 2026-09-23: `stripe_prices` held 33 rows and **every one was
+ * test mode**. Zero live prices. The live `stripe_connection` row had no account at all, so that
+ * was correct — but the moment Josue finishes Stripe's hosted onboarding, the site is live,
+ * pointed at his account, and **cannot take a booking**, because `startSubscription()` needs a
+ * Price on that account and there would be none. The only thing that published them was a button
+ * on the admin Payments screen, which works exactly as long as somebody remembers it exists.
+ *
+ * That made "connect your Stripe account" a two-step job where only the first step is written
+ * down anywhere, and the second step is invisible until a customer hits it.
+ *
+ * TWO TRIGGERS, ON PURPOSE. Stripe's `account.updated` webhook calls this, and so does opening
+ * the admin Payments screen — which is where Josue lands when hosted onboarding returns him. One
+ * of them is enough; having both means the site does not depend on a webhook being registered,
+ * which is the kind of single point this project has already been caught by.
+ *
+ * IT CANNOT PUBLISH THE WRONG THING. `priceForPackage()` is idempotent three ways — our own
+ * `stripe_prices` row, then Stripe's `lookup_key`, then an idempotency key — and it throws rather
+ * than return a Price whose `unit_amount` disagrees with the package. This adds one guard in
+ * front of all that: nothing is attempted until Stripe itself says `card_payments` is active, so
+ * a half-finished onboarding does not scatter Prices across an account that cannot charge.
+ */
+export type PricePublishResult = {
+  attempted: boolean;
+  created: number;
+  already: number;
+  reason: string | null;
+};
+
+export async function publishPricesWhenReady(mode: StripeMode, by = 'system'): Promise<PricePublishResult> {
+  const none = (reason: string): PricePublishResult => ({ attempted: false, created: 0, already: 0, reason });
+
+  const conn = await connection(mode);
+  if (!conn?.account_id) return none(`no ${mode} account is connected yet`);
+
+  const { rows: rev } = await db().query(
+    `select revoked_at from stripe_connection where livemode = $1`, [mode === 'live']);
+  if (rev[0]?.revoked_at) return none('the connection is revoked');
+
+  // ASK STRIPE, do not trust the stored status. P18 §1.3: readiness is read from the API every
+  // time, because an account that quietly stops paying out is the worst silent failure here.
+  const probe = await probeAccount(mode).catch(() => null);
+  if (!probe?.ready) return none(`card_payments is ${probe?.card_payments ?? 'unread'}, not active`);
+
+  const { rows: [gap] } = await db().query(
+    `select count(*)::int as missing from packages p
+      where p.status = 'active'
+        and not exists (
+          select 1 from stripe_prices sp
+           where sp.package_id = p.id and sp.version = p.version
+             and sp.livemode = $1 and sp.account_id = $2)`,
+    [mode === 'live', conn.account_id]);
+  const { rows: [have] } = await db().query(
+    `select count(*)::int as n from stripe_prices where livemode = $1 and account_id = $2`,
+    [mode === 'live', conn.account_id]);
+  if (gap.missing === 0) return { attempted: false, created: 0, already: have.n, reason: 'every active package already has a price' };
+
+  const published = await publishAllPrices(mode);
+  const created = published.filter((r) => (r as { created?: boolean }).created).length;
+  console.log(`[stripe] published ${created} ${mode} price(s) for ${conn.account_id} (trigger: ${by})`);
+  return { attempted: true, created, already: published.length - created, reason: null };
+}
+
 /** A percent-off coupon for an offer, once, on the connected account, limited to products. */
 export async function couponForOffer(mode: StripeMode, offer: { id: string; name: string; value: number }, productIds: string[]) {
   const { stripe, account } = await resolve(mode);

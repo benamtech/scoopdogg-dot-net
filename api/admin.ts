@@ -13,7 +13,7 @@ import { expireDuePauses } from '../server/lib/account.js';
 import { demoMode, demoStatus } from '../server/lib/notify.js';
 import { sendJson, readJsonBody, safeError, type ApiRequest, type ApiResponse } from '../server/lib/http.js';
 import { startLogin, verifyLogin, getSession, endSession, rateLimit, isOverLimit, type AdminSession } from '../server/lib/admin-auth.js';
-import { probeAccount, createConnectedAccount, onboardingLink, publishAllPrices, connection, requirementsOf, disconnect, reconnect, type StripeMode } from '../server/lib/stripe.js';
+import { probeAccount, createConnectedAccount, onboardingLink, publishAllPrices, publishPricesWhenReady, connection, requirementsOf, disconnect, reconnect, type StripeMode } from '../server/lib/stripe.js';
 import { checklist, setRouteDays, setOwnerSetting, setAreaBookable, confirmPrices } from '../server/lib/onboarding.js';
 import { growthBoard, unfinished } from '../server/lib/growth.js';
 import { createInvite, customerList, InviteError } from '../server/lib/invites.js';
@@ -239,6 +239,20 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     // read from Stripe with its age rather than trusted from a stored boolean.
     if (path === 'payments') {
       const modes: StripeMode[] = ['live', 'test'];
+      /**
+       * PRICES, PUBLISHED ON READ. Stripe's hosted onboarding returns Josue to this screen, so
+       * this is the first thing that runs after he finishes connecting — and it is what stops
+       * "connect your account" being a two-step job where the second step is a button nobody
+       * mentions. Idempotent, does nothing until Stripe says card_payments is active, and never
+       * takes the screen down: a Stripe outage must not stop the owner reading his own status.
+       */
+      const published: Record<string, unknown> = {};
+      for (const m of modes) {
+        published[m] = await publishPricesWhenReady(m, 'admin:payments').catch((e) => {
+          safeError(`admin:payments:publish:${m}`, e);
+          return { attempted: false, created: 0, already: 0, reason: 'publish failed — see logs' };
+        });
+      }
       const status: Record<string, unknown> = {};
       for (const m of modes) {
         const conn = await connection(m).catch(() => null);
@@ -263,7 +277,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
                 exists(select 1 from stripe_prices sp where sp.package_id = p.id and sp.version = p.version and sp.livemode = false) as published_test,
                 exists(select 1 from stripe_prices sp where sp.package_id = p.id and sp.version = p.version and sp.livemode = true) as published_live
            from packages p where p.status = 'active' order by p.sort_order`);
-      return sendJson(res, 200, { status, packages });
+      return sendJson(res, 200, { status, packages, published });
     }
     if (path === 'payments/onboard' && req.method === 'POST') {
       const body = await readJsonBody(req);

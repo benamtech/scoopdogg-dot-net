@@ -22,6 +22,7 @@
     "gates:lighthouse": "node gates/lighthouse.mjs",
     "gates:demo": "node gates/demo-banner-on-pages.mjs && node gates/demo-mode-no-leak.mjs",
     "gates:deployed": "node gates/deployed.mjs",
+    "gates:promotion": "node gates/promotion-ready.mjs",
     "gates:SENDS-REAL-EMAIL": "node gates/demo-negative-control.mjs"
   },
   "dependencies": {
