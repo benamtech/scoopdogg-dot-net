@@ -34,6 +34,7 @@ import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { chromium } from 'playwright';
+import { loadEnv } from '../scripts/_env.mjs';
 
 const DIST = 'dist';
 const PHONE = { width: 390, height: 844 };
@@ -64,12 +65,35 @@ const server = createServer(async (req, res) => {
   res.setHeader('Content-Type', TYPES[path.extname(file)] ?? 'application/octet-stream');
   res.end(await readFile(file));
 });
-await new Promise((r) => server.listen(0, '127.0.0.1', r));
-const BASE = `http://127.0.0.1:${server.address().port}`;
+/**
+ * `node gates/mobile-nav.mjs <deployment-url>` walks a DEPLOYMENT instead of dist/. The two
+ * hotfixes this gate exists for were found on production, not in a build folder, so the version
+ * of this check that matters most is the one run against what Vercel actually serves. Behind
+ * Vercel Authentication the preview token rides only requests to the deployment's own origin —
+ * set globally it would also hit the font CDN, whose CORS preflight rejects it and looks exactly
+ * like a page defect (the same reason gates/admin-browser.mjs routes it this way).
+ */
+loadEnv();
+const REMOTE = (process.argv[2] || '').replace(/\/$/, '');
+if (!REMOTE) await new Promise((r) => server.listen(0, '127.0.0.1', r));
+const BASE = REMOTE || `http://127.0.0.1:${server.address().port}`;
+console.log(`  walking ${REMOTE ? `the deployment ${REMOTE}` : 'dist/ on a local server'}`);
+const token = process.env.VERCEL_OIDC_TOKEN;
 
 const browser = await chromium.launch();
+const newPage = async (opts) => {
+  const pg = await browser.newPage(opts);
+  if (REMOTE && token) {
+    const origin = new URL(REMOTE).origin;
+    await pg.route('**/*', (route) => {
+      const u = route.request().url();
+      route.continue(u.startsWith(origin) ? { headers: { ...route.request().headers(), 'x-vercel-trusted-oidc-idp-token': token } } : {});
+    });
+  }
+  return pg;
+};
 try {
-  const page = await browser.newPage({ viewport: PHONE });
+  const page = await newPage({ viewport: PHONE });
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e.message ?? e)));
   await page.goto(`${BASE}/`, { waitUntil: 'load' });
@@ -165,7 +189,7 @@ try {
   console.log('\nnegative controls');
   check(await page.locator('[data-menu-toggle-nonexistent]').count() === 0,
     'a made-up attribute selector matches nothing', 'so the counts above are real');
-  const wide = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  const wide = await newPage({ viewport: { width: 1280, height: 900 } });
   await wide.goto(`${BASE}/`, { waitUntil: 'load' });
   check(await wide.locator('[data-menu-toggle]').isVisible() === false,
     'the menu button is hidden on a desktop', 'the viewport is actually being applied');

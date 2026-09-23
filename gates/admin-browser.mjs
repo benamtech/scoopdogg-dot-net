@@ -24,6 +24,11 @@ import pg from 'pg';
 import { createHmac, randomInt } from 'node:crypto';
 import { readFileSync, mkdirSync } from 'node:fs';
 
+import { loadEnv } from '../scripts/_env.mjs';
+// The same loader every other gate uses, so this runs on its own as well as under
+// `vercel env run`. It fills only what the environment does not already carry, and it reads the
+// preview token from .env.oidc.local (see scripts/_env.mjs) — never printed, header only.
+loadEnv();
 const base = (process.argv[2] || '').replace(/\/$/, '');
 if (!base) { console.error('usage: admin-browser.mjs <deployment-url>'); process.exit(1); }
 
@@ -148,6 +153,14 @@ const screens = [
   ['/admin/messages',                 [/AMTECH SITE TEST/],                        'messages list'],
   [`/admin/leads/${probeLead?.id}`,   [/AMTECH SITE TEST/, new RegExp(leadEmail ? leadEmail.replace(/[.+]/g, '\\$&') : 'never-matches')], 'lead detail'],
   [`/admin/messages/${firstMessage}`, [/AMTECH SITE TEST/, /Seeded by gates\/admin-browser\.mjs/], 'message detail'],
+  // The four screens elevation-2026-09-16 changed, each with a needle that only an authenticated
+  // read can produce. Every server feature on that branch shipped first with NO screen reading it,
+  // so the screens are checked here in a browser, signed in — not assumed from a green typecheck.
+  ['/admin/today',    [/No stop has been timed yet|stops? timed so far/],                      'today — the stop clock'],
+  ['/admin/growth',   [/Where the next customer should come from/,
+                       /Where visitors came from|left out of these numbers/],               'growth — channels and our own visits'],
+  ['/admin/payments', [/Live payments/, /Monthly plans/],                                     'payments'],
+  ['/admin/team',     [/\(you\)/, new RegExp(email.replace(/[.+]/g, '\\$&'))],              'team'],
 ];
 
 async function visit(context, route, shot) {

@@ -68,6 +68,22 @@ export function loadEnv({ root = REPO_ROOT } = {}) {
 
   // The brain's .env, two directories up from CLIENT-SITES/<repo>. It holds the real
   // sending credential; the client repo's copy is a placeholder.
+  /**
+   * A FRESHER PREVIEW TOKEN, AND ONLY THAT. `VERCEL_OIDC_TOKEN` is what lets
+   * scripts/walk-preview.mjs through Vercel Authentication, and it expires within hours. The way
+   * to refresh it is `vercel env pull` — but pulled over `.env.local` it would REPLACE the file
+   * with the Development scope, and `STRIPE_SECRET_KEY_LIVE` exists only in Production, so the
+   * live key would vanish from this machine without a word. So the token is pulled to its own
+   * file, and this reads that one variable from it and nothing else:
+   *
+   *   npx vercel env pull .env.oidc.local --yes --scope benamtechs-projects
+   */
+  const oidc = path.join(root, '.env.oidc.local');
+  if (existsSync(oidc)) {
+    const t = parse(oidc).get('VERCEL_OIDC_TOKEN');
+    if (t) { process.env.VERCEL_OIDC_TOKEN = t; receipt.files.push('.env.oidc.local (VERCEL_OIDC_TOKEN only)'); }
+  }
+
   const brain = path.resolve(root, '..', '..', '.env');
   if (existsSync(brain)) {
     const vals = parse(brain);
