@@ -124,7 +124,21 @@ console.log('\nB. the real areas, the real rows');
      * city its own top spot to Oak View, not far enough to look absurd on the board. That is the
      * more dangerous version of the fault, and it is what this asserts.
      */
+    /**
+     * REPRODUCE THE PRE-032 WORLD, WHATEVER THE DATABASE'S HISTORY. The first version of this
+     * check simply read the board, which only shows the bug while 032 is unapplied — so the day
+     * 032 was applied to the live database the check went red, not because the fix broke but
+     * because the "before" it wanted no longer existed there. A gate that can only prove a fix on
+     * a database that has not received it has a shelf life. So if 032 is present, its population
+     * column is renamed out of sight INSIDE THIS TRANSACTION, the board is read on the polygon, and
+     * the name is put back — all of it rolled back at the end either way.
+     */
+    const had032 = await populatedCentres(c);
+    if (had032) await c.query(`alter table area_postal_codes rename column populated_lat to populated_lat_hidden_by_gate`);
     const before032 = await routeDensity(c);
+    if (had032) await c.query(`alter table area_postal_codes rename column populated_lat_hidden_by_gate to populated_lat`);
+    check(before032.geo_basis === 'polygon', 'the pre-032 board was really read on the polygon',
+      `geo_basis=${before032.geo_basis}${had032 ? ' — 032 is applied here, so it was hidden for this read' : ''}`);
     const ventura031 = before032.areas.find((a) => a.slug === 'ventura');
     const nearest031 = before032.areas.reduce((a, b) => (a.depot_miles < b.depot_miles ? a : b));
     const { rows: [z93001] } = await c.query(

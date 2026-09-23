@@ -71,6 +71,33 @@ try {
     check(n === 1, `${table}.${column} exists`, n === 1 ? '' : why);
   }
 
+  /**
+   * PROMOTION IS A FAST-FORWARD, OR IT IS A MERGE SOMEBODY HAS TO RESOLVE ON THE DAY.
+   *
+   * On 2026-09-23 `main` carried two hotfixes to src/components/Nav.tsx that this branch lacked,
+   * and the branch had deleted that file — a modify/delete conflict waiting for whoever pressed the
+   * button. It was merged in and resolved then, with the replacement proven on the preview. This
+   * keeps it true: if `main` takes another hotfix, this goes red before promotion rather than
+   * during it. It asks git, so it is a local check; a hosted build has no history to ask.
+   */
+  const { execFileSync } = await import('node:child_process');
+  let ff = null, why = '';
+  try {
+    execFileSync('git', ['fetch', '-q', 'origin', 'main'], { stdio: 'ignore', timeout: 60000 });
+    execFileSync('git', ['merge-base', '--is-ancestor', 'origin/main', 'HEAD'], { stdio: 'ignore' });
+    ff = true;
+  } catch (e) {
+    ff = e?.status === 1 ? false : null;
+    why = e?.status === 1 ? '' : String(e?.message ?? e).split('\n')[0];
+  }
+  if (ff === null) {
+    no('promoting is a fast-forward from main', `could not ask git: ${why}`);
+  } else {
+    const behind = ff ? '' : execFileSync('git', ['log', '--oneline', 'HEAD..origin/main'], { encoding: 'utf8' }).trim().split('\n').join('; ');
+    check(ff, 'promoting is a fast-forward from main — nothing to resolve on the day',
+      ff ? 'origin/main is an ancestor of this branch' : `main has commits this branch lacks: ${behind} — merge main in and re-walk the preview`);
+  }
+
   // ---- B. money: what a customer meets on the day it goes live ------------------------------
   console.log('\nB. the money path');
   const conn = await one(`select account_id, card_payments_status, revoked_at from stripe_connection where livemode = true`);
