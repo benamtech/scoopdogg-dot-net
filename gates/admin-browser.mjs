@@ -158,7 +158,9 @@ const screens = [
   // so the screens are checked here in a browser, signed in — not assumed from a green typecheck.
   ['/admin/today',    [/No stop has been timed yet|stops? timed so far/],                      'today — the stop clock'],
   ['/admin/growth',   [/Where the next customer should come from/,
-                       /Where visitors came from|left out of these numbers/],               'growth — channels and our own visits'],
+                       /Where visitors came from|left out of these numbers/,
+                       // Migration 036: the money column, and the sentence that calls it an assumption.
+                       /After your time/, /An assumption, not a figure from your books/],  'growth — channels, our own visits, the assumed hour'],
   ['/admin/payments', [/Live payments/, /Monthly plans/],                                     'payments'],
   ['/admin/team',     [/\(you\)/, new RegExp(email.replace(/[.+]/g, '\\$&'))],              'team'],
 ];

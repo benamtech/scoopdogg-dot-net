@@ -66,8 +66,12 @@ const TABLES = ['customers', 'properties', 'subscriptions', 'visits', 'visit_pho
 
 const db = new pg.Client({ connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL, ssl: { rejectUnauthorized: true } });
 await db.connect();
-const counts = async () => Object.fromEntries(await Promise.all(TABLES.map(async (t) =>
-  [t, (await db.query(`select count(*)::int n from ${t}`)).rows[0].n])));
+// One client, so one query at a time.
+const counts = async () => {
+  const out = {};
+  for (const t of TABLES) out[t] = (await db.query(`select count(*)::int n from ${t}`)).rows[0].n;
+  return out;
+};
 
 const run = randomBytes(3).toString('hex');
 const before = await counts();
