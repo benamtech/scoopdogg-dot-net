@@ -1,5 +1,5 @@
 {
-  "pulled_at": "2026-09-23T01:35:13.754Z",
+  "pulled_at": "2026-09-23T19:50:33.365Z",
   "source": "database",
   "services": [
     {
@@ -2332,6 +2332,9 @@
     "booking.start_window_days": 14,
     "booking.card_required": true,
     "billing.monthly_factor": "52/12",
-    "reviews.google_profile_url": "https://www.google.com/maps/place/?q=place_id:ChIJx2f0lVCt6YARL_qslmyUQKM"
+    "reviews.google_profile_url": "https://www.google.com/maps/place/?q=place_id:ChIJx2f0lVCt6YARL_qslmyUQKM",
+    "reviews.google_count": 42,
+    "reviews.google_rating": 5,
+    "reviews.google_checked_on": "2026-09-23"
   }
 }
