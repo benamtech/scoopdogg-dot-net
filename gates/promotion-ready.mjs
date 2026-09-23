@@ -104,6 +104,12 @@ try {
     "Stripe's account.updated publishes the prices", 'trigger 1');
   check(/publishPricesWhenReady\(m, 'admin:payments'\)/.test(adminTs),
     'and so does opening the Payments screen, which is where onboarding returns him', 'trigger 2 — not dependent on a webhook');
+  const paymentsTsx = readFileSync('src/pages_react/admin/AdminPaymentsPage.tsx', 'utf8');
+  check(/data\?\.published/.test(paymentsTsx), 'the Payments screen tells him his prices went up',
+    'silence after connecting would read as "something is left to do"');
+  const pubRoute = adminTs.slice(adminTs.indexOf("path === 'payments/publish'"), adminTs.indexOf("path === 'payments/publish'") + 900);
+  check(/probeAccount\(mode\)/.test(pubRoute) && /409/.test(pubRoute),
+    'and the manual re-publish refuses an account that cannot charge yet', 'the same rule as the automatic path, held by the server not the layout');
 
   // ---- C. the webhook: registered, and matching what the code handles -----------------------
   console.log('\nC. the webhook');

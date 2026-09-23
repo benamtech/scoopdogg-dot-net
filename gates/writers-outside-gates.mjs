@@ -53,15 +53,9 @@ const files = (g) => globSync(g).filter((f) => !f.includes('node_modules') && !f
  * and `--strict` ignores the list entirely so the real number is always one command away.
  */
 const ACCEPTED = new Map([
-  // A team member is created by a migration and by nothing else: there is no "add somebody" screen
-  // in the admin, and `api/admin.ts` only LISTS `team_members`. gates/admin-roles.mjs plants one
-  // because it has to have somebody to refuse. Retire this entry the day the admin can add a
-  // person — and note `admin-auth.ts` already documents revoking as "one UPDATE on
-  // team_members.status", which nothing performs either.
-  ['team_members.name', 'no screen creates a team member; migration 018 seeds them'],
-  ['team_members.email', 'no screen creates a team member; migration 018 seeds them'],
-  ['team_members.phone', 'no screen creates a team member; migration 018 seeds them'],
-  ['team_members.started_at', 'no screen creates a team member; migration 018 seeds them'],
+  // RETIRED 2026-09-23: `team_members` was here — no screen created a person and nothing performed
+  // the revoke admin-auth.ts documented. server/lib/team.ts and the Team screen are the writers
+  // now, and this list got shorter, which is the only direction it is allowed to move.
   // gates/consent.mjs sets `promo_months = 2` inside a rolled-back transaction to prove the
   // renewal-consent guard REJECTS a multi-month promo. The row is the subject of that test, not a
   // stand-in for a missing writer: an offer is defined by a migration on this project, and when an

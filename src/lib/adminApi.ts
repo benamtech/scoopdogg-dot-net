@@ -63,7 +63,6 @@ export const adminApi = {
   updateMessage: (id: string, status: string) =>
     call<{ message: Message }>(`message/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
 
-  team:          () => call<{ team: Array<{ id: string; name: string; email: string | null; phone: string | null; role: string; status: string; last_login_at: string | null }> }>('team'),
   settings:      () => call<{ settings: Array<{ key: string; value: unknown; updated_at: string; updated_by: string | null }> }>('settings'),
   setSetting:    (key: string, value: unknown) =>
     call<{ setting: { key: string; value: unknown } }>('settings', { method: 'PATCH', body: JSON.stringify({ key, value }) }),
@@ -86,12 +85,26 @@ export const adminApi = {
   customers:  () => call<{ customers: CustomerRow[] }>('customers'),
   invite:     (body: InviteBody) => call<{ invite_id: string; subscription_id: string; link_sent: boolean; email_state: string }>('customers/invite', { method: 'POST', body: JSON.stringify(body) }),
 
+  // ---- the team (server/lib/team.ts) ----
+  team:       () => call<{ team: TeamMember[]; me: string }>('team'),
+  addTeamMember: (body: { name: string; email: string; phone?: string; role: 'crew' | 'admin' }) =>
+    call<{ member: TeamMember }>('team/add', { method: 'POST', body: JSON.stringify(body) }),
+  setTeamStatus: (id: string, status: 'active' | 'inactive') =>
+    call<{ member: TeamMember }>('team/status', { method: 'POST', body: JSON.stringify({ id, status }) }),
+
   // ---- payments ----
   payments:   () => call<PaymentsData>('payments'),
   disconnect: (mode: 'test' | 'live') => call<{ cleared: number; message: string }>('payments/disconnect', { method: 'POST', body: JSON.stringify({ mode }) }),
 
   // ---- today, the crew screen ----
-  today:      () => call<{ date: string; stops: Stop[]; completion: CompletionReadiness }>('today'),
+  today:      () => call<{ date: string; stops: Stop[]; completion: CompletionReadiness; durations: StopDurations }>('today'),
+  // The stop clock (migration 035). Neither is required to close a visit — a stop with no clock
+  // is one we learn nothing from, not one that cannot be done — but together they are the only
+  // measurement that can replace the estimate the whole price ladder was derived from.
+  markEnRoute: (visitId: string) =>
+    call<{ visit: StopClock }>('visits/en-route', { method: 'POST', body: JSON.stringify({ visit_id: visitId }) }),
+  markArrived: (visitId: string) =>
+    call<{ visit: StopClock }>('visits/arrived', { method: 'POST', body: JSON.stringify({ visit_id: visitId }) }),
   // Marking a stop done is the one write a crew session may make. `told` reports what happened
   // to the customer message afterwards - it is not an error if that half did not go out.
   completeVisit: (visitId: string, body: { crew_notes?: string; photo_urls?: string[] } = {}) =>
@@ -141,15 +154,29 @@ export interface GrowthBoard {
    */
   where_next?: {
     measured: boolean; note?: string; day_capacity?: number;
+    /** `population` once migration 032 is applied; `polygon` means 93001 is still in the ocean. */
+    geo_basis?: 'population' | 'polygon';
     /** How many active subscriptions the order rests on. One is enough to move a town to the top. */
     total_customers?: number;
-    parameters?: { referenceServiceMinutes: number; referenceTier: string };
+    /** `referenceBasis` says whether the minutes are timed stops or the estimate. */
+    parameters?: { referenceServiceMinutes: number; referenceTier: string; referenceBasis?: string };
     areas: AreaDensity[];
   };
   waitlist?: {
-    measured: boolean; note?: string;
-    zips: { postal_code: string; city_name: string; depot_miles: number; area_sq_mi: number; customers_for_parity: number | null }[];
+    measured: boolean; note?: string; geo_basis?: 'population' | 'polygon';
+    zips: {
+      postal_code: string; city_name: string; depot_miles: number; area_sq_mi: number;
+      /** Where the ZIP's LAND is. 93042's is an island; its people are at Point Mugu. */
+      polygon_miles?: number;
+      customers_for_parity: number | null;
+    }[];
   };
+  /** False before migration 033: the counts above then include AMTECH's own gate runs. */
+  attributed?: boolean;
+  /** Sessions this month that were ours and are NOT in the counts above. Said, never silent. */
+  verifier_sessions_excluded?: number | null;
+  /** Where this month's real sessions came from. 'direct' is a real answer, not a gap. */
+  by_source?: { source: string; sessions: number; priced: number }[];
 }
 export interface UnfinishedRow {
   id: string; postal_code: string | null; step: string | null; price_cents_seen: number | null;
@@ -172,15 +199,23 @@ export interface ModeStatus {
   card_payments: string | null; requirements: string | null; probed_at: string | null;
   revoked_at: string | null; platform_fee_bps: number | null; requirement_entries?: string[] | null;
 }
+/** What opening the Payments screen did about prices. Never a person's job (stripe.ts). */
+export interface PricePublishResult { attempted: boolean; created: number; already: number; reason: string | null }
 export interface PaymentsData {
   status: { live: ModeStatus; test: ModeStatus };
+  published?: { live: PricePublishResult; test: PricePublishResult };
   packages: Array<{ slug: string; name: string; monthly_price_cents: number; source: string; derivation: string; version: number; published_test: boolean; published_live: boolean }>;
 }
 /**
- * Whether the Mark-done action can be offered at all, and why not when it cannot.
- * `visit.require_completion_photo` is on and this project has no photo storage, so the screen
- * prints the reason rather than showing a button that always fails.
+ * Whether the Mark-done action can be offered at all, and why not when it cannot. The server
+ * ASKS whether photo storage exists (migration 029) rather than asserting it, and the screen
+ * prints its reason rather than showing a button that always fails.
  */
+export interface TeamMember {
+  id: string; name: string; email: string | null; phone: string | null;
+  role: 'superadmin' | 'admin' | 'crew'; status: 'active' | 'inactive' | 'invited';
+  started_at: string | null; ended_at: string | null; last_login_at: string | null;
+}
 export interface CompletionReadiness {
   ready: boolean; requiresPhoto: boolean; reason: string | null;
 }
@@ -189,4 +224,17 @@ export interface Stop {
   id: string; scheduled_for: string; state: string; crew_notes: string;
   customer_name: string; phone: string; address: string; city: string;
   gate_code: string | null; access_notes: string;
+  /** The stop clock. Null means not tapped, which is allowed — never a zero. */
+  en_route_at: string | null; arrived_at: string | null; completed_at: string | null;
+}
+export interface StopClock {
+  id: string; state: string;
+  en_route_at: string | null; arrived_at: string | null; completed_at: string | null;
+  drive_minutes: number | null; service_minutes: number | null;
+}
+/** Medians over timed stops, with how many each rests on. `measured` is part of the answer. */
+export interface StopDurations {
+  service_minutes: number | null; service_measured: number;
+  drive_minutes: number | null; drive_measured: number;
+  by_tier: { service_slug: string; label: string; est_minutes: number | null; median_minutes: number; measured: number }[];
 }

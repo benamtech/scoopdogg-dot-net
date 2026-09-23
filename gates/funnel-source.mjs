@@ -49,6 +49,13 @@ check(/import \{ VERIFIER_SOURCES \} from '\.\/funnel\.js'/.test(growthTs)
   'a second copy of a reserved word is how the two halves drift');
 check(/x-scoopdogg-verifier/.test(bookingTs) && /trusted:/.test(bookingTs),
   'the API decides `trusted` from a header, not from the request body');
+const growthTsx = readFileSync('src/pages_react/admin/AdminGrowthPage.tsx', 'utf8');
+check(/verifier_sessions_excluded/.test(growthTsx),
+  'the Growth board says how many of our own visits it left out', 'a filter nobody can see stops being trusted');
+check(/by_source/.test(growthTsx), 'and shows where visitors came from', 'the column pays for itself only if somebody can read it');
+const baseAstro = readFileSync('src/layouts/Base.astro', 'utf8');
+check(/sessionStorage\.setItem\('sd_src'/.test(baseAstro) && /sessionSource\(\)/.test(readFileSync('src/components/booking/BookingFlow.tsx', 'utf8')),
+  'the referrer is captured on the first page and sent with the funnel', 'document.referrer survives exactly one page load');
 
 // ---- B. the normaliser, on its own ---------------------------------------------------------
 console.log('\nB. a referrer becomes a host, and a reserved word needs permission');

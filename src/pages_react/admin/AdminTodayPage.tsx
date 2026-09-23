@@ -24,13 +24,27 @@
  *
  * The gate code is here because the person standing at the gate needs it, and it is nowhere else:
  * `visit.gate_code_visible_to` is 'assigned_crew_only'.
+ *
+ * THE STOP CLOCK (migration 035). "On my way" and "I'm here" are the writers for `en_route_at`
+ * and `arrived_at`, which had no writer at all until 035 — so no visit on this project had ever
+ * been timed, and the price ladder was derived from an estimate and checked against the same
+ * estimate. NEITHER TAP IS REQUIRED. Mark done stays available without them, because a one-man
+ * operator with his hands full is the normal case and a screen that insists gets worked around.
+ * A stop nobody timed is one we learn nothing from; it is not one that cannot be closed.
  */
 import { useEffect, useRef, useState } from 'react';
-import { adminApi, type Stop, type CompletionReadiness } from '../../lib/adminApi';
+import { adminApi, type Stop, type CompletionReadiness, type StopDurations } from '../../lib/adminApi';
 import { prepareForUpload } from '../../lib/photo-capture';
 import AdminLayout from '../../components/admin/AdminLayout';
 
-type TodayData = { date: string; stops: Stop[]; completion: CompletionReadiness };
+type TodayData = { date: string; stops: Stop[]; completion: CompletionReadiness; durations?: StopDurations };
+
+/** 9:12 AM, in the business's own day. Null stays null — an untapped clock is not midnight. */
+const clockTime = (iso: string | null) => (iso
+  ? new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' })
+  : null);
+const minutesBetween = (a: string | null, b: string | null) =>
+  (a && b ? Math.max(0, Math.round((new Date(b).getTime() - new Date(a).getTime()) / 60000)) : null);
 
 export default function AdminTodayPage() {
   const [data, setData] = useState<TodayData | null>(null);
@@ -71,6 +85,19 @@ export default function AdminTodayPage() {
   };
   useEffect(() => { load(); }, []);
 
+  /** One tap on the clock. The SERVER stamps the time, so a phone with a wrong clock cannot skew it. */
+  const tap = async (s: Stop, which: 'en_route' | 'arrived') => {
+    setBusy((b) => ({ ...b, [s.id]: true }));
+    try {
+      await (which === 'en_route' ? adminApi.markEnRoute(s.id) : adminApi.markArrived(s.id));
+      await load();
+    } catch (e) {
+      setSaid((m) => ({ ...m, [s.id]: (e as Error).message }));
+    } finally {
+      setBusy((b) => ({ ...b, [s.id]: false }));
+    }
+  };
+
   const markDone = async (s: Stop) => {
     setBusy((b) => ({ ...b, [s.id]: true }));
     try {
@@ -108,6 +135,17 @@ export default function AdminTodayPage() {
           </p>
         )}
 
+        {data?.durations && (
+          <p className="mt-6 rounded-lg border border-line bg-paper px-4 py-3 text-base text-ink-700">
+            {data.durations.service_measured === 0
+              ? <>No stop has been timed yet. Tap <strong>On my way</strong> and <strong>I'm here</strong> as you go —
+                  it is the only way the prices can be checked against what the work really takes.</>
+              : <>{data.durations.service_measured} {data.durations.service_measured === 1 ? 'stop' : 'stops'} timed so far:
+                  a typical stop is <strong>{data.durations.service_minutes} min</strong> on site
+                  {data.durations.drive_minutes !== null && <> and <strong>{data.durations.drive_minutes} min</strong> driving to it</>}.</>}
+          </p>
+        )}
+
         {data && data.stops.length === 0 && (
           <p className="mt-8 rounded-lg border border-line bg-paper p-6 text-base text-ink-700">No stops scheduled today.</p>
         )}
@@ -123,11 +161,31 @@ export default function AdminTodayPage() {
                   {s.access_notes && <p className="mt-1 text-base text-ink-700">{s.access_notes}</p>}
                   <a href={`tel:${String(s.phone ?? '').replace(/\D/g, '')}`} className="link mt-2 inline-block text-base">{s.phone}</a>
 
+                  {(s.en_route_at || s.arrived_at) && (
+                    <p className="mt-2 text-base text-ink-500">
+                      {s.en_route_at && <>Left {clockTime(s.en_route_at)}</>}
+                      {s.en_route_at && s.arrived_at && ' · '}
+                      {s.arrived_at && <>Arrived {clockTime(s.arrived_at)}</>}
+                      {minutesBetween(s.en_route_at, s.arrived_at) !== null && <> ({minutesBetween(s.en_route_at, s.arrived_at)} min drive)</>}
+                      {minutesBetween(s.arrived_at, s.completed_at) !== null && <> · {minutesBetween(s.arrived_at, s.completed_at)} min on site</>}
+                    </p>
+                  )}
+
                   <div className="mt-4">
                     {s.state === 'completed' ? (
                       <p className="text-base font-semibold text-forest-700">Done</p>
                     ) : (
                       <>
+                        {!s.arrived_at && (
+                          <div className="mb-3 flex flex-wrap gap-2">
+                            {!s.en_route_at && (
+                              <button type="button" onClick={() => tap(s, 'en_route')} disabled={busy[s.id]}
+                                      className="btn-secondary btn-sm disabled:opacity-50">On my way</button>
+                            )}
+                            <button type="button" onClick={() => tap(s, 'arrived')} disabled={busy[s.id]}
+                                    className="btn-secondary btn-sm disabled:opacity-50">I'm here</button>
+                          </div>
+                        )}
                         {data.completion.requiresPhoto && data.completion.ready && (
                           <div className="mb-3">
                             <input

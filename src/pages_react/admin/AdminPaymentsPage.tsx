@@ -19,6 +19,14 @@
  * Disconnecting clears AMTECH's 9% from every live subscription FIRST and only then records that
  * we stopped (P17 §8) - Stripe keeps collecting it otherwise. It does not close the account:
  * Stripe refuses to close a full-dashboard account it is loss-liable for, and it is his account.
+ *
+ * PRICES GO UP BY THEMSELVES (server/lib/stripe.ts publishPricesWhenReady). Loading this screen
+ * publishes the plan prices to his account the first time Stripe says card payments are on —
+ * this is where Stripe's onboarding returns him, so it is the first thing that runs after he
+ * connects. Before, that was a button nobody had written down, and a connected account with no
+ * prices on it is a live site that cannot take a booking. The button survives as a re-publish,
+ * and only once the account can charge: publishing to an account that cannot is exactly what the
+ * automatic path refuses to do.
  */
 import { useEffect, useState } from 'react';
 import AdminLayout from '../../components/admin/AdminLayout';
@@ -58,6 +66,7 @@ export default function AdminPaymentsPage() {
   };
 
   const Mode = ({ mode, s }: { mode: 'test' | 'live'; s: ModeStatus }) => {
+    const pub = data?.published?.[mode];
     // The label is Stripe's answer, not ours. "Connected" is reserved for card_payments active.
     const state = s.revoked_at ? { label: 'Disconnected', cls: 'bg-line text-ink-500' }
       : s.ready ? { label: 'Connected', cls: 'bg-success-100 text-success' }
@@ -94,14 +103,26 @@ export default function AdminPaymentsPage() {
             </ul>
           </div>
         )}
+        {/* What happened to the prices, said in one sentence. Silence would read as "nothing to do". */}
+        {pub?.attempted && pub.created > 0 && (
+          <p className="mt-4 rounded-md bg-success-100 px-4 py-3 text-base text-success">
+            Your {pub.created} plan {pub.created === 1 ? 'price was' : 'prices were'} put on your Stripe account just now.
+            Customers can book.
+          </p>
+        )}
+        {s.account_id && !s.ready && !s.revoked_at && (
+          <p className="mt-4 text-sm text-ink-500">
+            Your plan prices go onto your Stripe account by themselves as soon as Stripe turns card payments on.
+          </p>
+        )}
         {s.requirement_entries === null && (
           <p className="mt-4 text-sm text-ink-500">We could not read what Stripe wants just now, so this may be incomplete.</p>
         )}
         <div className="mt-5 flex flex-wrap gap-2">
           {!s.ready && <button className="btn-primary btn-sm" disabled={!!busy} onClick={() => onboard(mode)}>
             {busy === `onboard-${mode}` ? 'Opening Stripe…' : s.account_id ? 'Finish connecting' : 'Connect Stripe'}</button>}
-          {s.account_id && <button className="btn-ghost btn-sm" disabled={!!busy} onClick={() => publish(mode)}>
-            {busy === `publish-${mode}` ? 'Publishing…' : 'Publish plan prices'}</button>}
+          {s.ready && !s.revoked_at && <button className="btn-ghost btn-sm" disabled={!!busy} onClick={() => publish(mode)}>
+            {busy === `publish-${mode}` ? 'Publishing…' : 'Publish prices again'}</button>}
           <button className="btn-ghost btn-sm" disabled={!!busy} onClick={load}>Re-check</button>
           {s.account_id && !s.revoked_at && <button className="btn-ghost btn-sm text-danger" disabled={!!busy} onClick={() => disconnect(mode)}>
             {busy === `disconnect-${mode}` ? 'Stopping…' : 'Disconnect'}</button>}

@@ -10,6 +10,15 @@
  * starts" look identical in a stat tile and mean opposite things: one says fix the funnel, the
  * other says fix the counting. Every metric carries `measured`, and this screen renders a dash
  * and the reason rather than a zero. It is the same rule as the site's: degrade honestly.
+ *
+ * OUR OWN TEST VISITS ARE LEFT OUT, AND THE SCREEN SAYS HOW MANY (migration 033). On 2026-09-23
+ * every one of the 25 sessions behind "Started a price" was AMTECH's own automated checking.
+ * The server now filters those out; this screen prints the count it removed, because a filter
+ * nobody can see is how a number stops being trusted in the other direction.
+ *
+ * AND IT SAYS WHERE VISITORS CAME FROM, which nothing here could say before. R16 found the top of
+ * the funnel is this business's constraint — nearly everyone who asks for a price books — so the
+ * channel a visitor arrived on is the most useful number on the page, and it had no column.
  */
 import { useEffect, useState } from 'react';
 import { adminApi, type GrowthBoard, type Metric } from '../../lib/adminApi';
@@ -17,6 +26,24 @@ import AdminLayout from '../../components/admin/AdminLayout';
 import UnfinishedHour from '../../components/admin/UnfinishedHour';
 
 const money = (c: number) => `$${(c / 100).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+
+/**
+ * A referrer host, in words an owner uses. Anything not listed shows as its own host — a
+ * nextdoor.com or a local blog is exactly the kind of source worth seeing by name.
+ */
+const SOURCE_NAMES: Record<string, string> = {
+  direct: 'Typed in, a text message or a saved link',
+  'google.com': 'Google search',
+  'maps.google.com': 'Google Maps',
+  'bing.com': 'Bing',
+  'duckduckgo.com': 'DuckDuckGo',
+  'facebook.com': 'Facebook', 'm.facebook.com': 'Facebook', 'l.facebook.com': 'Facebook',
+  'instagram.com': 'Instagram', 'l.instagram.com': 'Instagram',
+  'nextdoor.com': 'Nextdoor',
+  'yelp.com': 'Yelp',
+  'chatgpt.com': 'ChatGPT', 'perplexity.ai': 'Perplexity',
+};
+const sourceName = (s: string) => SOURCE_NAMES[s] ?? s;
 
 function Tile({ label, metric, format = (n: number) => String(n), hint }: {
   label: string; metric: Metric; format?: (n: number) => string; hint?: string;
@@ -66,6 +93,46 @@ export default function AdminGrowthPage() {
               <Tile label="Booked" metric={m.booked} />
               <Tile label="Conversion" metric={m.conversion_pct} format={(n) => `${n}%`} />
             </div>
+            {board.attributed === false ? (
+              <p className="mt-3 rounded-md bg-amber-100 px-4 py-2.5 text-sm text-amber-700">
+                These counts still include the website's own automated test visits — this database cannot yet tell
+                them apart from customers.
+              </p>
+            ) : !!board.verifier_sessions_excluded && (
+              <p className="mt-3 text-sm text-ink-500">
+                {board.verifier_sessions_excluded} test {board.verifier_sessions_excluded === 1 ? 'visit' : 'visits'} by
+                the website's own checks {board.verifier_sessions_excluded === 1 ? 'is' : 'are'} left out of these numbers.
+              </p>
+            )}
+
+            {board.attributed && (
+              <>
+                <h2 className="mt-12 text-lg font-semibold text-forest-900">Where visitors came from</h2>
+                <p className="mt-1 text-sm text-ink-500">This month, for everyone who started a price.</p>
+                {(board.by_source ?? []).length === 0 ? (
+                  <p className="mt-4 rounded-lg border border-line bg-paper p-5 text-base text-ink-700">
+                    Nobody has started a price this month yet, so there is nothing to show here.
+                  </p>
+                ) : (
+                  <div className="mt-4 overflow-x-auto rounded-lg border border-line bg-paper">
+                    <table className="w-full text-left text-sm">
+                      <thead className="border-b border-line bg-cream text-ink-500">
+                        <tr><th className="px-4 py-3">Came from</th><th className="px-4 py-3">Started a price</th><th className="px-4 py-3">Saw a price</th></tr>
+                      </thead>
+                      <tbody className="divide-y divide-line">
+                        {board.by_source!.map((r) => (
+                          <tr key={r.source}>
+                            <td className="px-4 py-3 font-medium text-forest-900">{sourceName(r.source)}</td>
+                            <td className="px-4 py-3 tabular-nums">{r.sessions}</td>
+                            <td className="px-4 py-3 tabular-nums">{r.priced}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
+            )}
 
             <h2 className="mt-12 text-lg font-semibold text-forest-900">The business</h2>
             <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -96,6 +163,23 @@ export default function AdminGrowthPage() {
                   {board.where_next.parameters?.referenceServiceMinutes ?? 15} minutes a weekly one-dog scoop takes.
                   Cheapest first. This re-orders itself as you sign people up.
                 </p>
+                {/*
+                  WHERE THE MINUTES COME FROM. Until stops are timed on the Today screen, the visit
+                  length is an estimate, and every row below inherits it. Saying so is the difference
+                  between a ranking and a guess dressed as one.
+                */}
+                {board.where_next.parameters?.referenceBasis?.startsWith('service_tiers.est_minutes') && (
+                  <p className="mt-1 text-sm text-ink-500">
+                    The visit length is an estimate for now. It switches to your real times once enough stops have been
+                    timed with <strong>On my way</strong> and <strong>I'm here</strong> on the Today screen.
+                  </p>
+                )}
+                {board.where_next.geo_basis === 'polygon' && (
+                  <p className="mt-2 rounded-md bg-amber-100 px-4 py-2.5 text-sm text-amber-700">
+                    Distances are measured from the middle of each ZIP code's map area rather than from where people live,
+                    which puts Ventura's own ZIP out at sea. Treat the order as rough.
+                  </p>
+                )}
                 {/*
                   THE BASIS, NOT JUST THE ANSWER. One customer is enough to move their town to the
                   top — correct arithmetic, thin evidence. Printing the order without the count is
@@ -138,7 +222,11 @@ export default function AdminGrowthPage() {
                 {board.waitlist?.measured && board.waitlist.zips.length > 0 && (
                   <p className="mt-3 text-sm text-ink-500">
                     Nearest ZIP codes you do not cover yet:{' '}
-                    {board.waitlist.zips.slice(0, 5).map((z) => `${z.postal_code} (${z.city_name}, ${z.depot_miles}mi)`).join(' · ')}
+                    {board.waitlist.zips.slice(0, 5).map((z) =>
+                      // A ZIP whose land is far further out than its people is mostly island or
+                      // wilderness — 93042 is San Nicolas Island with its residents at Point Mugu.
+                      `${z.postal_code} (${z.city_name}, ${z.depot_miles}mi${z.polygon_miles !== undefined && z.polygon_miles - z.depot_miles > 20 ? ', mostly offshore' : ''})`,
+                    ).join(' · ')}
                   </p>
                 )}
               </>

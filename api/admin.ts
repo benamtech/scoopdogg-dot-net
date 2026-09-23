@@ -17,6 +17,7 @@ import { probeAccount, createConnectedAccount, onboardingLink, publishAllPrices,
 import { checklist, setRouteDays, setOwnerSetting, setAreaBookable, confirmPrices } from '../server/lib/onboarding.js';
 import { growthBoard, unfinished } from '../server/lib/growth.js';
 import { createInvite, customerList, InviteError } from '../server/lib/invites.js';
+import { listTeam, addTeamMember, setTeamStatus, TeamError } from '../server/lib/team.js';
 import { completeVisit, completionReadiness, markArrived, markEnRoute, stopDurations, VisitError } from '../server/lib/visits.js';
 import { put, PhotoError } from '../server/lib/photos.js';
 import { sendVisitComplete, runCommsSweeps } from '../server/lib/comms.js';
@@ -290,6 +291,13 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     if (path === 'payments/publish' && req.method === 'POST') {
       const body = await readJsonBody(req);
       const mode: StripeMode = body.mode === 'live' ? 'live' : 'test';
+      // The manual re-publish obeys the same rule as the automatic one: nothing goes onto an
+      // account Stripe does not yet say can take a card. The screen hides the button until then;
+      // this is what makes that a rule rather than a layout.
+      const probe = await probeAccount(mode).catch(() => null);
+      if (!probe?.ready) {
+        return sendJson(res, 409, { error: `Stripe does not say this account can take cards yet (card payments: ${probe?.card_payments ?? 'unread'}). Prices go up by themselves when it does.` });
+      }
       return sendJson(res, 200, { published: await publishAllPrices(mode) });
     }
 
@@ -466,15 +474,35 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       }
     }
 
+    // ---- the team: owners run it (server/lib/team.ts) ---------------------
+    // This was superadmin-only, which meant Josue could not see who could sign in to his own
+    // admin, and nothing anywhere could add or switch off a person. Owners — admin and
+    // superadmin — now run the list; team.ts holds the rules that stop anyone locking the
+    // business out of itself, and crew never reach this at all (CREW_PATHS is default-deny).
+    if (path === 'team' || path === 'team/add' || path === 'team/status') {
+      if (session.role !== 'admin' && session.role !== 'superadmin') return sendJson(res, 403, { error: 'Owners only.' });
+      try {
+        if (path === 'team') return sendJson(res, 200, { team: await listTeam(), me: session.teamId });
+        if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed.' });
+        const body = await readJsonBody(req);
+        if (path === 'team/add') {
+          const member = await addTeamMember({
+            name: String(body.name ?? ''), email: String(body.email ?? ''),
+            phone: body.phone ? String(body.phone) : null,
+            role: body.role === 'admin' || body.role === 'superadmin' ? body.role : 'crew',
+          }, session);
+          return sendJson(res, 200, { member });
+        }
+        const status = body.status === 'active' ? 'active' : 'inactive';
+        return sendJson(res, 200, { member: await setTeamStatus(String(body.id ?? ''), status, session) });
+      } catch (e) {
+        if (e instanceof TeamError) return sendJson(res, e.status, { error: e.message, code: e.code });
+        throw e;
+      }
+    }
+
     // ---- superadmin only -------------------------------------------------
     const requireSuper = (s: AdminSession) => s.role === 'superadmin';
-
-    if (path === 'team') {
-      if (!requireSuper(session)) return sendJson(res, 403, { error: 'Superadmin only.' });
-      const { rows } = await db().query(
-        'select id, name, email, phone, role, status, started_at, ended_at, last_login_at from team_members order by role, name');
-      return sendJson(res, 200, { team: rows });
-    }
 
     if (path === 'settings') {
       if (!requireSuper(session)) return sendJson(res, 403, { error: 'Superadmin only.' });

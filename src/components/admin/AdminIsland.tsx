@@ -11,6 +11,7 @@ import AdminChecklistPage from '../../pages_react/admin/AdminChecklistPage';
 import AdminCustomersPage from '../../pages_react/admin/AdminCustomersPage';
 import AdminGrowthPage from '../../pages_react/admin/AdminGrowthPage';
 import AdminTodayPage from '../../pages_react/admin/AdminTodayPage';
+import AdminTeamPage from '../../pages_react/admin/AdminTeamPage';
 
 /**
  * One admin screen, hydrated — the whole screen, not a shell around it.
@@ -43,6 +44,7 @@ const SCREENS = {
   customers: AdminCustomersPage,
   growth: AdminGrowthPage,
   today: AdminTodayPage,
+  team: AdminTeamPage,
 } as const;
 
 export type AdminScreen = keyof typeof SCREENS;

@@ -44,6 +44,15 @@ check(/CREW_PATHS = new Set\(\[[\s\S]{0,300}'visits\/en-route'[\s\S]{0,60}'visit
   'the person standing in the yard is the only one who knows when the van got there');
 check(/markEnRoute/.test(adminTs) && /markArrived/.test(adminTs),
   'through the shipped verbs, not through SQL in the handler');
+// THE SCREEN IS THE CALLER. An API verb nobody can tap is a writer with no trigger, which is the
+// exact shape 035 exists to end — so the crew screen's two buttons are pinned here, beside the
+// routes they call, and so is the line that tells the crew what the clock has measured.
+const todayTsx = readFileSync('src/pages_react/admin/AdminTodayPage.tsx', 'utf8');
+check(/adminApi\.markEnRoute\(/.test(todayTsx) && /adminApi\.markArrived\(/.test(todayTsx),
+  'the Today screen has the two taps', '"On my way" and "I\'m here"');
+check(/data\.durations/.test(todayTsx), 'and it shows what the timed stops say', 'a clock nobody can read back is a clock nobody keeps');
+check(!/disabled=\{[^}]*arrived_at/.test(todayTsx), 'and Mark done never waits on them',
+  'a one-man operator with his hands full is the normal case');
 
 const out = compileServer();
 const mod = (f) => import(`${process.cwd()}/${out}/server/lib/${f}`.replace(`${process.cwd()}/${process.cwd()}`, process.cwd()));
