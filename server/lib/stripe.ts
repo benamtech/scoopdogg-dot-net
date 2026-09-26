@@ -113,17 +113,49 @@ export type AccountStatus = {
   card_payments: string | null;
   requirements: string | null;
   probed_at: string;
+  /** Which API actually answered. 'none' means nothing did, and nothing was written down. */
+  source: 'v2' | 'v1' | 'none';
 };
 
-/** Read readiness from Stripe and cache it WITH its age. Screens show the age. */
+/**
+ * How old a stored reading may be before a caller about to take money must re-ask.
+ * A capability can lapse between two page loads; a boolean in a row cannot notice.
+ */
+export const PROBE_TTL_MS = 5 * 60 * 1000;
+
+/** True when a stored reading is recent enough to act on without re-asking Stripe. */
+export function probeIsFresh(conn: Pick<Connection, 'last_probed_at'> | null, now = Date.now()): boolean {
+  if (!conn?.last_probed_at) return false;
+  const at = new Date(conn.last_probed_at).getTime();
+  return Number.isFinite(at) && now - at < PROBE_TTL_MS;
+}
+
+/**
+ * Read readiness from Stripe and cache it WITH its age. Screens show the age.
+ *
+ * TWO ACCOUNT SHAPES, AND THE BUG THAT COST A DEMO (2026-09-26). This read used to ask the
+ * v2 API only, and treat an empty answer as "not ready". But v2 answers for the accounts
+ * `createConnectedAccount()` makes and returns NO `configuration.merchant` for a v1-shaped
+ * Standard account — so a connected account Stripe called `charges_enabled: true,
+ * card_payments: active` was stored as `charges_enabled = false`, and every booking against
+ * it fell silently to the request lane. It was not a Stripe problem and no error was raised:
+ * an empty read was being written down as a negative fact.
+ *
+ * So: **a read that did not answer is not an answer.** v2 first; if it yields no capability
+ * status — whether it threw or came back empty — ask v1, which answers for BOTH shapes. Only
+ * a status an API actually returned is ever written. If neither answers, the previous reading
+ * is LEFT ALONE and only the error and the timestamp are recorded, because overwriting a
+ * measured state with a guess is the same fault in the other direction.
+ */
 export async function probeAccount(mode: StripeMode): Promise<AccountStatus> {
   const conn = await connection(mode);
   const probed_at = new Date().toISOString();
-  if (!conn?.account_id) return { mode, account_id: null, ready: false, card_payments: null, requirements: null, probed_at };
+  if (!conn?.account_id) return { mode, account_id: null, ready: false, card_payments: null, requirements: null, probed_at, source: 'none' };
   const stripe = stripeFor(mode);
   let card: string | null = null;
   let reqs: string | null = null;
-  let error: string | null = null;
+  let source: AccountStatus['source'] = 'none';
+  const errors: string[] = [];
   try {
     const acct = (await stripe.v2.core.accounts.retrieve(conn.account_id, {
       include: ['configuration.merchant', 'requirements'],
@@ -133,15 +165,42 @@ export async function probeAccount(mode: StripeMode): Promise<AccountStatus> {
     };
     card = acct.configuration?.merchant?.capabilities?.card_payments?.status ?? null;
     reqs = acct.requirements?.summary?.minimum_deadline?.status ?? null;
+    if (card !== null) source = 'v2';
   } catch (e) {
-    error = (e as Error).message.slice(0, 200);
+    errors.push(`v2: ${(e as Error).message.slice(0, 120)}`);
   }
+  if (card === null) {
+    // Not a fallback for errors only. An empty v2 body means this is a v1-shaped account,
+    // and v1 `accounts.retrieve` answers for every account this platform can reach.
+    try {
+      const v1 = await stripe.accounts.retrieve(conn.account_id);
+      card = v1.capabilities?.card_payments ?? null;
+      reqs = v1.requirements?.currently_due?.length ? 'currently_due'
+        : v1.requirements?.past_due?.length ? 'past_due'
+        : 'none';
+      if (card !== null) source = 'v1';
+    } catch (e) {
+      errors.push(`v1: ${(e as Error).message.slice(0, 120)}`);
+    }
+  }
+  const error = errors.length ? errors.join(' | ') : null;
   const ready = card === 'active' && reqs !== 'currently_due' && reqs !== 'past_due';
+
+  if (source === 'none') {
+    // Neither API answered. Record that we tried and failed; do not restate the account's
+    // state, which we did not measure. `last_probed_at` still moves so the age is honest
+    // about when we last ASKED, and `probe_error` says the asking did not work.
+    await db().query(
+      `update stripe_connection set last_probed_at = now(), probe_error = $2, updated_at = now()
+        where livemode = $1`, [mode === 'live', error ?? 'no answer from Stripe']);
+    return { mode, account_id: conn.account_id, ready: false, card_payments: null, requirements: null, probed_at, source };
+  }
+
   await db().query(
     `update stripe_connection set card_payments_status = $2, requirements_status = $3, charges_enabled = $4,
             last_probed_at = now(), probe_error = $5, updated_at = now() where livemode = $1`,
     [mode === 'live', card, reqs, ready, error]);
-  return { mode, account_id: conn.account_id, ready, card_payments: card, requirements: reqs, probed_at };
+  return { mode, account_id: conn.account_id, ready, card_payments: card, requirements: reqs, probed_at, source };
 }
 
 // ---------------------------------------------------------------------------------------

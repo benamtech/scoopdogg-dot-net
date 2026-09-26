@@ -19,7 +19,7 @@ import { db } from './db.js';
 import { sendEmail } from './notify.js';
 import { appendEvent } from './events.js';
 import { loadCatalog } from './catalog-db.js';
-import { currentMode, resolve, priceForPackage, couponForOffer, connection, probeAccount, stripeFor, type StripeMode } from './stripe.js';
+import { currentMode, resolve, priceForPackage, couponForOffer, connection, probeAccount, probeIsFresh, stripeFor, type StripeMode } from './stripe.js';
 // The charge itself belongs to money.ts, which is the ONE file allowed to create one. This file
 // decides WHAT is being sold; it does not decide what AMTECH takes. gates/one-money-door.mjs.
 import { startSubscription, chargeOnce, feeCentsFor } from './money.js';
@@ -171,11 +171,25 @@ async function startDatesFor(catalog: LoadedCatalog, area: LoadedCatalog['areas'
 
 type Priced = Awaited<ReturnType<typeof priceBooking>>;
 
+/**
+ * Can this booking take money right now?
+ *
+ * The stored `card_payments_status` is a TIMESTAMPED CLAIM, not a state. It used to be
+ * trusted at any age, which fails in both directions: a capability that lapsed after the
+ * last probe keeps the checkout open until a charge dies at Stripe, and a stale negative
+ * sends a customer down the request lane while the account is fine. So an old reading is
+ * re-asked rather than believed, whichever way it points (see PROBE_TTL_MS).
+ */
 async function paymentsReady(mode: StripeMode): Promise<boolean> {
   const conn = await connection(mode);
   if (!conn?.account_id) return false;
-  if (conn.card_payments_status === 'active') return true;
+  if (conn.card_payments_status === 'active' && probeIsFresh(conn)) return true;
   const fresh = await probeAccount(mode).catch(() => null);
+  if (fresh?.source === 'none') {
+    // Stripe did not answer. Fall back to the last thing actually measured rather than to a
+    // guess in either direction — probeAccount left it alone precisely so this can read it.
+    return conn.card_payments_status === 'active';
+  }
   return Boolean(fresh?.ready);
 }
 
