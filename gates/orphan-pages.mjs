@@ -60,6 +60,7 @@ const PRIVATE = {
   '/admin/growth': 'as above',
   '/admin/setup': 'as above',
   '/admin/team': 'as above',
+  '/admin/rate-card': 'as above',
 };
 
 let pass = 0, fail = 0;

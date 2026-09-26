@@ -18,6 +18,7 @@ import { checklist, setRouteDays, setOwnerSetting, setAreaBookable, confirmPrice
 import { growthBoard, unfinished } from '../server/lib/growth.js';
 import { createInvite, customerList, InviteError } from '../server/lib/invites.js';
 import { listTeam, addTeamMember, setTeamStatus, TeamError } from '../server/lib/team.js';
+import { listRateCard, setTier, setPackagePrice, RateCardError, type TierPatch } from '../server/lib/rate-card.js';
 import { completeVisit, completionReadiness, markArrived, markEnRoute, stopDurations, VisitError } from '../server/lib/visits.js';
 import { put, PhotoError } from '../server/lib/photos.js';
 import { sendVisitComplete, runCommsSweeps } from '../server/lib/comms.js';
@@ -447,6 +448,38 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     }
     if (path === 'checklist/prices/confirm' && req.method === 'POST') {
       return sendJson(res, 200, await confirmPrices(session.email));
+    }
+
+    // ---- the rate card: the owner changes his own prices -------------------
+    // The engagement's own test (planning/03-ADMIN-IS-THE-PRODUCT.md): "raise a price without
+    // touching an existing customer". Until this block that needed a migration and a pull
+    // request, which is the single most common change there is.
+    //
+    // Owners, not superadmin. A CMS the owner cannot administer is a retainer he did not ask
+    // for, and P7 keeps requireSuper on exactly two verbs — neither of them is this one.
+    if (path === 'rate-card' || path === 'rate-card/tier' || path === 'rate-card/package') {
+      if (session.role !== 'admin' && session.role !== 'superadmin') return sendJson(res, 403, { error: 'Owners only.' });
+      try {
+        if (path === 'rate-card') return sendJson(res, 200, await listRateCard());
+        if (req.method !== 'PATCH') return sendJson(res, 405, { error: 'Method not allowed.' });
+        const body = await readJsonBody(req);
+        if (path === 'rate-card/tier') {
+          // Only fields the caller actually sent are applied, so a screen that edits one number
+          // cannot blank the rest of the row by omission.
+          const patch: TierPatch = {};
+          if ('price_cents' in body) patch.price_cents = body.price_cents === null || body.price_cents === '' ? null : Number(body.price_cents);
+          if ('price_suffix' in body) patch.price_suffix = body.price_suffix === null || body.price_suffix === '' ? null : String(body.price_suffix);
+          if ('price_is_from' in body) patch.price_is_from = Boolean(body.price_is_from);
+          if ('requires_quote' in body) patch.requires_quote = Boolean(body.requires_quote);
+          if ('label' in body) patch.label = String(body.label ?? '');
+          if ('status' in body) patch.status = String(body.status ?? '');
+          return sendJson(res, 200, await setTier(String(body.id ?? ''), patch, session.email));
+        }
+        return sendJson(res, 200, await setPackagePrice(String(body.id ?? ''), Number(body.monthly_price_cents ?? 0), session.email));
+      } catch (e) {
+        if (e instanceof RateCardError) return sendJson(res, e.status, { error: e.message, code: e.code });
+        throw e;
+      }
     }
 
     // ---- the growth board, and the hour (P18 §4, P16 §7) -------------------

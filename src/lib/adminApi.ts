@@ -118,7 +118,52 @@ export const adminApi = {
   uploadVisitPhoto: (visitId: string, dataUrl: string) =>
     call<{ photo: { id: string; url: string; bytes: number; deduped: boolean } }>(
       'visits/photo', { method: 'POST', body: JSON.stringify({ visit_id: visitId, data_url: dataUrl }) }),
+
+  // The rate card. Every write returns `effective_now` / `effective_on_publish` for the same
+  // reason the demo toggle does: the checkout changes on the row and the public pages change on
+  // a publish, and a screen that implies otherwise is a lie the owner finds on his own site.
+  rateCard:    () => call<RateCard>('rate-card'),
+  setTier:     (id: string, patch: Partial<Pick<RateCardTier, 'price_cents' | 'price_suffix' | 'price_is_from' | 'requires_quote' | 'label' | 'status'>>) =>
+    call<{ tier: RateCardTier; changed: string[] } & CatalogEffect>(
+      'rate-card/tier', { method: 'PATCH', body: JSON.stringify({ id, ...patch }) }),
+  setPackagePrice: (id: string, monthly_price_cents: number) =>
+    call<{ package: RateCardPackage; changed: string[]; was_version: number;
+           published: Record<string, { attempted: boolean; created: number; already: number; reason: string | null }> } & CatalogEffect>(
+      'rate-card/package', { method: 'PATCH', body: JSON.stringify({ id, monthly_price_cents }) }),
 };
+
+/** What a save changes and when. Never inferred by a component — the server says. */
+export interface CatalogEffect { effective_now: string[]; effective_on_publish: string[] }
+
+export interface RateCardTier {
+  id: string; service_slug: string; service_name: string; label: string; status: string;
+  min_qty: number | null; max_qty: number | null; price_cents: number | null;
+  price_suffix: string | null; requires_quote: boolean; price_is_from: boolean;
+  est_minutes: number | null; covers_last_cleaned: string[] | null; sort_order: number;
+  /** Arrangements that still stand and were sold through a package on this tier. */
+  live_customers: number;
+}
+
+export interface RateCardPackage {
+  id: string; slug: string; service_slug: string; name: string; monthly_price_cents: number;
+  version: number; status: string; featured: boolean; sort_order: number;
+  published_test: boolean; published_live: boolean;
+  live_customers: number;
+  /** What those customers are ACTUALLY paying. The proof that raising a price left them alone. */
+  frozen_prices: number[];
+}
+
+export interface CatalogChange {
+  entity: string; entity_id: string; entity_label: string; field: string;
+  old_value: string | null; new_value: string | null; changed_by: string; changed_at: string;
+}
+
+export interface RateCard extends CatalogEffect {
+  services: { slug: string; name: string; kind: string; status: string; sort_order: number }[];
+  tiers: RateCardTier[];
+  packages: RateCardPackage[];
+  changes: CatalogChange[];
+}
 
 export interface ChecklistItem {
   key: 'stripe' | 'route_days' | 'business_facts' | 'prices' | 'where_you_work' | 'photos';

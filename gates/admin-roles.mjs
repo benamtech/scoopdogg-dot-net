@@ -90,7 +90,7 @@ try {
 
   // ---- what it may not --------------------------------------------------------------------
   const FORBIDDEN = ['customers', 'growth', 'unfinished', 'checklist', 'payments', 'leads', 'messages',
-    'summary', 'business', 'team', 'settings', 'demo', 'money/everything'];
+    'summary', 'business', 'team', 'settings', 'demo', 'money/everything', 'rate-card'];
   const leaks = [];
   for (const p of FORBIDDEN) {
     const r = await callAdmin(p, crewToken);
@@ -99,7 +99,8 @@ try {
   leaks.length ? no('crew is refused every business route', leaks.join(', '))
                : ok('crew is refused every business route', `${FORBIDDEN.length} routes, all 403`);
 
-  for (const [p, method] of [['payments/disconnect', 'POST'], ['customers/invite', 'POST'], ['checklist/prices/confirm', 'POST']]) {
+  for (const [p, method] of [['payments/disconnect', 'POST'], ['customers/invite', 'POST'], ['checklist/prices/confirm', 'POST'],
+                             ['rate-card/tier', 'PATCH'], ['rate-card/package', 'PATCH']]) {
     const r = await callAdmin(p, crewToken, method);
     r.status === 403 ? ok(`crew is refused ${method} ${p}`) : no(`crew is refused ${method} ${p}`, `HTTP ${r.status}`);
   }
