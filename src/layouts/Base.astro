@@ -61,10 +61,22 @@ const { title, description, canonicalPath, ogImage, jsonLd, noindex = false, bod
  * growth board reads it. GA was inherited from the predecessor site and is now measuring
  * something we measure ourselves, at the cost of every page's only JavaScript.
  *
- * TO PUT IT BACK, no deploy needed:  node scripts/set-setting.mjs analytics.measurement_id '"G-SNLVJNSP05"'
- * The historical GA data is untouched either way — nothing is deleted, the tag just stops
- * firing. This lands on the branch, so production keeps its tag until somebody promotes the
- * commit; the promotion checklist in SPEC step 11 names it.
+ * TO PUT IT BACK — and it DOES need a build and a deploy, which this comment used to deny:
+ *
+ *     node scripts/set-setting.mjs analytics.measurement_id '"G-SNLVJNSP05"'
+ *     npm run build && <deploy>
+ *
+ * The row alone does nothing. `setting()` reads content/catalog.json through a static ESM
+ * import, that file is written by scripts/pull-catalog.mjs as build step one, and until
+ * 2026-09-26 its PUBLIC_SETTINGS allowlist did not carry this key at all — so the command this
+ * comment recommended would have written a row the built site could never see. The key is in
+ * the allowlist now and gates/settings-have-readers.mjs resolves this read against it.
+ *
+ * AND READ THE LAST SENTENCE THE RIGHT WAY ROUND. The historical GA data is untouched either
+ * way. Production is still the predecessor build and is still serving G-SNLVJNSP05 today
+ * (measured 2026-09-26), so promoting this branch TURNS GA OFF rather than leaving it alone.
+ * That is a deliberate choice — P19 §2 chose the first-party spine over a vendor tag — but it
+ * is a change to what production does, and the promotion checklist in SPEC step 11 names it.
  */
 const measurementId = setting<string>('analytics.measurement_id', '');
 // A demo build is never indexable, whatever the page asked for. A demo booking page in

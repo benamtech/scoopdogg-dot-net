@@ -55,6 +55,14 @@ const PUBLIC_SETTINGS = [
   'reviews.google_rating', 'reviews.google_count', 'reviews.google_profile_url', 'reviews.google_checked_on',
   'trust.insured_confirmed', 'trust.background_checked_confirmed', 'trust.guarantee_text',
   'growth.careers_enabled', 'growth.commercial_enabled',
+  // THE SITE READS THESE AND THIS LIST DID NOT CARRY THEM, which is the same defect as
+  // booking.lanes_enabled above and was found the same way — by teaching
+  // gates/settings-have-readers.mjs to see `setting()` and not only `settings.get()`.
+  // src/layouts/Base.astro reads analytics.measurement_id, and Base.astro's own comment claimed
+  // a set-setting.mjs call would turn Google Analytics back on with no deploy. It could not:
+  // the row was never published here, so the built site never saw it whatever the row said.
+  // The other two serve hard-coded defaults in src/lib/catalog.ts until a row exists.
+  'analytics.measurement_id', 'business.service_region', 'business.region_sentence',
 ];
 
 const c = new pg.Client({ connectionString: url, ssl: { rejectUnauthorized: true } });

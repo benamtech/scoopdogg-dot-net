@@ -56,6 +56,29 @@ for (const f of [...files('server/**/*.ts'), ...files('api/**/*.ts'), ...files('
     if (ownKeys.includes(m[1])) continue;
     asks.push({ file: f, key: m[1], server: f.startsWith('server/') || f.startsWith('api/') });
   }
+  /**
+   * THE SITE DOES NOT CALL settings.get() AT ALL, AND THIS GATE COULD NOT SEE IT.
+   *
+   * Everything under src/ reads a row through `setting()` from src/lib/catalog.ts, which looks
+   * it up in the STATIC IMPORT of content/catalog.json. Scanning only for `settings.get(` meant
+   * this gate recorded zero asks from the whole built site and resolved none of them against
+   * PUBLIC_SETTINGS — the one allowlist that decides what reaches a page.
+   *
+   * What it missed, measured 2026-09-26: src/layouts/Base.astro reads
+   * `analytics.measurement_id`, which is in no allowlist, so the file's own comment — "to put it
+   * back, no deploy needed: node scripts/set-setting.mjs analytics.measurement_id" — described a
+   * command that could not work. Two more, src/lib/catalog.ts's `business.service_region` and
+   * `business.region_sentence`, silently served their hard-coded defaults.
+   *
+   * This is the same shape as `booking.lanes_enabled` taking lane B off the built site, which is
+   * the incident PUBLIC_SETTINGS' own comment was written about. A filter is a silent allowlist,
+   * and a gate that cannot see the reader cannot see the filter either.
+   */
+  for (const m of body.matchAll(/\bsetting(?:<[^>]*>)?\(\s*'([a-z_]+\.[a-z_]+)'/g)) {
+    if (ownKeys.includes(m[1])) continue;
+    if (asks.some((a) => a.file === f && a.key === m[1])) continue;
+    asks.push({ file: f, key: m[1], server: f.startsWith('server/') || f.startsWith('api/') });
+  }
 }
 const unreachable = asks.filter((a) => a.server
   ? !serverPrefixes.includes(a.key.split('.')[0])
