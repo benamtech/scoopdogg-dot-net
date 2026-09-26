@@ -90,11 +90,21 @@ if (write) {
     await c.end();
     process.exit(1);
   }
+  // WHAT THIS MAY AND MAY NOT RECORD (2026-09-26). It used to write its verdict into
+  // `probe_error`, which `probeAccount()` uses to mean "the probe of the CONNECTED ACCOUNT
+  // failed". Two authors, two meanings, one column — and that is how 'Restricted key
+  // authenticates but has no Connect permissions', a fact about a credential on 2026-09-12,
+  // sat on the live connection for two weeks after the key was re-measured as usable, on a
+  // row with no connected account for it to be about.
+  //
+  // What this script learns is whether a PLATFORM KEY has Connect scope. That is a property of
+  // the credential, not of this connection, it is printed above, and the exit code carries it.
+  // So the only thing worth persisting is WHEN we last asked.
   await c.query(
-    `insert into stripe_connection (livemode, last_probed_at, probe_error, updated_at)
-       values ($1, now(), $2, now())
-     on conflict (livemode) do update set last_probed_at = now(), probe_error = excluded.probe_error, updated_at = now()`,
-    [mode === 'live', connectReady ? null : 'platform key lacks Connect scope'],
+    `insert into stripe_connection (livemode, last_probed_at, updated_at)
+       values ($1, now(), now())
+     on conflict (livemode) do update set last_probed_at = now(), updated_at = now()`,
+    [mode === 'live'],
   );
   console.log(`  stripe_connection[livemode=${mode === 'live'}] updated`);
   await c.end();

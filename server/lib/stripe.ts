@@ -150,7 +150,18 @@ export function probeIsFresh(conn: Pick<Connection, 'last_probed_at'> | null, no
 export async function probeAccount(mode: StripeMode): Promise<AccountStatus> {
   const conn = await connection(mode);
   const probed_at = new Date().toISOString();
-  if (!conn?.account_id) return { mode, account_id: null, ready: false, card_payments: null, requirements: null, probed_at, source: 'none' };
+  if (!conn?.account_id) {
+    // No account, so there is nothing to have measured. Say so rather than returning early and
+    // leaving whatever the row last held — that early return is how a key-scope error from
+    // 2026-09-12 survived on the live row for two weeks (migration 038, which also enforces it).
+    if (conn) {
+      await db().query(
+        `update stripe_connection set card_payments_status = null, requirements_status = null,
+                charges_enabled = false, probe_error = null, last_probed_at = now(), updated_at = now()
+          where livemode = $1`, [mode === 'live']);
+    }
+    return { mode, account_id: null, ready: false, card_payments: null, requirements: null, probed_at, source: 'none' };
+  }
   const stripe = stripeFor(mode);
   let card: string | null = null;
   let reqs: string | null = null;

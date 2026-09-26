@@ -24,6 +24,8 @@ const screen = readFileSync('src/pages_react/admin/AdminPaymentsPage.tsx', 'utf8
 const adminApi = readFileSync('api/admin.ts', 'utf8');
 const booking = readFileSync('server/lib/booking.ts', 'utf8');
 const trigger = readFileSync('migrations/037_a_readiness_belongs_to_one_account.sql', 'utf8');
+const trigger38 = readFileSync('migrations/038_no_account_no_verdict.sql', 'utf8');
+const keyProbe = readFileSync('scripts/probe-stripe.mjs', 'utf8');
 
 let pass = 0, fail = 0;
 const ok = (n, m = '') => { console.log(`  PASS  ${n}${m ? ` — ${m}` : ''}`); pass++; };
@@ -71,6 +73,16 @@ const moneyPathChecksAge = (src) => /card_payments_status === 'active' && probeI
 const schemaForgetsOnAccountChange = (sql) =>
   /new\.account_id is distinct from old\.account_id/.test(sql) && /new\.last_probed_at\s*:=\s*null/.test(sql);
 
+// 8. With no account there is nothing to have measured, and the schema says so on insert too —
+//    an upsert onto a fresh database must not be able to seed a verdict either.
+const schemaHoldsNoVerdictWithoutAccount = (sql) =>
+  /if new\.account_id is null then/.test(sql) && /new\.probe_error\s*:=\s*null/.test(sql)
+  && /before insert or update on stripe_connection/.test(sql);
+
+// 9. `probe_error` has one author. A script that learns something about the KEY must not write
+//    into the column that means the connected-account probe failed.
+const oneAuthorForProbeError = (src) => !/probe_error/.test(src.replace(/^\s*\/\/.*$/gm, ''));
+
 const checks = [
   ['readiness comes from Stripe, not a stored boolean', readyFromStripe(stripeTs)],
   ['"Connected" is reachable only through s.ready', connectedGuarded(screen)],
@@ -80,6 +92,8 @@ const checks = [
   ['an empty v2 body falls back to the v1 read, not only an error', emptyReadFallsBack(stripeTs)],
   ['the money path re-asks rather than trusting an old reading', moneyPathChecksAge(booking)],
   ['changing the account forgets its reading, in the schema', schemaForgetsOnAccountChange(trigger)],
+  ['a connection with no account holds no verdict, on insert too', schemaHoldsNoVerdictWithoutAccount(trigger38)],
+  ['probe_error has one author — the key probe does not write it', oneAuthorForProbeError(keyProbe)],
 ];
 for (const [name, good] of checks) good ? ok(name) : no(name);
 
@@ -96,6 +110,8 @@ const controls = [
   ['money-path freshness', moneyPathChecksAge(booking.replace(
     "card_payments_status === 'active' && probeIsFresh(conn)", "card_payments_status === 'active'"))],
   ['schema forgetting', schemaForgetsOnAccountChange(trigger.replace('new.last_probed_at       := null;', ''))],
+  ['no-account invariant', schemaHoldsNoVerdictWithoutAccount(trigger38.replace('if new.account_id is null then', 'if false then'))],
+  ['probe_error authorship', oneAuthorForProbeError(keyProbe + "\nawait c.query('update stripe_connection set probe_error = $1', [x]);")],
 ];
 for (const [what, stillPasses] of controls) {
   stillPasses ? no(`negative control: a broken ${what} must trip this gate`, 'DETECTOR BLIND')
