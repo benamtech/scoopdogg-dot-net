@@ -99,8 +99,58 @@ check(policy === 'required_beyond_two_weeks',
   'the policy row says the catch-up is required beyond a couple of weeks',
   `booking.initial_cleanup_policy = ${policy}`);
 
-// ---------------------------------------------------------------- D. the server enforces it
+// ------------------------------------------------- D. the SERVER'S OWN CATALOG resolves it
+/**
+ * THIS SECTION USED TO BE A REGEX AND IT WAS GREEN THROUGH A LIVE MONEY DEFECT.
+ *
+ * `server/lib/catalog-db.ts` omitted `covers_last_cleaned` from its tier SELECT. `catchUpFor()`
+ * matches on that column and nothing else, so it returned {kind:'none'} for EVERY band on every
+ * server call: a yard six weeks behind was charged the weekly price and booked with a card, and
+ * a twelve-week pause resumed free. Measured through the shipped compile path 2026-09-26.
+ *
+ * Everything above this line reads `content/catalog.json`, which `scripts/pull-catalog.mjs` DOES
+ * select the column into — so the build file was right, the server was wrong, and a gate that
+ * only read the build file agreed with the build file. `/catchUpFor\(/.test(server)` was
+ * satisfied by the broken code, because the call was there; it just could never match a row.
+ *
+ * A VERIFIER MUST OBSERVE THE PRODUCER'S OWN PATH. So this calls the compiled
+ * `server/lib/catalog-db.js` — the exact module api/booking.ts imports — and asserts the ladder
+ * RESOLVES, rather than asserting that a function name appears in a file.
+ */
 console.log('');
+const { loadCatalog: serverLoadCatalog } = await import(`${out}/server/lib/catalog-db.js`);
+const serverCat = await serverLoadCatalog();
+
+const serverCatchUpTiers = serverCat.tiers.filter((t) => (t.covers_last_cleaned ?? []).length);
+check(serverCatchUpTiers.length === catchUpTiers.length && serverCatchUpTiers.length > 0,
+  'the SERVER\'s own catalog carries covers_last_cleaned on the same tiers the build file does',
+  `server ${serverCatchUpTiers.length}, content/catalog.json ${catchUpTiers.length}`);
+
+for (const a of ANSWERS) {
+  const r = catchUpFor(serverCat, WEEKLY, a);
+  const owed = a === 'this_week' || a === 'two_weeks' ? 'none' : 'charge-or-quote';
+  const got = r.kind === 'none' ? 'none' : 'charge-or-quote';
+  check(owed === got,
+    `the server resolves "${a}" to ${owed}`,
+    r.kind === 'charge' ? `$${(r.cents / 100).toFixed(2)} (${r.band})` : r.kind);
+}
+
+const severe = catchUpFor(serverCat, WEEKLY, 'longer');
+check(severe.kind === 'quote',
+  'the severe band resolves to a QUOTE on the server, not a silent none',
+  `kind = ${severe.kind}`);
+
+const { catchUpForWeeks: serverCatchUpForWeeks } = await import(`${out}/src/shared/pricing.js`);
+const resumed = serverCatchUpForWeeks(serverCat, WEEKLY, 4);
+check(resumed.kind !== 'none',
+  'a four-week pause resolves to something owed on resume — the second door on the same rule',
+  `kind = ${resumed.kind}${resumed.cents ? ` $${(resumed.cents / 100).toFixed(2)}` : ''}`);
+
+// A booking for a service that cannot be behind must still be none — the negative control that
+// stops the four checks above passing because catchUpFor returns a charge for everything.
+check(catchUpFor(serverCat, 'one-time-dog-poop-cleanup', 'longer').kind === 'none',
+  'NEGATIVE CONTROL: a one-time job is never behind — the one-time job IS the catch-up');
+
 const server = readFileSync('server/lib/booking.ts', 'utf8');
 check(/catchUpFor\(/.test(server),
   'the server recomputes the catch-up from its own rows');

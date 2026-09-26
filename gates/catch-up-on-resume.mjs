@@ -77,6 +77,38 @@ check(catchUpForWeeks(catalog, 'weekly-turf-maintenance', 4).kind === 'none',
     'so the pass above is reading Josue\'s rows, not a band written into this gate');
 }
 
+// ------------------------------------- B2. and the SERVER resolves it, not just the build file
+/**
+ * EVERY CHECK IN SECTION B READS content/catalog.json, AND THAT IS NOT WHERE THE MONEY IS
+ * DECIDED. `scripts/pull-catalog.mjs` selects `covers_last_cleaned`; `server/lib/catalog-db.ts`
+ * did not, until 2026-09-26. So the build file carried the mapping, this gate read the build
+ * file, and on the live server `catchUpForWeeks` returned {kind:'none'} for every pause length —
+ * a twelve-week pause resumed free while this gate was green. The same blindness was in
+ * gates/catch-up-priced.mjs.
+ *
+ * `server/lib/account.ts` calls `loadCatalog()` from catalog-db, not from a JSON file. This
+ * section asks THAT module the same questions, so the two paths can never disagree unnoticed
+ * again.
+ */
+console.log('');
+const { loadCatalog: serverLoadCatalog } = await import(`${out}/server/lib/catalog-db.js`);
+const serverCat = await serverLoadCatalog();
+
+check((serverCat.tiers.filter((t) => (t.covers_last_cleaned ?? []).length)).length
+      === (catalog.tiers.filter((t) => (t.covers_last_cleaned ?? []).length)).length,
+  'the server\'s catalog and the built catalog map the same number of catch-up tiers',
+  `server ${serverCat.tiers.filter((t) => (t.covers_last_cleaned ?? []).length).length}, build ${catalog.tiers.filter((t) => (t.covers_last_cleaned ?? []).length).length}`);
+
+for (const [weeks, want] of [[2, 'none'], [4, 'charge'], [12, 'quote']]) {
+  const r = catchUpForWeeks(serverCat, WEEKLY, weeks);
+  check(r.kind === want,
+    `the SERVER prices a ${weeks}-week pause as ${want}`,
+    r.kind === 'charge' ? `$${(r.cents / 100).toFixed(2)}` : r.kind);
+}
+
+check(catchUpForWeeks(serverCat, 'weekly-turf-maintenance', 4).kind === 'none',
+  'NEGATIVE CONTROL: on the server too, the rule stays on the service Josue described');
+
 // ------------------------------------------------------- C. one clock, and it is ours
 console.log('');
 const account = readFileSync('server/lib/account.ts', 'utf8');
