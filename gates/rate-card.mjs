@@ -143,6 +143,19 @@ try {
       const { rows: [still] } = await c.query(`select id from service_tiers where id = $1`, [free.id]);
       check(!!still, 'and the row is still there — retired, not deleted',
         'packages, invoice lines and inbound links still resolve through it');
+
+      /**
+       * AND RETIRING IT ACTUALLY TAKES IT OFF THE SITE. `status` was a column with a writer and
+       * no reader: setTier wrote it, the column comment promised a retired tier "is not offered
+       * to a new customer and is not shown on a public page", and both catalog readers selected
+       * every tier regardless. The owner would have pressed Retire, watched the row change, and
+       * seen the tier still on his website. This repo has shipped that shape three times.
+       */
+      const { rows: afterRetire } = await c.query(
+        `select id from service_tiers where status = 'active' and id = $1`, [free.id]);
+      check(afterRetire.length === 0,
+        'a retired tier is gone from what the catalog readers select',
+        'server/lib/catalog-db.ts and scripts/pull-catalog.mjs both filter status = active');
     }
   }
 

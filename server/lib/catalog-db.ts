@@ -27,7 +27,7 @@ export async function loadCatalog(): Promise<Catalog & { areas: AreaRow[]; setti
    * DOES select the column into — a verifier observing the producer from a different path agrees
    * with it, wrong and all. gates/catch-up-priced.mjs now calls this function instead.
    */
-  const tiers = await q<Catalog['tiers'][number]>(`select id, service_slug, label, min_qty, max_qty, price_cents, price_suffix, requires_quote, price_is_from, est_minutes, covers_last_cleaned, sort_order from service_tiers order by service_slug, sort_order`);
+  const tiers = await q<Catalog['tiers'][number]>(`select id, service_slug, label, min_qty, max_qty, price_cents, price_suffix, requires_quote, price_is_from, est_minutes, covers_last_cleaned, sort_order from service_tiers where status = 'active' order by service_slug, sort_order`);
   const packages = await q<Catalog['packages'][number]>(`select id, slug, service_slug, tier_id, name, short_label, frequency, visits_per_month::float as visits_per_month, monthly_price_cents, derivation, source, version, featured, sort_order from packages where status = 'active' order by sort_order`);
   const offers = await q<Catalog['offers'][number]>(`select id, name, kind, value, applies_to_slugs, requires_slugs, status from offers where status = 'active'`);
   const areas = await q<AreaRow>(`select slug, name, bookable, market, service_weekdays from service_areas where status = 'active' order by sort_order`);

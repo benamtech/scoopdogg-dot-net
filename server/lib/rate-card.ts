@@ -258,9 +258,24 @@ export async function setPackagePrice(
     `select id, slug, name, monthly_price_cents, version, status from packages where id = $1`, [id]);
   if (!before) throw new RateCardError('no_package', 'We do not have that plan.', 404);
 
+  /**
+   * `source` IS THE PROVENANCE OF THE NUMBER, NOT THE AUTHOR OF THE ROW — `updated_by` is the
+   * author. Migration 011 allows exactly two values and its column comment says what they mean:
+   * 'derived_from_published' is arithmetic on a price Josue already publishes, 'confirmed' is a
+   * human saying the number is right. An owner typing a price into his own rate card is the
+   * strongest confirmation there is, so it is the second one. The first version of this wrote
+   * 'owner', which is a third value nothing allows — `packages_source_check` refused it and the
+   * owner's first save would have been a 500. gates/rate-card.mjs caught it on its first run.
+   *
+   * `derivation` IS OVERWRITTEN FOR THE SAME REASON. It holds the working in words so the admin
+   * can show why a number is what it is, and after the owner overrides the number the old
+   * arithmetic is no longer why — leaving it would have the screen explain his price with a
+   * derivation that did not produce it.
+   */
   const { rows: [after] } = await q.query(
-    `update packages set monthly_price_cents = $2, source = 'owner', updated_by = $3 where id = $1 returning *`,
-    [id, monthlyCents, by]);
+    `update packages set monthly_price_cents = $2, source = 'confirmed',
+            derivation = $4, updated_by = $3 where id = $1 returning *`,
+    [id, monthlyCents, by, `set by ${by} in the rate card`]);
 
   const moved = await record('package', id, before.name,
     { monthly_price_cents: before.monthly_price_cents }, { monthly_price_cents: monthlyCents }, by, q);

@@ -80,7 +80,7 @@ try {
               -- tier covers. A column the site reads and this script does not ship is a
               -- feature that silently does not exist (the same way booking.lanes_enabled was).
               covers_last_cleaned
-         from service_tiers order by service_slug, sort_order`);
+         from service_tiers where status = 'active' order by service_slug, sort_order`);
   const packages = await q(`select id, slug, service_slug, tier_id, name, short_label, frequency, visits_per_month::float as visits_per_month,
               monthly_price_cents, derivation, source, confirmed_at, badge, version, featured, sort_order
          from packages where status = 'active' order by sort_order`);
