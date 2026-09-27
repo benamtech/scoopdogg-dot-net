@@ -323,12 +323,14 @@ function ContractFacts({ gaps, onSaved }: { gaps: string[]; onSaved: () => void 
   const [klass, setKlass] = useState('C-27');
   const [legal, setLegal] = useState('');
   const [address, setAddress] = useState('');
-  const [cgl, setCgl] = useState<'none' | 'carries' | 'self' | 'llc' | ''>('');
   const [insurer, setInsurer] = useState('');
   const [insPhone, setInsPhone] = useState('');
   const [wc, setWc] = useState<'exempt' | 'carries' | ''>('');
   const [err, setErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // Only what is missing is asked. Whether he is insured is known (confirmed with Josue,
+  // 2026-09-27); the contract still has to name the insurer and its number (§7159(e)(1)(B)).
+  const needs = (words: string) => gaps.some((g) => g.includes(words));
   const field = 'w-full border border-sage-light rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-forest';
   const save = async () => {
     setSaving(true); setErr(null);
@@ -337,7 +339,7 @@ function ContractFacts({ gaps, onSaved }: { gaps: string[]; onSaved: () => void 
         ...(licence ? { license_number: licence, license_class: klass } : {}),
         ...(legal ? { legal_name: legal } : {}),
         ...(address ? { mailing_address: address } : {}),
-        ...(cgl ? { cgl: cgl === 'carries' || cgl === 'llc' ? { mode: cgl, insurer, phone: insPhone } : { mode: cgl } } : {}),
+        ...(insurer || insPhone ? { cgl: { mode: 'carries', insurer, phone: insPhone } } : {}),
         ...(wc ? { workers_comp: wc } : {}),
       });
       onSaved();
@@ -349,28 +351,23 @@ function ContractFacts({ gaps, onSaved }: { gaps: string[]; onSaved: () => void 
       <p className="font-semibold">Install work over {money(WRITTEN_CONTRACT_OVER_CENTS)} is a written contract in California. It still needs {gaps.join(', ')}.</p>
       <p className="mt-1">Fill these in once and every install quote after this carries them. Clean-up work sends without them.</p>
       <div className="mt-3 grid gap-2">
-        <input className={field} placeholder="CSLB licence number" inputMode="numeric" value={licence} onChange={(e) => setLicence(e.target.value)} />
-        <input className={field} placeholder="Licence class, e.g. C-27" value={klass} onChange={(e) => setKlass(e.target.value)} />
-        <input className={field} placeholder="Name on the licence" value={legal} onChange={(e) => setLegal(e.target.value)} />
-        <input className={field} placeholder="Mailing address for cancellation notices" value={address} onChange={(e) => setAddress(e.target.value)} />
-        <select className={field} value={cgl} onChange={(e) => setCgl(e.target.value as typeof cgl)}>
-          <option value="">Liability insurance…</option>
-          <option value="carries">Carries commercial general liability insurance</option>
-          <option value="none">Does not carry it</option>
-          <option value="self">Self-insured</option>
-          <option value="llc">An LLC with insurance or other security</option>
-        </select>
-        {(cgl === 'carries' || cgl === 'llc') && (
-          <>
-            <input className={field} placeholder="Insurance company" value={insurer} onChange={(e) => setInsurer(e.target.value)} />
-            <input className={field} placeholder="Insurance company phone" value={insPhone} onChange={(e) => setInsPhone(e.target.value)} />
-          </>
+        {needs('licence number') && <>
+          <input className={field} placeholder="CSLB licence number" inputMode="numeric" value={licence} onChange={(e) => setLicence(e.target.value)} />
+          <input className={field} placeholder="Licence class, e.g. C-27" value={klass} onChange={(e) => setKlass(e.target.value)} />
+        </>}
+        {needs('name on the licence') && <input className={field} placeholder="Name on the licence" value={legal} onChange={(e) => setLegal(e.target.value)} />}
+        {needs('mailing address') && <input className={field} placeholder="Mailing address for cancellation notices" value={address} onChange={(e) => setAddress(e.target.value)} />}
+        {needs('insurance company') && <>
+          <input className={field} placeholder="Insurance company" value={insurer} onChange={(e) => setInsurer(e.target.value)} />
+          <input className={field} placeholder="Insurance company phone" value={insPhone} onChange={(e) => setInsPhone(e.target.value)} />
+        </>}
+        {needs('employees') && (
+          <select className={field} value={wc} onChange={(e) => setWc(e.target.value as typeof wc)}>
+            <option value="">Employees…</option>
+            <option value="exempt">No employees (exempt from workers' comp)</option>
+            <option value="carries">Has employees, carries workers' comp</option>
+          </select>
         )}
-        <select className={field} value={wc} onChange={(e) => setWc(e.target.value as typeof wc)}>
-          <option value="">Employees…</option>
-          <option value="exempt">No employees (exempt from workers' comp)</option>
-          <option value="carries">Has employees, carries workers' comp</option>
-        </select>
       </div>
       {err && <p className="mt-2 text-red-800">{err}</p>}
       <button className="mt-3 rounded-full bg-forest px-4 py-2 font-semibold text-white disabled:opacity-60" disabled={saving} onClick={save}>Save these</button>

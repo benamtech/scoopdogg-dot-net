@@ -83,7 +83,7 @@ type Settings = Map<string, unknown>;
  */
 async function settings(q: Queryable): Promise<Settings> {
   const { rows } = await q.query(
-    `select key, value from settings where key like 'quote.%' or key like 'contract.%' or key like 'business.%'`);
+    `select key, value from settings where key like 'quote.%' or key like 'contract.%' or key like 'business.%' or key = 'trust.insured_confirmed'`);
   return new Map(rows.map((r) => [r.key as string, r.value as unknown]));
 }
 const setting = (s: Settings, k: string, fallback: unknown = null) => (s.has(k) && s.get(k) !== null ? s.get(k) : fallback);
@@ -99,7 +99,10 @@ export function contractFacts(s: Settings): ContractFacts {
     mailingAddress: text('business.mailing_address'),
     email: text('business.email'),
     phone: text('business.phone'),
-    cgl: cgl && typeof cgl === 'object' && 'mode' in (cgl as object) ? cgl as CglFact : null,
+    // Whether he is insured is known (trust.insured_confirmed, confirmed with Josue 2026-09-27), so the
+    // contract's only open insurance facts are WHO insures him and their number (§7159(e)(1)(B)).
+    cgl: cgl && typeof cgl === 'object' && 'mode' in (cgl as object) ? cgl as CglFact
+      : s.get('trust.insured_confirmed') === true ? { mode: 'carries', insurer: '', phone: '' } : null,
     workersComp: wc === 'exempt' || wc === 'carries' ? wc : null,
   };
 }

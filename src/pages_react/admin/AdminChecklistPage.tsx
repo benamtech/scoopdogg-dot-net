@@ -130,7 +130,6 @@ export default function AdminChecklistPage() {
                     {item.key === 'business_facts' && (
                       <div className="mt-4 grid gap-4">
                         {([
-                          ['trust.insured_confirmed', 'Are you insured?'],
                           ['trust.background_checked_confirmed', 'Is everyone who works for you background-checked?'],
                         ] as const).map(([key, label]) => (
                           <div key={key} className="flex flex-wrap items-center gap-3">

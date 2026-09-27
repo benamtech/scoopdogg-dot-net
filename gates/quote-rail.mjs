@@ -144,6 +144,19 @@ try {
   // The install boundary, while the facts are unknown. Each side is tried.
   for (const k of ['business.license_number', 'business.legal_name', 'business.mailing_address', 'contract.cgl', 'contract.workers_comp']) await setSetting(k, null);
   check(own.contract.gaps.length > 0, 'the builder names what an install contract still needs', own.contract.gaps.join('; '));
+  {
+    // Insured is confirmed (trust.insured_confirmed, 2026-09-27): the builder must not ask WHETHER he is
+    // insured, only who insures him — the contract names the insurer and its number.
+    await c.query(`insert into settings (key, value, updated_by) values ('trust.insured_confirmed', 'true'::jsonb, 'gate')
+                   on conflict (key) do update set value = 'true'::jsonb`);
+    const g = (await Q.quoteForOwner(c, d0.id)).contract.gaps;
+    check(!g.some((x) => /whether the business carries/.test(x)) && g.some((x) => /insurance company/.test(x)),
+      'with insurance confirmed, only the insurer and its phone are asked for', g.filter((x) => /insur/.test(x)).join('; '));
+    await c.query(`update settings set value = 'false'::jsonb where key = 'trust.insured_confirmed'`);
+    const g2 = (await Q.quoteForOwner(c, d0.id)).contract.gaps;
+    check(g2.some((x) => /whether the business carries/.test(x)), 'NEGATIVE CONTROL: unconfirmed, it asks whether he is insured');
+    await c.query(`update settings set value = 'true'::jsonb where key = 'trust.insured_confirmed'`);
+  }
   check((await refuses(() => Q.sendQuote(c, d0.id, { by: BY, base: BASE, mode: 'test' }), 'licence_required')).refused, 'install work of $1,000+ cannot be sent without a licence number');
   {
     const small = await Q.requestQuote(c, { name: `Gate Small ${STAMP}`, phone: `805556${STAMP.slice(-4)}`, email: email('s'), city: 'Ventura', job_kinds: ['turf'], description: 'Patch a turf corner' });
@@ -161,7 +174,7 @@ try {
   await setSetting('business.license_class', 'C-27');
   await setSetting('business.legal_name', 'Gate Contractor');
   await setSetting('business.mailing_address', '1 Gate Way, Ventura, CA 93001');
-  await setSetting('contract.cgl', { mode: 'none' });
+  await setSetting('contract.cgl', { mode: 'carries', insurer: 'Gate Mutual', phone: '800-555-0100' });
   await setSetting('contract.workers_comp', 'exempt');
   check((await Q.quoteForOwner(c, d0.id)).contract.gaps.length === 0, 'with the facts on record, nothing is missing');
 

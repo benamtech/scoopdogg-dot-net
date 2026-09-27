@@ -56,6 +56,7 @@ export function contractGaps(f: ContractFacts): string[] {
   if (!f.mailingAddress) gaps.push('a mailing address for cancellation notices');
   if (!f.email) gaps.push('a business email');
   if (!f.cgl) gaps.push('whether the business carries liability insurance');
+  else if ((f.cgl.mode === 'carries' || f.cgl.mode === 'llc') && (!f.cgl.insurer || !f.cgl.phone)) gaps.push("the insurance company's name and phone number");
   if (!f.workersComp) gaps.push("whether the business has employees (workers' compensation)");
   return gaps;
 }

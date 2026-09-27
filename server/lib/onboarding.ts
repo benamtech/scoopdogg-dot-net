@@ -84,7 +84,9 @@ export async function checklist(): Promise<{
   // 3. The claims about his business. Item 3 is the ONLY place a claim may be entered, so no
   // page ever hard-codes "insured" again.
   {
-    const KEYS = ['trust.insured_confirmed', 'trust.background_checked_confirmed', 'trust.guarantee_text', 'reviews.google_count'];
+    // Insured is not asked: Ben confirmed it with Josue on 2026-09-27 and the row says true. The claim
+    // still reads the row, so a lapse is one superadmin setting, not a code change.
+    const KEYS = ['trust.background_checked_confirmed', 'trust.guarantee_text', 'reviews.google_count'];
     const { rows } = await db().query(
       `select key from settings where key = any($1::text[]) and value is not null and value <> 'null'::jsonb`, [KEYS]);
     const have = rows.map((r) => r.key);
@@ -92,7 +94,7 @@ export async function checklist(): Promise<{
     items.push({
       key: 'business_facts', title: "What's true about your business?", measurable: true, done: missing.length === 0,
       what_it_changes: 'Insured, background-checked, your guarantee and your real review count appear on every page. While one is empty the site simply does not claim it.',
-      detail: missing.length ? `Still to answer: ${missing.map(shortKey).join(', ')}.` : 'All four answered.',
+      detail: missing.length ? `Still to answer: ${missing.map(shortKey).join(', ')}.` : 'All answered.',
     });
   }
 
