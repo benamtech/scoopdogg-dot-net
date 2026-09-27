@@ -22,8 +22,13 @@ function bare(body, t) {
   return [...body.matchAll(re)].filter((m) => !/from\s*$/i.test(m[1])).length;
 }
 
-const planted = text(`<p>Small yard ${money(froms[0].price_cents)}${froms[0].price_suffix}</p>`);
-const controlFires = bare(planted, froms[0]) > 0;
+// The control plants a bare price and must see it. It used to plant froms[0] unguarded, so a rate
+// card that cleared the last "from" price made this gate throw a TypeError instead of reporting —
+// and the owner's editor makes that reachable. With no floor tiers there is nothing to mis-print,
+// and the control still runs, on a synthetic tier.
+const probe = froms[0] ?? { price_cents: 7000, price_suffix: '/visit', label: 'synthetic control tier' };
+const planted = text(`<p>Small yard ${money(probe.price_cents)}${probe.price_suffix ?? ''}</p>`);
+const controlFires = bare(planted, { ...probe, price_suffix: probe.price_suffix ?? '' }) > 0;
 let hits = 0;
 const pages = walk('dist').filter((f) => f.endsWith('.html') && !f.includes('/admin/'));
 for (const f of pages) {

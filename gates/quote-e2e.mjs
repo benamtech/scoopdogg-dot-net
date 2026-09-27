@@ -61,6 +61,19 @@ const eventsBefore = (await db.query('select count(*)::int as n from events')).r
 const count = async () => Object.fromEntries(await Promise.all(TABLES.map(async (t) => [t, (await db.query(`select count(*)::int as n from ${t}`)).rows[0].n])));
 const before = await count();
 
+// NOBODY'S INBOX. A preview's demo mode sends every message to settings.demo.address — Ben's inbox —
+// and this walk sends five, whose links die when it cleans up (Ben clicked one on 2026-09-27 and got
+// "That link is not recognised"). For the length of the walk the demo address is Resend's sandbox,
+// and it is put back in `finally`, checked, and put back again on any exit.
+const { rows: [demoRow] } = await db.query(`select value from settings where key = 'demo.address'`);
+const demoWas = demoRow ? demoRow.value : null;
+const restoreDemo = async () => {
+  if (demoWas === null) return;
+  await db.query(`update settings set value = $1::jsonb where key = 'demo.address'`, [JSON.stringify(demoWas)]).catch(() => {});
+};
+process.once('SIGINT', async () => { await restoreDemo(); process.exit(130); });
+await db.query(`update settings set value = $1::jsonb where key = 'demo.address'`, [JSON.stringify(`delivered+sd-quote-e2e-demo-${STAMP}@resend.dev`)]);
+
 // ── Josue's session, minted with the server's own HMAC and completed over HTTP.
 const adminEmail = 'ben@amtechai.com';
 const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
@@ -208,6 +221,9 @@ try {
     await db.query('rollback');
     no('cleanup', e.message);
   }
+  await restoreDemo();
+  const { rows: [demoNow] } = await db.query(`select value from settings where key = 'demo.address'`);
+  check(JSON.stringify(demoNow?.value ?? null) === JSON.stringify(demoWas), 'the demo address is put back', String(demoNow?.value ?? 'none').replace(/^(.).*(@.*)$/, '$1…$2'));
   const after = await count();
   const moved = TABLES.filter((t) => after[t] !== before[t]).map((t) => `${t} ${before[t]}→${after[t]}`);
   check(moved.length === 0, 'every row the walk wrote is gone', moved.join(', ') || 'all tables as they were');
