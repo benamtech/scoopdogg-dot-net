@@ -15,7 +15,7 @@
  *
  * WHY IT MATTERS IN MONEY. The card-expiry warning is the one message that prevents INVOLUNTARY
  * churn — a customer who never chose to leave, whose card simply ran out. Losing them costs
- * Josue the subscription and costs AMTECH 9% of every payment it would have carried.
+ * Josue the subscription and costs AMTECH its fee on every payment it would have carried.
  *
  * WHERE THE FACTS COME FROM. Stripe, and only Stripe. `exp_month` and `exp_year` are our own
  * columns — `cardsExpiringSoon()` reads them without calling the API, which is what lets the

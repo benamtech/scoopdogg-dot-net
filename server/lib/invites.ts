@@ -2,7 +2,7 @@
  * Bringing Josue's existing customers onto the rail (P18 §3) — lever 1 in P19 §3.
  *
  * He is paid in cash and Venmo today. Ben, 2026-09-19: roughly one to ten customers. Each one who
- * moves is 9% that did not exist and it starts the month they move, so this is the fastest revenue
+ * moves is platform fee that did not exist and it starts the month they move, so this is the fastest revenue
  * in the plan even at that size — and it is the only lever here whose customers have already said
  * yes.
  *

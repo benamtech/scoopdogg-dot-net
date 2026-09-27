@@ -16,7 +16,7 @@
  *    An account that quietly stops paying out because a document lapsed is the worst silent
  *    failure in this system.
  *
- * Disconnecting clears AMTECH's 9% from every live subscription FIRST and only then records that
+ * Disconnecting clears AMTECH's fee from every live subscription FIRST and only then records that
  * we stopped (P17 §8) - Stripe keeps collecting it otherwise. It does not close the account:
  * Stripe refuses to close a full-dashboard account it is loss-liable for, and it is his account.
  *
@@ -59,7 +59,7 @@ export default function AdminPaymentsPage() {
   };
 
   const disconnect = async (mode: 'test' | 'live') => {
-    if (!confirm('Stop taking card payments through this account? Our 9% comes off every live plan first, and your Stripe account stays yours.')) return;
+    if (!confirm('Stop taking card payments through this account? Our fee comes off every live plan first, and your Stripe account stays yours.')) return;
     setBusy(`disconnect-${mode}`); setError('');
     try { const j = await call('payments/disconnect', { mode }); setNote(j.message); await load(); }
     catch (e) { setError((e as Error).message); } finally { setBusy(''); }

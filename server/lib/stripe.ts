@@ -470,7 +470,7 @@ export async function probeV1Account(mode: StripeMode) {
 // his money, and that is the whole of a disconnect:
 //
 //   1. clear `application_fee_percent` from every live subscription. Stripe, verbatim: the fee
-//      "continues to be collected by the platform after disconnect" otherwise. Taking 9% from a
+//      "continues to be collected by the platform after disconnect" otherwise. Taking our fee from a
 //      business that has left is the single worst thing this integration could do by accident,
 //      and it would do it quietly, monthly, until somebody read a statement.
 //   2. record that we stopped.

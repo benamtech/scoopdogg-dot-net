@@ -12,7 +12,7 @@
  * can be fooled by a variable, a grep for a door cannot.
  *
  * THE FEE COMES FROM THE ROWS, NOT FROM A CONSTANT. `stripe_connection.platform_fee_bps` is the
- * single writer; migrations 012 and 015 moved it (400 -> 700 -> 900) and no code anywhere types
+ * single writer; migrations 012, 015 and 041 moved it (400 -> 700 -> 900 -> 800) and no code anywhere types
  * a percentage. Each subscription freezes the percentage it was sold on, which is what makes
  * "a price change applies to new customers only" structural rather than a promise.
  *

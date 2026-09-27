@@ -139,7 +139,7 @@ export default function AdminGrowthPage() {
               <Tile label="New customers" metric={m.new_customers_this_month} hint="This month" />
               <Tile label="Customers now" metric={m.customers_now} />
               <Tile label="Monthly recurring" metric={m.mrr_cents} format={money} />
-              <Tile label="AMTECH's share" metric={m.platform_fee_this_month_cents} format={money} hint="9% of what was collected" />
+              <Tile label="AMTECH's share" metric={m.platform_fee_this_month_cents} format={money} hint="Our fee on what was collected" />
             </div>
 
             {/*
@@ -265,7 +265,7 @@ export default function AdminGrowthPage() {
                 <table className="w-full text-left text-sm">
                   <thead className="border-b border-line bg-cream text-ink-500">
                     <tr><th className="px-4 py-3">Period</th><th className="px-4 py-3">Payments</th>
-                      <th className="px-4 py-3">Collected</th><th className="px-4 py-3">AMTECH's 9%</th></tr>
+                      <th className="px-4 py-3">Collected</th><th className="px-4 py-3">AMTECH's fee</th></tr>
                   </thead>
                   <tbody className="divide-y divide-line">
                     {[...board.fees_by_year.map((r) => ({ ...r, year: true })), ...board.fees_by_month.map((r) => ({ ...r, year: false }))].map((r) => (
