@@ -14,6 +14,7 @@ import { appendEvent } from '../server/lib/events.js';
 import { sendPaymentFailed } from '../server/lib/comms.js';
 import { CARD_EVENTS, handleCardEvent, markDefaultCard } from '../server/lib/cards.js';
 import { claimEvent, handleInvoicePaid } from '../server/lib/renewals.js';
+import { confirmQuotePayment } from '../server/lib/quotes.js';
 import { sendJson, safeError, type ApiRequest, type ApiResponse } from '../server/lib/http.js';
 
 async function rawBody(req: ApiRequest): Promise<Buffer> {
@@ -43,8 +44,14 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   try {
     const obj = event.data.object as unknown as Record<string, unknown>;
     if (event.type === 'checkout.session.completed') {
-      const bookingId = (obj.metadata as Record<string, string> | undefined)?.booking_id;
+      const meta = obj.metadata as Record<string, string> | undefined;
+      const bookingId = meta?.booking_id;
       if (bookingId) await completeBooking(bookingId, String(obj.id), null);
+      // A custom quote's deposit or balance. The page the customer returns to records it too;
+      // whichever arrives second finds it done (server/lib/quotes.ts recordQuotePayment).
+      if (meta?.quote_id) {
+        await confirmQuotePayment(db(), String(obj.id), { mode, base: process.env.PUBLIC_SITE_URL ?? 'https://scoopdogg.net' });
+      }
     }
     if (event.type === 'invoice.paid') {
       // A renewal writes its invoice AND its payment, with the fee Stripe actually took.

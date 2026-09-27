@@ -180,7 +180,7 @@ type Priced = Awaited<ReturnType<typeof priceBooking>>;
  * sends a customer down the request lane while the account is fine. So an old reading is
  * re-asked rather than believed, whichever way it points (see PROBE_TTL_MS).
  */
-async function paymentsReady(mode: StripeMode): Promise<boolean> {
+export async function paymentsReady(mode: StripeMode): Promise<boolean> {
   const conn = await connection(mode);
   if (!conn?.account_id) return false;
   if (conn.card_payments_status === 'active' && probeIsFresh(conn)) return true;
@@ -451,8 +451,10 @@ export async function createBooking(input: BookingInput, base: string) {
 const niceDate = (d: string) =>
   new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' });
 
-async function stripeCustomer(stripe: Stripe, account: string, mode: StripeMode, customerId: string, input: BookingInput) {
-  const { rows } = await db().query(
+export async function stripeCustomer(stripe: Stripe, account: string, mode: StripeMode, customerId: string,
+  input: Pick<BookingInput, 'name' | 'email' | 'phone' | 'address' | 'postal_code'>,
+  q: { query: (text: string, values?: unknown[]) => Promise<{ rows: any[] }> } = db()) {
+  const { rows } = await q.query(
     `select stripe_customer_id from stripe_customers where customer_id = $1 and livemode = $2 and account_id = $3`,
     [customerId, mode === 'live', account]);
   if (rows[0]) return rows[0].stripe_customer_id as string;
@@ -461,7 +463,7 @@ async function stripeCustomer(stripe: Stripe, account: string, mode: StripeMode,
     address: { line1: input.address, postal_code: input.postal_code || undefined, state: 'CA', country: 'US' },
     metadata: { scoopdogg_customer_id: customerId },
   }, { stripeAccount: account, idempotencyKey: `customer-${account}-${customerId}` });
-  await db().query(
+  await q.query(
     `insert into stripe_customers (customer_id, livemode, account_id, stripe_customer_id) values ($1,$2,$3,$4) on conflict do nothing`,
     [customerId, mode === 'live', account, c.id]);
   return c.id;

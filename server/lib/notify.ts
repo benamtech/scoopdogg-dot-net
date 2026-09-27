@@ -46,7 +46,9 @@ export type SendEmailArgs = {
     // Loop 2 and loop 3 of P16 §7 (server/lib/comms.ts). Same reasoning as the notices above:
     // `purpose` values on `outbox` rather than a table each, because the delivery state and the
     // once-only check already work there.
-    | 'visit_complete' | 'payment_failed' | 'card_expiring' | 'cancel_confirmation' | 'review_request';
+    | 'visit_complete' | 'payment_failed' | 'card_expiring' | 'cancel_confirmation' | 'review_request'
+    // The custom-quote lane (server/lib/quotes.ts, migration 042).
+    | 'quote_receipt' | 'quote_sent' | 'quote_accepted';
   /** Settings key holding the recipient list, or an explicit address for a sign-in code. */
   recipients: { settingKey: string } | { explicit: string[] };
   subject: string;

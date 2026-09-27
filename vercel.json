@@ -93,6 +93,18 @@
     {
       "source": "/admin/messages/:id",
       "destination": "/admin/message"
+    },
+    {
+      "source": "/api/quote/:path*",
+      "destination": "/api/quote"
+    },
+    {
+      "source": "/quote/:token",
+      "destination": "/quote"
+    },
+    {
+      "source": "/admin/quotes/:id",
+      "destination": "/admin/quote"
     }
   ]
 }

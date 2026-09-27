@@ -9,7 +9,7 @@
 import type pg from 'pg';
 
 export type EventInput = {
-  subjectKind: 'customer' | 'subscription' | 'visit' | 'invoice' | 'booking' | 'waitlist' | 'team';
+  subjectKind: 'customer' | 'subscription' | 'visit' | 'invoice' | 'booking' | 'waitlist' | 'team' | 'lead' | 'quote';
   subjectId: string;
   type: string;
   from?: string | null;

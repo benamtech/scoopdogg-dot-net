@@ -22,6 +22,10 @@ import { listRateCard, setTier, setPackagePrice, RateCardError, type TierPatch }
 import { completeVisit, completionReadiness, markArrived, markEnRoute, stopDurations, VisitError } from '../server/lib/visits.js';
 import { put, PhotoError } from '../server/lib/photos.js';
 import { sendVisitComplete, runCommsSweeps } from '../server/lib/comms.js';
+import {
+  QuoteError, draftQuote, saveQuote, quoteForOwner, listQuotes, sendQuote, completeQuoteJob, withdrawQuote, reviseQuote,
+  refundQuoteDeposit, leadPhotos, type QuotePatch,
+} from '../server/lib/quotes.js';
 
 const routePath = (req: ApiRequest) =>
   (new URL(req.url || '/', 'https://local.test').searchParams.get('path') || '')
@@ -374,6 +378,8 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         if (typeof body.status === 'string') {
           if (!LEAD_STATUSES.includes(body.status)) return sendJson(res, 400, { error: 'Unknown status.' });
           params.push(body.status); sets.push(`status = $${params.length}`);
+          // The first answer is the number R21 says to measure; moving a lead off 'new' is one.
+          if (body.status !== 'new') sets.push('first_response_at = coalesce(first_response_at, now())');
         }
         if (typeof body.notes === 'string') { params.push(body.notes.slice(0, 8000)); sets.push(`notes = $${params.length}`); }
         if (!sets.length) return sendJson(res, 400, { error: 'Nothing to change.' });
@@ -385,7 +391,46 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       }
       const { rows } = await db().query('select * from leads where id = $1', [id]);
       if (!rows.length) return sendJson(res, 404, { error: 'Lead not found.' });
-      return sendJson(res, 200, { lead: rows[0] });
+      const { rows: quotes } = await db().query(
+        `select id, number, state, title, sent_at, view_count, accepted_at, total_cents from quotes where lead_id = $1 order by created_at desc`, [id]);
+      return sendJson(res, 200, { lead: rows[0], photos: await leadPhotos(db(), id), quotes });
+    }
+
+    // ---- custom quotes (migration 042, server/lib/quotes.ts). Owners only: a quote is money.
+    if (path === 'quotes' || path === 'quote-new' || path.startsWith('quote/')) {
+      if (session.role !== 'admin' && session.role !== 'superadmin') return sendJson(res, 403, { error: 'Owners only.' });
+      const host = String(req.headers['x-forwarded-host'] || req.headers.host || 'scoopdogg.net');
+      const proto = String(req.headers['x-forwarded-proto'] || (host.startsWith('127.') || host.startsWith('localhost') ? 'http' : 'https'));
+      const base = `${proto}://${host}`;
+      const by = session.email;
+      try {
+        if (path === 'quotes') return sendJson(res, 200, { quotes: await listQuotes(db()) });
+        if (path === 'quote-new' && req.method === 'POST') {
+          const body = await readJsonBody(req);
+          const qt = await draftQuote(db(), String(body.lead_id ?? ''), by);
+          return sendJson(res, 200, await quoteForOwner(db(), qt.id));
+        }
+        const [, id, verb] = path.split('/');
+        if (!verb && req.method === 'GET') return sendJson(res, 200, await quoteForOwner(db(), id));
+        if (!verb && req.method === 'PATCH') {
+          const body = await readJsonBody(req, 512 * 1024);
+          await saveQuote(db(), id, body as QuotePatch, by);
+          return sendJson(res, 200, await quoteForOwner(db(), id));
+        }
+        if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed.' });
+        if (verb === 'send') return sendJson(res, 200, await sendQuote(db(), id, { by, base }));
+        if (verb === 'complete') {
+          const body = await readJsonBody(req);
+          return sendJson(res, 200, await completeQuoteJob(db(), id, { by, base, method: body.method === 'card' ? 'card' : 'link' }));
+        }
+        if (verb === 'withdraw') return sendJson(res, 200, await withdrawQuote(db(), id, by));
+        if (verb === 'revise') return sendJson(res, 200, await quoteForOwner(db(), (await reviseQuote(db(), id, by)).id));
+        if (verb === 'refund') return sendJson(res, 200, await refundQuoteDeposit(db(), id, by));
+        return sendJson(res, 404, { error: 'Not found.' });
+      } catch (e) {
+        if (e instanceof QuoteError) return sendJson(res, e.status, { error: e.message, code: e.code });
+        throw e;
+      }
     }
 
     if (path === 'messages') {

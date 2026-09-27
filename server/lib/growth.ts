@@ -124,16 +124,17 @@ export async function growthBoard(q: Queryable = db()) {
 
   // P17 §9: Josue's 1099-K reports GROSS, so his accountant needs our fee as a number, by month
   // and by year. Build the column now, not in January. A quote's deposit is money collected with
-  // our fee on it exactly as a charge is, so both kinds count; `manual` (cash, Venmo) is his alone.
+  // our fee on it exactly as a charge is, so both kinds count; a refund is a negative row whose fee is
+  // negative too, so the report nets it out. `manual` (cash, Venmo) is his alone.
   const { rows: byMonth } = await q.query(`
     select to_char(date_trunc('month', created_at), 'YYYY-MM') as period,
            sum(amount_cents)::int as collected_cents, sum(platform_fee_cents)::int as fee_cents, count(*)::int as payments
-      from payments where state = 'succeeded' and kind in ('charge', 'deposit')
+      from payments where state = 'succeeded' and kind in ('charge', 'deposit', 'refund')
      group by 1 order by 1 desc limit 24`);
   const { rows: byYear } = await q.query(`
     select to_char(date_trunc('year', created_at), 'YYYY') as period,
            sum(amount_cents)::int as collected_cents, sum(platform_fee_cents)::int as fee_cents, count(*)::int as payments
-      from payments where state = 'succeeded' and kind in ('charge', 'deposit')
+      from payments where state = 'succeeded' and kind in ('charge', 'deposit', 'refund')
      group by 1 order by 1 desc`);
 
   /**

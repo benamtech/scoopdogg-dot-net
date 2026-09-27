@@ -135,15 +135,19 @@ export type OneTimeCheckout = {
   successUrl: string;
   cancelUrl: string;
   idempotencyKey: string;
+  /**
+   * Keep the card for a later off-session charge — a quote's deposit, so the balance can be taken
+   * with one tap when the work is done (`chargeSavedCard`). Checkout tells the customer it is
+   * saving the card; the quote page says why before they get there.
+   */
+  saveCardForLater?: boolean;
 };
 
 /**
  * A one-time job — a cleanup, a deep clean, a pressure wash — with `application_fee_amount`,
  * because the percentage parameter does not reach this path at all.
  *
- * NO CALLER YET. The funnel books 4 of 11 services today and sends the one-time work to /contact;
- * P16 §3 is what gives this a caller. It is written now because the fee decision and the money
- * door are one piece of thinking, and adding the door later is how the fourth call site forgets.
+ * Callers: a one-time booking (booking.ts) and a custom quote's deposit and balance (quotes.ts).
  */
 export async function chargeOnce(p: OneTimeCheckout): Promise<Stripe.Checkout.Session> {
   const { stripe, account } = await resolve(p.mode);
@@ -152,7 +156,10 @@ export async function chargeOnce(p: OneTimeCheckout): Promise<Stripe.Checkout.Se
     mode: 'payment',
     customer: p.customerId,
     line_items: p.lineItems,
-    payment_intent_data: { application_fee_amount: fee, metadata: p.metadata },
+    payment_intent_data: {
+      application_fee_amount: fee, metadata: p.metadata,
+      ...(p.saveCardForLater ? { setup_future_usage: 'off_session' as const } : {}),
+    },
     metadata: p.metadata,
     custom_text: { submit: { message: p.submitMessage } },
     success_url: p.successUrl,

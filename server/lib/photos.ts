@@ -142,8 +142,12 @@ export async function put(input: {
 export async function get(id: string, q: Queryable = db()): Promise<{ bytes: Buffer; mime: string; createdAt: Date } | null> {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null;   // not a uuid: do not ask the database
   if (!(await available(q))) return null;
+  // A request photo (migration 042) is served from the same capability URL: one id space, and a
+  // uuid names one row in one of the two tables.
   const { rows } = await q.query(
-    `select bytes, mime, created_at from visit_photos where id = $1`, [id]);
+    `select bytes, mime, created_at from visit_photos where id = $1
+     union all
+     select bytes, mime, created_at from lead_photos where id = $1`, [id]);
   const r = rows[0];
   return r ? { bytes: r.bytes as Buffer, mime: r.mime as string, createdAt: r.created_at as Date } : null;
 }
