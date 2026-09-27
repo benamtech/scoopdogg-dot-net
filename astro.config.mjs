@@ -20,9 +20,30 @@ export default defineConfig({
   integrations: [
     react(),
     tailwind({ applyBaseStyles: false }),
-    // /admin/* is noindex and robots-disallowed, so advertising it in the sitemap would
-    // be telling crawlers to go where we just told them not to.
-    sitemap({ filter: (page) => !new URL(page).pathname.startsWith('/admin') }),
+    /**
+     * A SITEMAP IS A LIST OF PAGES YOU ARE ASKING TO HAVE INDEXED, so a noindex page in it is
+     * the site contradicting itself to a crawler.
+     *
+     * This filter only ever excluded /admin, and scripts/visibility-ledger.mjs found the rest on
+     * its first run: /account, /invite and /book/complete all serve
+     * `<meta name="robots" content="noindex, nofollow">` and all three were advertised. They are
+     * the same three gates/orphan-pages.mjs already declares private — a customer reaches
+     * /invite from a one-time token in an email and /book/complete by redirect from Stripe, and
+     * neither is a page anybody should arrive at cold.
+     *
+     * NO `lastmod`, deliberately. @astrojs/sitemap emits it only when given a lastmod or
+     * serialize option, and the only honest per-page value would come from git history — which a
+     * hosted build does not have, because Vercel builds from a tarball with no repository. A
+     * build timestamp stamped on every page would change every URL's lastmod on every deploy and
+     * tell crawlers everything changed when nothing did. The ledger reports this line as
+     * unmeasurable rather than printing a number that means nothing.
+     */
+    sitemap({
+      filter: (page) => {
+        const p = new URL(page).pathname.replace(/\/$/, '');
+        return !p.startsWith('/admin') && !['/account', '/invite', '/book/complete'].includes(p);
+      },
+    }),
   ],
   vite: {
     resolve: {

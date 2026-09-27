@@ -113,8 +113,21 @@ for (const [scheme, label] of [['tel', 'tel'], ['mailto', 'mailto']]) {
              : ok('no-loading-fallback');
 }
 
-// 7. the sitemap must list the pages that exist. The live sitemap advertises 71 URLs,
-//    every one of them a city x service page, and omits the homepage entirely.
+// 7. the sitemap must list the INDEXABLE pages that exist. The live sitemap advertises 71 URLs,
+//    every one of them a city x service page, and omits the homepage entirely — that is the
+//    omission this catches and it is unchanged.
+//
+//    NOINDEX PAGES ARE EXCLUDED, and they used to be required. A sitemap is a list of pages you
+//    are asking to have indexed, so a noindex page in one is the site contradicting itself to a
+//    crawler. This gate only ever excluded /admin, so /account, /invite and /book/complete —
+//    the same three gates/orphan-pages.mjs declares private — were advertised while serving
+//    `robots: noindex, nofollow`. scripts/visibility-ledger.mjs found it on its first run, and
+//    this gate was the reason it had stayed: astro.config.mjs's filter could not be tightened
+//    without failing here.
+//
+//    The check that matters is unchanged in strength. Every page a crawler is meant to see must
+//    still be listed, and a page that drops out of the sitemap by accident still fails — it can
+//    only be excused by actually serving noindex, which is a deliberate act in its own source.
 {
   const idx = `${DIST}/sitemap-index.xml`;
   if (!existsSync(idx)) no('sitemap-present', 'no sitemap-index.xml');
@@ -122,7 +135,14 @@ for (const [scheme, label] of [['tel', 'tel'], ['mailto', 'mailto']]) {
     const files = globSync(`${DIST}/sitemap*.xml`);
     const locs = new Set();
     for (const f of files) for (const m of readFileSync(f, 'utf8').matchAll(/<loc>([^<]+)<\/loc>/g)) locs.add(m[1]);
-    const routes = new Set(pages.map((f) => route(f) === '/.' ? '/' : route(f)));
+    const indexable = pages.filter((f) => !/<meta\s+name="robots"\s+content="[^"]*noindex/i.test(readFileSync(f, 'utf8')));
+    const routes = new Set(indexable.map((f) => route(f) === '/.' ? '/' : route(f)));
+    // And the other direction, which nothing checked: the sitemap must not advertise one either.
+    const noindexRoutes = new Set(pages.filter((f) => !indexable.includes(f)).map((f) => route(f) === '/.' ? '/' : route(f)));
+    const advertised = [...locs].map((l) => new URL(l).pathname.replace(/\/$/, '') || '/')
+      .filter((pn) => noindexRoutes.has(pn));
+    advertised.length ? no('sitemap-no-noindex', `the sitemap advertises ${advertised.length} noindex page(s): ${advertised.join(', ')}`)
+                      : ok('sitemap-no-noindex', `${noindexRoutes.size} noindex page(s), none advertised`);
     const missing = [...routes].filter((r) => ![...locs].some((l) => new URL(l).pathname.replace(/\/$/, '') === r.replace(/\/$/, '')));
     missing.length ? no('sitemap-complete', `${missing.length} built page(s) absent from the sitemap: ${missing.slice(0,3)}`)
                    : ok('sitemap-complete', `${routes.size} routes listed`);

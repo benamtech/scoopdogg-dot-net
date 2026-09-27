@@ -1,5 +1,5 @@
 {
-  "pulled_at": "2026-09-26T16:01:08.088Z",
+  "pulled_at": "2026-09-26T18:47:22.889Z",
   "source": "database",
   "services": [
     {
@@ -1381,7 +1381,10 @@
         "camarillo",
         "santa-paula"
       ],
-      "service_weekdays": [],
+      "service_weekdays": [
+        2,
+        3
+      ],
       "meta_title": "Dog Poop Cleaning in Oxnard, CA | Scoop Dogg",
       "meta_description": "Professional poop scooping in Oxnard, CA. Serving The Collection, Channel Islands Harbor, Riverpark, and all neighborhoods.",
       "intro": "Oxnard is Ventura County's largest city, home to beautiful neighborhoods near Channel Islands Harbor, the family-friendly Riverpark community, and the popular Collection at RiverPark shopping district. With so many dog owners across Oxnard's diverse neighborhoods, Scoop Dogg offers reliable, scheduled service to keep every yard in top shape.",
@@ -1433,7 +1436,10 @@
         "thousand-oaks",
         "moorpark"
       ],
-      "service_weekdays": [],
+      "service_weekdays": [
+        2,
+        3
+      ],
       "meta_title": "Dog Poop Cleaning in Camarillo, CA | Scoop Dogg",
       "meta_description": "Professional poop scooping in Camarillo, CA. Serving Constitution Park, Leisure Village, Spanish Hills, and all neighborhoods.",
       "intro": "Camarillo is one of Ventura County's most beloved cities, with pristine neighborhoods near Constitution Park, the well-known Leisure Village retirement community, and upscale Spanish Hills. Dog owners throughout Camarillo trust Scoop Dogg to keep their yards spotless so they can enjoy the area's excellent parks and community spaces.",
