@@ -15,7 +15,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { adminApi, type QuoteOwnerView, type QuotePatch } from '../../lib/adminApi';
-import { quoteTotals, depositFor, needsWrittenContract, money, type QuoteLine } from '../../shared/quote-math';
+import { quoteTotals, depositFor, needsWrittenContract, money, IMPROVEMENT_DEPOSIT_CEILING_CENTS, WRITTEN_CONTRACT_OVER_CENTS, type QuoteLine } from '../../shared/quote-math';
 import { jobKindLabel } from '../../shared/quote-contract';
 
 type EditLine = { key: string; description: string; amount: string; optional: boolean };
@@ -181,7 +181,7 @@ export default function AdminQuotePage() {
                   <input type="checkbox" className="mt-1 h-5 w-5" checked={install} onChange={(e) => setInstall(e.target.checked)} data-install-switch />
                   <span>
                     <span className="block font-semibold text-dark">This job builds or installs something</span>
-                    <span className="block text-sm text-dark/60">Turf, planting, irrigation, gravel, pavers. California treats that as a home-improvement contract: the deposit is capped at $1,000 or 10%, and the quote carries the contract terms for you. Clean-ups, hauling and washing are not.</span>
+                    <span className="block text-sm text-dark/60">Turf, planting, irrigation, gravel, pavers. California treats that as a home-improvement contract: the deposit is capped at {money(IMPROVEMENT_DEPOSIT_CEILING_CENTS)} or 10%, and the quote carries the contract terms for you. Clean-ups, hauling and washing are not.</span>
                   </span>
                 </label>
                 {install && (
@@ -346,7 +346,7 @@ function ContractFacts({ gaps, onSaved }: { gaps: string[]; onSaved: () => void 
   };
   return (
     <div className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-950" data-contract-gaps>
-      <p className="font-semibold">Install work over $500 is a written contract in California. It still needs {gaps.join(', ')}.</p>
+      <p className="font-semibold">Install work over {money(WRITTEN_CONTRACT_OVER_CENTS)} is a written contract in California. It still needs {gaps.join(', ')}.</p>
       <p className="mt-1">Fill these in once and every install quote after this carries them. Clean-up work sends without them.</p>
       <div className="mt-3 grid gap-2">
         <input className={field} placeholder="CSLB licence number" inputMode="numeric" value={licence} onChange={(e) => setLicence(e.target.value)} />

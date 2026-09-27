@@ -186,7 +186,8 @@ const screens = [
   ['/admin/quotes',   [/AMTECH SITE TEST quote/],                                               'quotes list'],
   // A draft's title and lines sit in <input>s, which innerText does not read; the heading and the
   // total are rendered text.
-  [`/admin/quotes/${seededQuote?.id}`, [new RegExp(`Quote #${seededQuote?.number ?? 'never'}`), /\$123\.45/], 'quote builder'],
+  // The number is in a chip styled `uppercase`, and innerText returns the transformed text.
+  [`/admin/quotes/${seededQuote?.id}`, [new RegExp(`Quote #${seededQuote?.number ?? 'never'}`, 'i'), /\$123\.45/], 'quote builder'],
 ];
 
 async function visit(context, route, shot) {

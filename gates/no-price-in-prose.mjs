@@ -46,7 +46,9 @@ const PRICE_G = /\$\d[\d,.]*/g;
 const walk = (d) => (existsSync(d)
   ? readdirSync(d).flatMap((f) => { const p = path.join(d, f); return statSync(p).isDirectory() ? walk(p) : [p]; })
   : []);
-const SOURCE = ['src/pages', 'src/layouts', 'src/components', 'src/shared']
+// src/pages_react holds every admin screen. It was outside this scope until 2026-09-27, when the quote
+// builder typed a legal figure there and nothing could see it.
+const SOURCE = ['src/pages', 'src/pages_react', 'src/layouts', 'src/components', 'src/shared']
   .flatMap(walk)
   .concat(walk('src/lib'))
   .filter((f) => /\.(astro|tsx|ts)$/.test(f));
