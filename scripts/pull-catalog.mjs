@@ -43,6 +43,7 @@ const PUBLIC_SETTINGS = [
   'pricing.quote_required_message', 'pricing.currency',
   // The custom-quote lane (migration 042): what the request page promises, and the licence number
   // §7030.5 puts on every advert once it is known.
+  'google.site_verification',
   'quote.reply_promise', 'quote.typical_range', 'quote.photos_max', 'business.license_number', 'business.license_class',
   'schedule.service_days', 'schedule.day_start', 'schedule.day_end', 'schedule.new_customer_start_days',
   'schedule.visit_window_hours', 'schedule.day_capacity',

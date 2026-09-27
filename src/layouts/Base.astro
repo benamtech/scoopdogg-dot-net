@@ -79,6 +79,8 @@ const { title, description, canonicalPath, ogImage, jsonLd, noindex = false, bod
  * is a change to what production does, and the promotion checklist in SPEC step 11 names it.
  */
 const measurementId = setting<string>('analytics.measurement_id', '');
+// Search Console ownership (scripts/search-console.mjs). A setting, not code: the token is public by design.
+const googleVerification = setting<string>('google.site_verification', '');
 // A demo build is never indexable, whatever the page asked for. A demo booking page in
 // Google's index outlives the demo.
 const isNoindex = noindex || DEMO_MODE;
@@ -128,6 +130,7 @@ const schema = jsonLd
     {/* When this page's prices were read from the database. server/lib/publish.ts reads it off the live
         site to know a publish actually landed, rather than trusting the hook that asked for one. */}
     <meta name="sd-catalog-pulled-at" content={pulledAt} />
+    {googleVerification && <meta name="google-site-verification" content={googleVerification} />}
 
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content={SITE_NAME} />
