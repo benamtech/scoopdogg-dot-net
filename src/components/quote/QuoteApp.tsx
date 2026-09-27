@@ -56,7 +56,10 @@ export default function QuoteApp({ phone, phoneHref }: { phone: string; phoneHre
   const [reason, setReason] = useState('');
 
   const load = async (count: boolean) => {
-    const r = await fetch(`/api/quote/view?token=${encodeURIComponent(token)}${count ? '' : '&peek=1'}`);
+    // A dropped connection throws a TypeError whose text is the browser's ("Failed to fetch"). The
+    // customer gets a sentence and a way to try again, never the browser's words.
+    const r = await fetch(`/api/quote/view?token=${encodeURIComponent(token)}${count ? '' : '&peek=1'}`)
+      .catch(() => { throw new Error('offline'); });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j.error || 'This link could not be opened.');
     setView(j as View);
@@ -87,7 +90,16 @@ export default function QuoteApp({ phone, phoneHref }: { phone: string; phoneHre
     return { ...t, deposit: d, terms };
   }, [q, chosen, view]);
 
-  if (error) return <Card><p className="text-h3 text-forest-900">We could not open this page</p><p className="mt-3 text-base text-ink-700">{error}</p></Card>;
+  if (error && !view) return (
+    <Card>
+      <p className="text-h3 text-forest-900">We could not open this page</p>
+      <p className="mt-3 text-base text-ink-700">
+        {error === 'offline' ? "We couldn't reach Scoop Dogg just now — check your connection and try again." : error}
+        {' '}Or call or text Josue on <a className="link" href={phoneHref}>{phone}</a>.
+      </p>
+      {error === 'offline' && <button className="btn-ghost mt-5" onClick={() => { setError(null); load(false).catch((e) => setError((e as Error).message)); }}>Try again</button>}
+    </Card>
+  );
   // What the server renders, and what a visitor without JavaScript keeps: what this page is, and
   // the phone number. Never a bare loading state (gates/build-gates.mjs no-loading-fallback).
   if (!view) return <Card><p className="text-h3 text-forest-900">Your quote from Scoop Dogg</p><p className="mt-3 text-base text-ink-700">This page opens your request or quote. If it does not appear, call or text Josue on <a className="link" href={phoneHref}>{phone}</a>.</p></Card>;
@@ -106,7 +118,7 @@ export default function QuoteApp({ phone, phoneHref }: { phone: string; phoneHre
       const r = await fetch('/api/quote/accept', {
         method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ token, quote_id: q.id, name, chosen: [...chosen], terms: numbers.terms, senior }),
-      });
+      }).catch(() => { throw new Error("We couldn't reach Scoop Dogg — check your connection and try again."); });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error || 'That did not go through. Please text Josue.');
       if (j.checkout_url) { window.location.assign(j.checkout_url); return; }
@@ -242,7 +254,7 @@ export default function QuoteApp({ phone, phoneHref }: { phone: string; phoneHre
           <button className="btn-primary w-full sm:w-auto" disabled={busy} onClick={async () => {
             setBusy(true); setError(null);
             try {
-              const r = await fetch('/api/quote/accept', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token, quote_id: q.id }) });
+              const r = await fetch('/api/quote/accept', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token, quote_id: q.id }) }).catch(() => { throw new Error("We couldn't reach Scoop Dogg — check your connection and try again."); });
               const j = await r.json().catch(() => ({}));
               if (j.checkout_url) window.location.assign(j.checkout_url); else throw new Error(j.error || 'Please text Josue to pay the deposit.');
             } catch (e) { setError((e as Error).message); setBusy(false); }

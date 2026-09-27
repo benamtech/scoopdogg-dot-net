@@ -133,9 +133,18 @@ try {
   const { rows: [{ n: photos }] } = await db.query(`select count(*)::int as n from lead_photos where lead_id = $1`, [lead?.id]);
   check(lead?.kind === 'custom' && photos === 1 && lead.service_slug === 'yard-deep-clean', 'the lead landed with its photo and the service it came from', `${lead?.kind}, ${photos} photo, ${lead?.service_slug}`);
 
-  // ── 2. the status page before a quote
-  await page.goto(`${base}/quote/${token}`, { waitUntil: 'networkidle' });
+  // ── 2. the status page before a quote — first with the connection dropped
+  // Measured 2026-09-27: a network drop mid-walk showed the customer the browser's own words,
+  // "Failed to fetch". The page must say something a person can act on, and Try again must work.
+  await page.route('**/api/quote/view**', (r) => r.abort('internetdisconnected'));
+  await page.goto(`${base}/quote/${token}`, { waitUntil: 'domcontentloaded' });
+  await page.getByText(/check your connection/i).first().waitFor({ timeout: 15000 }).catch(() => {});
+  const offline = await text();
+  check(/check your connection/i.test(offline) && !/Failed to fetch/i.test(offline), 'a dropped connection gets a sentence and a phone number, not the browser\'s words');
+  await page.unroute('**/api/quote/view**');
+  await page.getByRole('button', { name: /Try again/ }).click();
   await page.getByText(/Josue has it/).first().waitFor({ timeout: 15000 });
+  check(true, 'Try again brings the page back once the connection is there');
   // Loaded, not merely present: an <img> whose URL 404s still counts as one element.
   await page.waitForFunction(() => { const i = document.querySelector('img[alt="Your photo"]'); return i && i.complete; }, null, { timeout: 15000 }).catch(() => {});
   const loaded = await page.evaluate(() => [...document.querySelectorAll('img[alt="Your photo"]')].map((i) => i.naturalWidth));
