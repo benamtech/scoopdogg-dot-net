@@ -13,6 +13,49 @@ export interface Lead {
   service_slug: string; yard_size: string | null; num_dogs: number | null; notes: string;
   source_page: string; status: string; created_at: string; updated_at: string;
 }
+/** A custom request's extra fields (migration 042). Null on a lead that was never a custom request. */
+export interface CustomLead extends Lead {
+  kind?: 'standard' | 'custom'; job_kinds?: string[]; timing?: string | null; contact_pref?: string | null;
+  postal_code?: string | null; request_token?: string | null; first_response_at?: string | null;
+}
+export interface RequestPhoto { id: string; url: string; bytes: number }
+export interface QuoteSummary {
+  id: string; number: number; state: string; title: string; sent_at: string | null; view_count: number;
+  accepted_at: string | null; total_cents: number | null;
+}
+export interface QuoteLineRow { id: string; description: string; detail: string; amount_cents: number; optional: boolean; chosen: boolean | null }
+export interface DepositPreview { cents: number; asked: number; capCents: number | null; capped: boolean; balance: number }
+export interface QuoteOwnerView {
+  quote: {
+    id: string; number: number; state: string; title: string; message: string; is_improvement: boolean;
+    deposit_mode: 'percent' | 'fixed' | 'none'; deposit_percent: number | null; deposit_fixed_cents: number | null;
+    approx_start: string; approx_completion: string; valid_until: string | null; sent_at: string | null;
+    first_viewed_at: string | null; last_viewed_at: string | null; view_count: number;
+    accepted_at: string | null; accepted_name: string | null; total_cents: number | null; deposit_cents: number | null;
+    deposit_paid_at: string | null; payment_method_id: string | null; completed_at: string | null; balance_paid_at: string | null;
+    declined_at: string | null; decline_reason: string | null; created_at: string;
+  };
+  lines: QuoteLineRow[];
+  lead: CustomLead;
+  photos: RequestPhoto[];
+  road: { place: string | null; miles: number; minutes: number } | null;
+  numbers: { required: number; optionalAvailable: number; depositOnRequired: DepositPreview; depositWithAll: DepositPreview };
+  contract: { writtenContract: boolean; licenceNeeded: boolean; gaps: string[] };
+  events: { event_type: string; created_at: string; payload: Record<string, unknown> }[];
+  link: string | null;
+}
+export type QuotePatch = {
+  title?: string; message?: string; is_improvement?: boolean; deposit_mode?: 'percent' | 'fixed' | 'none';
+  deposit_percent?: number | null; deposit_fixed_cents?: number | null; approx_start?: string; approx_completion?: string;
+  lines?: { description: string; detail?: string; amount_cents: number; optional?: boolean }[];
+};
+export interface QuoteListRow {
+  id: string; number: number; state: string; title: string; sent_at: string | null; first_viewed_at: string | null;
+  view_count: number; accepted_at: string | null; total_cents: number | null; deposit_cents: number | null;
+  deposit_paid_at: string | null; completed_at: string | null; balance_paid_at: string | null; valid_until: string | null;
+  is_improvement: boolean; lead_id: string; name: string; city: string; phone: string; required_cents: number;
+}
+
 export interface Message {
   id: string; name: string; email: string; phone: string; subject: string;
   message: string; status: MessageStatus; created_at: string;
@@ -54,7 +97,7 @@ export const adminApi = {
     const qs = p.toString();
     return call<{ leads: Lead[] }>(`leads${qs ? '&' + qs : ''}`);
   },
-  lead:        (id: string) => call<{ lead: Lead }>(`lead/${id}`),
+  lead:        (id: string) => call<{ lead: Lead; photos?: RequestPhoto[]; quotes?: QuoteSummary[] }>(`lead/${id}`),
   updateLead:  (id: string, patch: { status?: string; notes?: string }) =>
     call<{ lead: Lead }>(`lead/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
 
@@ -123,6 +166,22 @@ export const adminApi = {
   // reason the demo toggle does: the checkout changes on the row and the public pages change on
   // a publish, and a screen that implies otherwise is a lie the owner finds on his own site.
   rateCard:    () => call<RateCard>('rate-card'),
+
+  // Custom quotes (server/lib/quotes.ts). Every number the builder shows comes back from the server.
+  quotes:      () => call<{ quotes: QuoteListRow[] }>('quotes'),
+  quoteNew:    (leadId: string) => call<QuoteOwnerView>('quote-new', { method: 'POST', body: JSON.stringify({ lead_id: leadId }) }),
+  quote:       (id: string) => call<QuoteOwnerView>(`quote/${id}`),
+  saveQuote:   (id: string, patch: QuotePatch) => call<QuoteOwnerView>(`quote/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  sendQuote:   (id: string) => call<{ url: string; sms_href: string | null; email: string; number: number }>(`quote/${id}/send`, { method: 'POST' }),
+  completeQuote: (id: string, method: 'card' | 'link') =>
+    call<{ balance: number; paid: boolean; checkout_url?: string; sms_href?: string | null }>(`quote/${id}/complete`, { method: 'POST', body: JSON.stringify({ method }) }),
+  withdrawQuote: (id: string) => call<{ state: string }>(`quote/${id}/withdraw`, { method: 'POST' }),
+  reviseQuote: (id: string) => call<QuoteOwnerView>(`quote/${id}/revise`, { method: 'POST' }),
+  refundQuote: (id: string) => call<{ refunded: number; refund: string }>(`quote/${id}/refund`, { method: 'POST' }),
+  saveContractFacts: (patch: {
+    license_number?: string; license_class?: string; legal_name?: string; mailing_address?: string;
+    cgl?: { mode: 'none' | 'self' } | { mode: 'carries' | 'llc'; insurer: string; phone: string } | null; workers_comp?: 'exempt' | 'carries' | null;
+  }) => call<{ facts: Record<string, unknown> }>('quote-facts', { method: 'PATCH', body: JSON.stringify(patch) }),
   setTier:     (id: string, patch: Partial<Pick<RateCardTier, 'price_cents' | 'price_suffix' | 'price_is_from' | 'requires_quote' | 'label' | 'status'>>) =>
     call<{ tier: RateCardTier; changed: string[] } & CatalogEffect>(
       'rate-card/tier', { method: 'PATCH', body: JSON.stringify({ id, ...patch }) }),

@@ -475,6 +475,15 @@ export async function viewQuote(q: Queryable, token: string, opts: { count: bool
       `update quotes set view_count = view_count + 1, first_viewed_at = coalesce(first_viewed_at, now()), last_viewed_at = now() where id = $1`, [qt.id]);
   }
   const lines = qt ? await linesOf(q, qt.id) : [];
+  // A balance link Josue texted is also on this page, so the customer can pay from either.
+  let balanceUrl: string | null = null;
+  if (qt?.balance_checkout && !qt.balance_paid_at) {
+    try {
+      const { stripe, account } = await resolve(qt.livemode ? 'live' : 'test');
+      const bs = await stripe.checkout.sessions.retrieve(qt.balance_checkout, {}, { stripeAccount: account });
+      balanceUrl = bs.status === 'open' ? bs.url : null;
+    } catch { balanceUrl = null; }
+  }
   const stage = !qt ? 'received'
     : qt.state === 'sent' ? 'quote'
     : qt.state === 'accepted' ? (qt.balance_paid_at ? 'paid' : qt.completed_at ? 'completed' : qt.deposit_paid_at || !qt.deposit_cents ? 'booked' : 'accepted')
@@ -500,7 +509,8 @@ export async function viewQuote(q: Queryable, token: string, opts: { count: bool
       lines: lines.map((l) => ({ id: l.id, description: l.description, detail: l.detail, amount_cents: l.amount_cents, optional: l.optional, chosen: l.chosen })),
       accepted_at: qt.accepted_at, accepted_name: qt.accepted_name, total_cents: qt.total_cents, deposit_cents: qt.deposit_cents,
       deposit_paid_at: qt.deposit_paid_at, completed_at: qt.completed_at, balance_paid_at: qt.balance_paid_at,
-      has_card: Boolean(qt.payment_method_id), balance_checkout_url: null as string | null,
+      has_card: Boolean(qt.payment_method_id), balance_checkout_url: balanceUrl,
+      balance_cents: qt.total_cents != null ? qt.total_cents - (qt.deposit_paid_at ? qt.deposit_cents ?? 0 : 0) : null,
     } : null,
   };
 }
@@ -806,4 +816,45 @@ export async function refundQuoteDeposit(q: Queryable, quoteId: string, by: stri
     await appendEvent(c as never, { subjectKind: 'quote', subjectId: qt.id, type: 'quote.deposit_refunded', to: 'withdrawn', actorKind: 'owner', payload: { by, refund: r.id, cents: pay.amount_cents } });
   });
   return { refunded: pay.amount_cents, refund: r.id };
+}
+
+// ─────────────────────────────────────────────────────────────── the facts an install contract needs
+
+export type ContractFactsPatch = {
+  license_number?: string; license_class?: string; legal_name?: string; mailing_address?: string;
+  cgl?: CglFact | null; workers_comp?: 'exempt' | 'carries' | null;
+};
+
+/**
+ * The owner states the six facts §7159 puts on an install contract, from the screen where he is
+ * missing them. Only these keys, each checked; the general settings route stays superadmin-only.
+ */
+export async function saveContractFacts(q: Queryable, p: ContractFactsPatch, by: string) {
+  const writes: [string, unknown][] = [];
+  if (p.license_number !== undefined) {
+    const n = str(p.license_number, 12).replace(/\D/g, '');
+    if (n && !/^\d{5,8}$/.test(n)) throw new QuoteError('A CSLB licence number is five to eight digits.', 400, 'bad_licence');
+    writes.push(['business.license_number', n || null]);
+  }
+  if (p.license_class !== undefined) writes.push(['business.license_class', str(p.license_class, 40) || null]);
+  if (p.legal_name !== undefined) writes.push(['business.legal_name', str(p.legal_name, 200) || null]);
+  if (p.mailing_address !== undefined) writes.push(['business.mailing_address', str(p.mailing_address, 300) || null]);
+  if (p.cgl !== undefined) {
+    const c = p.cgl;
+    if (c && !['none', 'carries', 'self', 'llc'].includes(c.mode)) throw new QuoteError('Unknown insurance answer.', 400, 'bad_cgl');
+    if (c && (c.mode === 'carries' || c.mode === 'llc') && (!str((c as { insurer?: string }).insurer) || !str((c as { phone?: string }).phone))) {
+      throw new QuoteError('Name the insurance company and its phone number, so a customer can check the cover.', 400, 'bad_cgl');
+    }
+    writes.push(['contract.cgl', c ? { ...c, ...('insurer' in c ? { insurer: str(c.insurer, 120), phone: str(c.phone, 40) } : {}) } : null]);
+  }
+  if (p.workers_comp !== undefined) {
+    if (p.workers_comp !== null && p.workers_comp !== 'exempt' && p.workers_comp !== 'carries') throw new QuoteError("Unknown workers' compensation answer.", 400, 'bad_wc');
+    writes.push(['contract.workers_comp', p.workers_comp]);
+  }
+  for (const [k, v] of writes) {
+    await q.query(
+      `insert into settings (key, value, updated_by) values ($1, $2::jsonb, $3)
+       on conflict (key) do update set value = excluded.value, updated_by = $3, updated_at = now()`, [k, JSON.stringify(v), by]);
+  }
+  return contractFacts(await settings(q));
 }

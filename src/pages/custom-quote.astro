@@ -1,0 +1,107 @@
+---
+/**
+ * Custom jobs — the work that does not fit a price list, quoted by Josue (R21, migration 042).
+ *
+ * WHY THIS PAGE EXISTS. The price list tops out at $269. The owner bills $1,000 in a day on large
+ * yard and property work, and his customers already describe him that way in their reviews
+ * ("knows his craft when it comes to landscape and turf maintenance"). The site had no way to say
+ * so, and nowhere for that job to land but a contact form.
+ *
+ * WHAT IT IS NOT. Not a distance feature, not a city page. The sixteen service areas and the
+ * Google Business Profile are unchanged; travel for a bigger job is one sentence.
+ *
+ * The form is first on a phone. Everything else on the page answers the question a person has
+ * before sending a stranger photos of their yard: what happens next, and will it be fair.
+ */
+import Site from '../layouts/Site.astro';
+import PageHero from '../components/site/PageHero.astro';
+import Section from '../components/site/Section.astro';
+import SectionHeading from '../components/site/SectionHeading.astro';
+import Steps from '../components/site/Steps.astro';
+import ReviewQuotes from '../components/site/ReviewQuotes.astro';
+import Faq from '../components/site/Faq.astro';
+import QuoteRequestForm from '../components/site/QuoteRequestForm.astro';
+import { SITE_URL } from '../lib/constants';
+import { business, setting } from '../lib/catalog';
+import { JOB_KINDS } from '../shared/quote-contract';
+import { IMPROVEMENT_DEPOSIT_CEILING_CENTS, money } from '../shared/quote-math';
+const cap = money(IMPROVEMENT_DEPOSIT_CEILING_CENTS);
+
+const reply = setting<string>('quote.reply_promise', 'within one business day');
+const range = setting<string | null>('quote.typical_range', null);
+const licence = setting<string | null>('business.license_number', null);
+const licenceClass = setting<string | null>('business.license_class', null);
+
+const steps = [
+  { t: 'Tell Josue about it', d: 'What needs doing and a few photos. It takes a couple of minutes on a phone.' },
+  { t: 'He looks', d: `From your photos, or with a quick visit if the job needs it. He replies ${reply}.` },
+  { t: 'You get a quote', d: 'Every line itemised, with any extras you can add. Approve it online when you are ready.' },
+  { t: 'Book it, pay the rest after', d: 'A deposit books the job. The balance is paid when the work is done and you are happy with it.' },
+];
+
+const faqs = [
+  { q: 'What does a custom job cost?', a: `It depends on the job, which is why Josue quotes it. ${range ?? ''} Every quote shows each part of the work with its own price, so you can see what you are paying for.`.trim() },
+  { q: 'Is the quote free?', a: 'Yes. Asking costs nothing and commits you to nothing. You only pay once you approve a quote.' },
+  { q: 'How does the deposit work?', a: `When you approve a quote you pay a deposit online to book the job, and the rest when the work is done. For work that installs or builds something — turf, planting, irrigation — California caps the deposit at ${cap} or 10% of the job, whichever is less, and the quote follows that rule.` },
+  { q: 'What if I change my mind after approving?', a: 'For install work you have a legal right to cancel within three business days (five if you are 65 or older), and anything you paid is returned. For anything else, text Josue and he will sort it out.' },
+  { q: 'Do I need to be home?', a: 'Not usually. If Josue needs to see the job before quoting, he will arrange a time with you.' },
+  { q: 'Do you go outside Ventura and Santa Barbara counties?', a: 'For the right job, yes — including Los Angeles. Send the details and Josue will tell you.' },
+];
+
+const jsonLd = {
+  '@context': 'https://schema.org', '@type': 'Service',
+  name: 'Custom yard and property work',
+  description: 'Yard clean-ups, haul-away, turf and landscaping work, large pressure-washing jobs and property clean-ups, quoted individually by Josue of Scoop Dogg.',
+  provider: { '@type': 'LocalBusiness', '@id': `${SITE_URL}/#business`, name: 'Scoop Dogg', telephone: '+18058698070' },
+  areaServed: [{ '@type': 'AdministrativeArea', name: 'Ventura County, CA' }, { '@type': 'AdministrativeArea', name: 'Santa Barbara County, CA' }],
+  offers: { '@type': 'Offer', priceSpecification: { '@type': 'PriceSpecification', priceCurrency: 'USD' }, availability: 'https://schema.org/InStock', description: 'Quoted individually' },
+};
+---
+<Site
+  jsonLd={jsonLd}
+  title="Custom Yard & Property Jobs, Quoted by Josue | Scoop Dogg"
+  description="Overgrown yards, haul-away, turf and landscaping, big pressure-washing jobs. Send a few photos and Josue quotes it himself, itemised, with a deposit to book and the rest after."
+  canonicalPath="/custom-quote"
+>
+  <PageHero
+    tone="cream"
+    eyebrow="Custom jobs"
+    title="Yard and property work, quoted by Josue himself"
+    lede={`Overgrown yards, haul-away, turf and landscaping, big pressure-washing jobs — anything that does not fit a price list. Send a few photos and he will quote it ${reply}.${range ? ` ${range}` : ''}`}
+    crumbs={[{ href: '/', label: 'Home' }, { href: '/services', label: 'Services' }, { href: '/custom-quote', label: 'Custom jobs' }]}
+  />
+
+  <Section tone="white">
+    <div class="grid gap-10 lg:grid-cols-12">
+      <div class="lg:col-span-7"><QuoteRequestForm /></div>
+      <aside class="lg:col-span-5">
+        <h2 class="text-h3 text-forest-900">What Josue takes on</h2>
+        <ul class="mt-4 space-y-2 text-base text-ink-700">
+          {JOB_KINDS.filter((k) => k.id !== 'other').map((k) => <li class="flex gap-3"><span class="text-orange-700" aria-hidden="true">✓</span>{k.label}</li>)}
+        </ul>
+        <p class="mt-6 text-base text-ink-700">Most of this work is in Ventura and Santa Barbara counties. For the right job he travels further, including to Los Angeles.</p>
+        <div class="mt-6 rounded-xl border border-line p-5">
+          <p class="text-base font-semibold text-forest-900">Every quote is itemised</p>
+          <p class="mt-2 text-base text-ink-700">You see each part of the job with its own price, and any extras you can add or leave off. A deposit books the work; the balance is paid when it is done.</p>
+        </div>
+        {licence && <p class="mt-6 text-sm text-ink-500" data-licence>CSLB licence #{licence}{licenceClass ? ` (${licenceClass})` : ''}</p>}
+        <p class="mt-6 text-base text-ink-700">Rather talk? Call or text <a class="link" href={business.phoneHref}>{business.phone}</a>.</p>
+      </aside>
+    </div>
+  </Section>
+
+  <Section tone="orange" labelledby="how-title">
+    <SectionHeading id="how-title" eyebrow="How it works" title="From photos to a finished job" onOrange />
+    <div class="mt-10"><Steps steps={steps} cols={4} /></div>
+  </Section>
+
+  <Section tone="sand" labelledby="said-title">
+    <SectionHeading id="said-title" eyebrow="Reviews" title="What his customers say about the work" />
+    <div class="mt-10"><ReviewQuotes ids={['cheyenne-crafton', 'ilse-fuentes', 'capital-maintenance']} limit={3} /></div>
+  </Section>
+
+  <Section tone="white" labelledby="faq-title">
+    <SectionHeading id="faq-title" eyebrow="Questions" title="Before you send it" />
+    <div class="mt-8 max-w-3xl"><Faq items={faqs} schema /></div>
+  </Section>
+</Site>

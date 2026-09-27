@@ -41,7 +41,7 @@ export default defineConfig({
     sitemap({
       filter: (page) => {
         const p = new URL(page).pathname.replace(/\/$/, '');
-        return !p.startsWith('/admin') && !['/account', '/invite', '/book/complete'].includes(p);
+        return !p.startsWith('/admin') && !['/account', '/invite', '/book/complete', '/quote'].includes(p);
       },
     }),
   ],

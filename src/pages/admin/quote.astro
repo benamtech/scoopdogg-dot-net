@@ -1,0 +1,7 @@
+---
+import Base from '../../layouts/Base.astro';
+import AdminIsland from '../../components/admin/AdminIsland';
+---
+<Base title="Quote | Scoop Dogg admin" description="Scoop Dogg custom quote." canonicalPath="/admin/quotes" noindex={true}>
+  <AdminIsland client:load screen="quote" />
+</Base>

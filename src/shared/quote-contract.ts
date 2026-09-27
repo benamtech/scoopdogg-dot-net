@@ -12,6 +12,8 @@
  * to a regex and are different contracts in law.
  */
 
+import { IMPROVEMENT_DEPOSIT_CEILING_CENTS, money } from './quote-math.ts';
+
 export const JOB_KINDS = [
   { id: 'yard_cleanup', label: 'Overgrown or neglected yard clean-up', improvement: false },
   { id: 'haul_away', label: 'Debris, junk or green waste haul-away', improvement: false },
@@ -80,7 +82,11 @@ export function workersCompStatement(f: ContractFacts): string {
 
 export const ENTITLED_TO_COPY = 'You are entitled to a completely filled in copy of this agreement, signed by both you and the contractor, before any work may be started.';
 
-export const DOWNPAYMENT_NOTICE = 'THE DOWNPAYMENT MAY NOT EXCEED $1,000 OR 10 PERCENT OF THE CONTRACT PRICE, WHICHEVER IS LESS.';
+/**
+ * The figure is resolved from the constant the cap is ENFORCED with, not typed: the notice a buyer
+ * reads and the deposit the code allows are then one number. It renders as the statute's own text.
+ */
+export const DOWNPAYMENT_NOTICE = `THE DOWNPAYMENT MAY NOT EXCEED ${money(IMPROVEMENT_DEPOSIT_CEILING_CENTS)} OR 10 PERCENT OF THE CONTRACT PRICE, WHICHEVER IS LESS.`;
 
 export const PROGRESS_PAYMENTS_NOTICE = 'The schedule of progress payments must specifically describe each phase of work, including the type and amount of work or services scheduled to be supplied in each phase, along with the amount of each proposed progress payment. IT IS AGAINST THE LAW FOR A CONTRACTOR TO COLLECT PAYMENT FOR WORK NOT YET COMPLETED, OR FOR MATERIALS NOT YET DELIVERED. HOWEVER, A CONTRACTOR MAY REQUIRE A DOWNPAYMENT.';
 

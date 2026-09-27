@@ -60,6 +60,9 @@ const PRIVATE = {
   '/admin/growth': 'as above',
   '/admin/setup': 'as above',
   '/admin/team': 'as above',
+  '/admin/quotes': 'as above',
+  '/admin/quote': 'as above',
+  '/quote': 'a customer opens it from the capability link in their request or quote; noindex, never linked',
   '/admin/rate-card': 'as above',
 };
 

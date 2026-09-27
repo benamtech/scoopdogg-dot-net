@@ -1,0 +1,22 @@
+---
+/**
+ * /quote/<token> (vercel.json rewrites it here): one custom job, from the customer's side.
+ * The island reads the token from the address; the page itself carries nothing personal, so it can
+ * be built static like every other page. noindex: a capability link must never reach a search index.
+ */
+import Base from '../layouts/Base.astro';
+import Logo from '../components/site/Logo.astro';
+import QuoteApp from '../components/quote/QuoteApp';
+import { business } from '../lib/catalog';
+---
+<Base title="Your quote | Scoop Dogg" description="Your custom quote from Scoop Dogg." canonicalPath="/quote" noindex>
+  <header class="tone-white border-b border-line bg-paper print:hidden">
+    <div class="container-site flex h-[72px] items-center justify-between">
+      <Logo size="md" />
+      <a href={business.phoneHref} class="text-base font-medium text-forest-700 hover:text-forest-900">{business.phone}</a>
+    </div>
+  </header>
+  <main id="main" class="min-h-[calc(100vh-72px)] tone-tint bg-tone-bg py-10">
+    <div class="container-site max-w-3xl"><QuoteApp client:load phone={business.phone} phoneHref={business.phoneHref} /></div>
+  </main>
+</Base>

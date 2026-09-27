@@ -24,7 +24,7 @@ import { put, PhotoError } from '../server/lib/photos.js';
 import { sendVisitComplete, runCommsSweeps } from '../server/lib/comms.js';
 import {
   QuoteError, draftQuote, saveQuote, quoteForOwner, listQuotes, sendQuote, completeQuoteJob, withdrawQuote, reviseQuote,
-  refundQuoteDeposit, leadPhotos, type QuotePatch,
+  refundQuoteDeposit, leadPhotos, saveContractFacts, type QuotePatch, type ContractFactsPatch,
 } from '../server/lib/quotes.js';
 
 const routePath = (req: ApiRequest) =>
@@ -397,7 +397,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     }
 
     // ---- custom quotes (migration 042, server/lib/quotes.ts). Owners only: a quote is money.
-    if (path === 'quotes' || path === 'quote-new' || path.startsWith('quote/')) {
+    if (path === 'quotes' || path === 'quote-new' || path === 'quote-facts' || path.startsWith('quote/')) {
       if (session.role !== 'admin' && session.role !== 'superadmin') return sendJson(res, 403, { error: 'Owners only.' });
       const host = String(req.headers['x-forwarded-host'] || req.headers.host || 'scoopdogg.net');
       const proto = String(req.headers['x-forwarded-proto'] || (host.startsWith('127.') || host.startsWith('localhost') ? 'http' : 'https'));
@@ -405,6 +405,10 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       const by = session.email;
       try {
         if (path === 'quotes') return sendJson(res, 200, { quotes: await listQuotes(db()) });
+        if (path === 'quote-facts' && req.method === 'PATCH') {
+          const body = await readJsonBody(req);
+          return sendJson(res, 200, { facts: await saveContractFacts(db(), body as ContractFactsPatch, by) });
+        }
         if (path === 'quote-new' && req.method === 'POST') {
           const body = await readJsonBody(req);
           const qt = await draftQuote(db(), String(body.lead_id ?? ''), by);

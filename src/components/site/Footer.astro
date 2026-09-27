@@ -9,9 +9,12 @@
  * single point of failure. `gates/orphan-pages.mjs` holds the floor at two inbound links.
  */
 import Logo from './Logo.astro';
-import { business, services, markets, growth } from '../../lib/catalog';
+import { business, services, markets, growth, setting } from '../../lib/catalog';
 
 const year = new Date().getFullYear();
+// B&P §7030.5: a licensed contractor's number goes on all advertising. Shown the moment it is on record.
+const licence = setting<string | null>('business.license_number', null);
+const licenceClass = setting<string | null>('business.license_class', null);
 const serviceLinks = services.slice(0, 7).map((s) => ({ href: `/services/${s.slug}`, label: s.short_name || s.name }));
 const company = [
   { href: '/about', label: 'About Josue' },
@@ -85,7 +88,7 @@ const knowledge = [
   </div>
   <div class="border-t border-white/10">
     <div class="container-site flex flex-col gap-2 py-6 text-sm text-tone-muted sm:flex-row sm:items-center sm:justify-between">
-      <p>© {year} Scoop Dogg. Locally owned and operated.</p>
+      <p>© {year} Scoop Dogg. Locally owned and operated.{licence && <span data-licence> CSLB licence #{licence}{licenceClass ? ` (${licenceClass})` : ''}.</span>}</p>
       <p><a href="/admin/login" class="hover:text-white">Team sign-in</a></p>
     </div>
   </div>

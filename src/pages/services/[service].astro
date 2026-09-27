@@ -91,7 +91,9 @@ const jsonLd = [
           {tiers.map((t) => (
             <div class="flex items-center justify-between gap-6 py-5">
               <dt class="text-lg text-ink-700">{t.label}</dt>
-              <dd class="shrink-0 font-serif text-h3 text-forest-900">{formatTierPrice(t, 'Custom quote')}</dd>
+              <dd class="shrink-0 font-serif text-h3 text-forest-900">{t.requires_quote || t.price_cents === null
+                ? <a class="link" href={`/custom-quote?service=${s.slug}`}>Custom quote</a>
+                : formatTierPrice(t, 'Custom quote')}</dd>
             </div>
           ))}
         </dl>

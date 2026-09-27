@@ -13,6 +13,8 @@ import AdminGrowthPage from '../../pages_react/admin/AdminGrowthPage';
 import AdminTodayPage from '../../pages_react/admin/AdminTodayPage';
 import AdminTeamPage from '../../pages_react/admin/AdminTeamPage';
 import AdminRateCardPage from '../../pages_react/admin/AdminRateCardPage';
+import AdminQuotesPage from '../../pages_react/admin/AdminQuotesPage';
+import AdminQuotePage from '../../pages_react/admin/AdminQuotePage';
 
 /**
  * One admin screen, hydrated — the whole screen, not a shell around it.
@@ -47,6 +49,8 @@ const SCREENS = {
   today: AdminTodayPage,
   team: AdminTeamPage,
   rateCard: AdminRateCardPage,
+  quotes: AdminQuotesPage,
+  quote: AdminQuotePage,
 } as const;
 
 export type AdminScreen = keyof typeof SCREENS;

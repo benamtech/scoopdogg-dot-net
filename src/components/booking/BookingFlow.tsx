@@ -490,7 +490,7 @@ export default function BookingFlow(props: Props) {
                     <Choice key={s.slug} selected={service === s.slug} badge={s.slug === 'weekly-pooper-scooper-service' ? 'Most popular' : undefined}
                       onClick={() => {
                         setService(s.slug); setPackageId(''); setTierId('');
-                        if (shape === 'quote') { window.location.href = `/contact?service=${s.slug}`; return; }
+                        if (shape === 'quote') { window.location.href = `/custom-quote?service=${s.slug}`; return; }
                         go('size');
                       }}>
                       <span className="flex items-start justify-between gap-4">
