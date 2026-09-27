@@ -160,18 +160,24 @@ export async function addRequestPhoto(q: Queryable, token: string, bytes: Buffer
   if (bytes.length > maxBytes) throw new QuoteError(`That photo is too large (${Math.round(bytes.length / 1000)}KB; the limit is ${Math.round(maxBytes / 1000)}KB).`, 413, 'too_big');
   const sha = createHash('sha256').update(bytes).digest('hex');
   const { rows: [dupe] } = await q.query(`select id from lead_photos where lead_id = $1 and sha256 = $2`, [lead.id, sha]);
-  if (dupe) return { id: dupe.id as string, url: photoUrl(dupe.id), deduped: true };
+  if (dupe) return { id: dupe.id as string, url: `/api/photo/${dupe.id}`, deduped: true };
   const { rows: [{ n }] } = await q.query(`select count(*)::int as n from lead_photos where lead_id = $1`, [lead.id]);
   if (n >= max) throw new QuoteError(`That is the ${max}-photo limit for one request.`, 409, 'too_many');
   const { rows: [row] } = await q.query(
     `insert into lead_photos (lead_id, bytes, mime, byte_size, sha256) values ($1,$2,$3,$4,$5) returning id`,
     [lead.id, bytes, mime, bytes.length, sha]);
-  return { id: row.id as string, url: photoUrl(row.id), deduped: false };
+  return { id: row.id as string, url: `/api/photo/${row.id}`, deduped: false };
 }
 
+/**
+ * `url` is same-site (`/api/photo/<id>`), for the screens: it works on whichever deployment served
+ * the page. `abs` is the absolute URL, for an email. Built from PUBLIC_SITE_URL, an absolute URL on
+ * a screen points at production — which, until this branch is promoted, is the predecessor site
+ * with no request photos, so every photo on a preview rendered broken (measured by gates/quote-e2e.mjs).
+ */
 export async function leadPhotos(q: Queryable, leadId: string) {
   const { rows } = await q.query(`select id, byte_size, created_at from lead_photos where lead_id = $1 order by created_at`, [leadId]);
-  return rows.map((r) => ({ id: r.id as string, url: photoUrl(r.id), bytes: r.byte_size as number }));
+  return rows.map((r) => ({ id: r.id as string, url: `/api/photo/${r.id}`, abs: photoUrl(r.id), bytes: r.byte_size as number }));
 }
 
 /** Tell Josue, once, with the photos. Idempotent on the lead's own event history. */
@@ -205,7 +211,7 @@ export async function finishRequest(q: Queryable, token: string, base: string): 
         ${row('Prefers', lead.contact_pref ?? '')}
       </table>
       ${lead.notes ? `<p style="white-space:pre-wrap;color:#333">${esc(lead.notes)}</p>` : ''}
-      ${photos.length ? `<p>${photos.map((p) => `<a href="${p.url}"><img src="${p.url}" width="180" style="margin:4px;border-radius:6px"></a>`).join('')}</p>` : '<p style="color:#666">No photos sent.</p>'}
+      ${photos.length ? `<p>${photos.map((p) => `<a href="${base}${p.url}"><img src="${base}${p.url}" width="180" style="margin:4px;border-radius:6px"></a>`).join('')}</p>` : '<p style="color:#666">No photos sent.</p>'}
       <p><a href="${base}/admin/leads/${lead.id}" style="display:inline-block;background:#F4A024;color:#0F2A1F;font-weight:600;padding:12px 20px;border-radius:10px;text-decoration:none">Open it and build a quote</a></p>
       <p style="color:#666;font-size:13px">The customer was told you reply ${esc(reply)}.</p></div>`,
   }).catch(() => null);

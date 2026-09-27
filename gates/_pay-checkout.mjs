@@ -6,12 +6,24 @@
  * information" (with it ticked Link demands a phone and Subscribe silently refuses), submit, and
  * wait to leave checkout.stripe.com.
  */
-export async function payCheckout(url, { card = '4242424242424242', name = 'Gate Customer', zip = '93001', leaveTo = /^(?!https:\/\/checkout\.stripe\.com)/, screenshot = null } = {}) {
+export async function payCheckout(url, opts = {}) {
   const { chromium } = await import('playwright');
   const browser = await chromium.launch();
   try {
     const page = await browser.newPage();
     await page.goto(url, { waitUntil: 'domcontentloaded' });
+    return await payOnPage(page, opts);
+  } finally {
+    await browser.close();
+  }
+}
+
+/**
+ * Pay the Checkout already open in `page`. Use this when the page carries something the return
+ * trip needs — a preview's protection header on its context — or Stripe's redirect back lands on
+ * a sign-in wall and the URL never matches.
+ */
+export async function payOnPage(page, { card = '4242424242424242', name = 'Gate Customer', zip = '93001', leaveTo = /^(?!https:\/\/checkout\.stripe\.com)/, screenshot = null } = {}) {
     await page.locator('#cardNumber').or(page.getByTestId('card-accordion-item')).first().waitFor({ timeout: 45000 }).catch(() => {});
     const cardTab = page.getByTestId('card-accordion-item').or(page.getByText(/^Card$/).first());
     if (await cardTab.count().catch(() => 0)) await cardTab.first().click({ timeout: 10000 }).catch(() => {});
@@ -34,7 +46,4 @@ export async function payCheckout(url, { card = '4242424242424242', name = 'Gate
     await page.locator('button[type=submit]').click();
     await page.waitForURL(leaveTo, { timeout: 60000 });
     return page.url();
-  } finally {
-    await browser.close();
-  }
 }
