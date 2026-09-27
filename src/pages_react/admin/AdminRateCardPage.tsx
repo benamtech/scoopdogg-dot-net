@@ -33,6 +33,11 @@ export default function AdminRateCardPage() {
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState('');
   const [draft, setDraft] = useState<Record<string, string>>({});
+  // Edit panel for one tier (label, suffix, "from", retire), and the add-a-tier form for one service.
+  const [editing, setEditing] = useState<string | null>(null);
+  const [edit, setEdit] = useState<{ label: string; suffix: string; from: boolean }>({ label: '', suffix: '', from: false });
+  const [adding, setAdding] = useState<string | null>(null);
+  const [fresh, setFresh] = useState<{ label: string; price: string; suffix: string; quote: boolean; from: boolean }>({ label: '', price: '', suffix: '', quote: false, from: false });
 
   const load = async () => {
     try { setCard(await adminApi.rateCard()); }
@@ -61,6 +66,20 @@ export default function AdminRateCardPage() {
       setNote(r.changed.length
         ? `Saved ${t.label}.${publishLine(r)}`
         : `Nothing changed on ${t.label}.`);
+      await load();
+    } catch (e) { setError((e as Error).message); }
+    finally { setBusy(''); }
+  };
+
+  const addTier = async (serviceSlug: string, serviceName: string) => {
+    setBusy(`add:${serviceSlug}`); setError(''); setNote('');
+    try {
+      const r = await adminApi.addTier({
+        service_slug: serviceSlug, label: fresh.label, price_cents: fresh.quote ? null : toCents(fresh.price),
+        price_suffix: fresh.suffix, requires_quote: fresh.quote, price_is_from: !fresh.quote && fresh.from,
+      });
+      setNote(`Added "${r.tier.label}" to ${serviceName}.${publishLine(r)}`);
+      setAdding(null); setFresh({ label: '', price: '', suffix: '', quote: false, from: false });
       await load();
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(''); }
@@ -228,11 +247,66 @@ export default function AdminRateCardPage() {
                               onClick={() => saveTier(t, { price_cents: cents })}>
                               {busy === t.id ? 'Saving…' : 'Save'}
                             </button>
+                            <button type="button" className="text-sm text-ink-500 hover:text-forest-900" data-edit-tier={t.id}
+                              onClick={() => { setEditing(editing === t.id ? null : t.id); setEdit({ label: t.label, suffix: t.price_suffix ?? '', from: t.price_is_from }); }}>
+                              {editing === t.id ? 'Close' : 'Edit'}
+                            </button>
                           </div>
+                          {editing === t.id && (
+                            <div className="w-full rounded-md border border-line bg-cream p-4" data-tier-editor>
+                              <div className="grid gap-3 sm:grid-cols-3">
+                                <label className="text-sm text-ink-700 sm:col-span-2">Name the customer reads
+                                  <input className="field mt-1" value={edit.label} onChange={(ev) => setEdit({ ...edit, label: ev.target.value })} /></label>
+                                <label className="text-sm text-ink-700">After the price (e.g. " / visit")
+                                  <input className="field mt-1" value={edit.suffix} onChange={(ev) => setEdit({ ...edit, suffix: ev.target.value })} /></label>
+                              </div>
+                              {!t.requires_quote && (
+                                <label className="mt-3 flex items-center gap-2 text-sm text-ink-700">
+                                  <input type="checkbox" checked={edit.from} onChange={(ev) => setEdit({ ...edit, from: ev.target.checked })} />
+                                  Show it as a starting price ("from {money(t.price_cents)}"), when the real price depends on the job
+                                </label>
+                              )}
+                              <div className="mt-4 flex flex-wrap items-center gap-3">
+                                <button type="button" className="btn-primary btn-sm" disabled={!!busy}
+                                  onClick={() => saveTier(t, { label: edit.label, price_suffix: edit.suffix, ...(t.requires_quote ? {} : { price_is_from: edit.from }) })}>Save changes</button>
+                                {t.status === 'active'
+                                  ? <button type="button" className="btn-ghost btn-sm" disabled={!!busy} onClick={() => saveTier(t, { status: 'retired' })}>Stop offering this tier</button>
+                                  : <button type="button" className="btn-ghost btn-sm" disabled={!!busy} onClick={() => saveTier(t, { status: 'active' })}>Offer it again</button>}
+                                <span className="text-micro text-ink-500">Stopping a tier takes it off the site. Anyone already on it keeps it.</span>
+                              </div>
+                            </div>
+                          )}
                         </li>
                       );
                     })}
                   </ul>
+                )}
+
+                {adding === s.slug ? (
+                  <div className="mt-3 rounded-lg border border-line bg-paper p-4" data-add-tier={s.slug}>
+                    <div className="grid gap-3 sm:grid-cols-4">
+                      <label className="text-sm text-ink-700 sm:col-span-2">Name the customer reads
+                        <input className="field mt-1" value={fresh.label} placeholder="Large yard (500+ sq ft)" onChange={(ev) => setFresh({ ...fresh, label: ev.target.value })} /></label>
+                      {!fresh.quote && (
+                        <label className="text-sm text-ink-700">Price
+                          <input className="field mt-1 tabular-nums" inputMode="decimal" value={fresh.price} placeholder="0" onChange={(ev) => setFresh({ ...fresh, price: ev.target.value })} /></label>
+                      )}
+                      {!fresh.quote && (
+                        <label className="text-sm text-ink-700">After the price
+                          <input className="field mt-1" value={fresh.suffix} placeholder=" / visit" onChange={(ev) => setFresh({ ...fresh, suffix: ev.target.value })} /></label>
+                      )}
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-4 text-sm text-ink-700">
+                      <label className="flex items-center gap-2"><input type="checkbox" checked={fresh.quote} onChange={(ev) => setFresh({ ...fresh, quote: ev.target.checked })} /> Quote only (no number on the site)</label>
+                      {!fresh.quote && <label className="flex items-center gap-2"><input type="checkbox" checked={fresh.from} onChange={(ev) => setFresh({ ...fresh, from: ev.target.checked })} /> Show as a starting price</label>}
+                    </div>
+                    <div className="mt-4 flex gap-3">
+                      <button type="button" className="btn-primary btn-sm" disabled={!!busy} onClick={() => addTier(s.slug, s.name)}>{busy === `add:${s.slug}` ? 'Adding…' : 'Add tier'}</button>
+                      <button type="button" className="btn-ghost btn-sm" onClick={() => setAdding(null)}>Cancel</button>
+                    </div>
+                  </div>
+                ) : (
+                  <button type="button" className="mt-3 text-sm font-medium text-forest-700 hover:text-forest-900" onClick={() => { setAdding(s.slug); setFresh({ label: '', price: '', suffix: '', quote: false, from: false }); }}>+ Add a tier to {s.name}</button>
                 )}
               </section>
             ))}

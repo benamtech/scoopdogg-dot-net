@@ -8,6 +8,12 @@
  *
  * Mutation check: pass --mutate to add $1 to one package's built-page price in memory; the gate
  * must then fail, or it is decoration.
+ *
+ * TIERS TOO, since the owner edits them (the rate card, 2026-09-26). A tier has no Stripe Price — a
+ * one-time job is charged with an inline amount — so its places are: the row, every page that
+ * prints it (`data-tier` + `data-price-cents` on the service page), and what the server's own
+ * pricing would charge, computed from the LIVE rows through loadCatalog() + quoteOneTime(), not from
+ * the build file. A "from" tier must print its floor and must be refused at checkout.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
@@ -77,6 +83,42 @@ for (const p of pkgs) {
   if (!ok) failed++;
   console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${p.slug.padEnd(30)} db ${p.monthly_price_cents}  pages ${onPages.length ? [...new Set(onPages)].join('/') : 'none'} (${onPages.length})  stripe ${stripeAmount ?? 'unpublished'}`);
 }
+// ── tiers
+const { loadCatalog } = await import(path.join(build, 'server/lib/catalog-db.js'));
+const { quoteOneTime } = await import(path.join(build, 'src/shared/pricing.js'));
+const live = await loadCatalog();
+const tierPrinted = new Map();
+for (const f of pages) {
+  const html = readFileSync(f, 'utf8');
+  for (const m of html.matchAll(/data-tier="([^"]+)"[^>]*?data-price-cents="(\d+)"/g)) {
+    tierPrinted.set(m[1], [...(tierPrinted.get(m[1]) ?? []), Number(m[2])]);
+  }
+}
+if (mutate) { const k = [...tierPrinted.keys()][0]; if (k) tierPrinted.set(k, tierPrinted.get(k).map((v) => v + 100)); }
+const priced = live.tiers.filter((t) => t.price_cents !== null && !t.requires_quote);
+// A service that sells monthly plans publishes the PLAN price (checked above), and its tiers are
+// never printed on their own — the service page shows plan cards, not a tier list. Their page place
+// is the plan's; the checkout place is still theirs.
+const soldAsPlans = new Set(pkgs.length ? (await (async () => {
+  const cc = new pg.Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: true } });
+  await cc.connect();
+  const { rows } = await cc.query(`select distinct service_slug from packages where status = 'active'`);
+  await cc.end();
+  return rows.map((r) => r.service_slug);
+})()) : []);
+let tierFailed = 0;
+for (const t of priced) {
+  const onPages = tierPrinted.get(t.id) ?? [];
+  const viaPlan = soldAsPlans.has(t.service_slug);
+  const pageOk = viaPlan ? onPages.every((v) => v === t.price_cents) : (onPages.length > 0 && onPages.every((v) => v === t.price_cents));
+  const q = quoteOneTime(live, t.id);
+  const serverOk = t.price_is_from ? (!q.ok && q.reason === 'from_price') : (q.ok && q.cents === t.price_cents);
+  const ok = pageOk && serverOk;
+  if (!ok) tierFailed++;
+  console.log(`  ${ok ? 'PASS' : 'FAIL'}  tier ${(t.service_slug + ' · ' + t.label).slice(0, 44).padEnd(44)} db ${t.price_cents}  pages ${viaPlan && !onPages.length ? 'sold as a plan' : `${onPages.length ? [...new Set(onPages)].join('/') : 'none'} (${onPages.length})`}  checkout ${t.price_is_from ? (serverOk ? 'refuses a floor ✓' : 'CHARGES A FLOOR') : (q.ok ? q.cents : q.reason)}`);
+}
 await db().end();
-console.log(failed ? `FAIL ${failed}/${pkgs.length}` : `PASS ${pkgs.length}/${pkgs.length}`);
-process.exit(failed ? 1 : 0);
+const total = pkgs.length + priced.length;
+const bad = failed + tierFailed;
+console.log(bad ? `FAIL ${bad}/${total}` : `PASS ${total}/${total} (${pkgs.length} plans, ${priced.length} tiers)`);
+process.exit(bad ? 1 : 0);

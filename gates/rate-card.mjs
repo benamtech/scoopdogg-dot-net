@@ -38,7 +38,7 @@ const refuses = async (fn, code) => {
 
 const out = compileServer();
 const p = (f) => `${process.cwd()}/${out}/${f}`.replace(`${process.cwd()}/${process.cwd()}`, process.cwd());
-const { listRateCard, setTier, setPackagePrice } = await import(p('server/lib/rate-card.js'));
+const { listRateCard, setTier, setPackagePrice, addTier } = await import(p('server/lib/rate-card.js'));
 
 const c = new pg.Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: true } });
 await c.connect();
@@ -196,6 +196,27 @@ try {
     check(again.changed.length === 0 && Number(again.package.version) === before,
       'NEGATIVE CONTROL: saving the same monthly price does not mint a version',
       'a version per click would orphan a Stripe Price per click');
+  }
+
+  // --------------------------------------------------------- D2. a new tier
+  console.log('\nD2. the owner adds a tier, and a new row is held to every rule an edit is');
+  {
+    const svc = card.tiers[0].service_slug;
+    const added = await addTier(svc, { label: 'Gate tier — extra large', price_cents: 31_900, price_suffix: '' }, BY, c);
+    check(added.tier?.status === 'active' && Number(added.tier.price_cents) === 31_900, 'a new tier is a row, active, with its price', `${svc} · ${added.tier?.label}`);
+    const { rows: hist } = await c.query(`select field from catalog_changes where entity_id = $1`, [added.tier.id]);
+    check(hist.some((h) => h.field === 'price_cents') && hist.some((h) => h.field === 'label'), 'adding it is in the history, like any change', hist.map((h) => h.field).join(', '));
+    const again = await refuses(() => addTier(svc, { label: 'GATE TIER — EXTRA LARGE', price_cents: 100 }, BY, c), 'duplicate_label');
+    check(again.refused, 'the same name twice on one service is refused', `code ${again.code}`);
+    check((await refuses(() => addTier(svc, { label: '', price_cents: 100 }, BY, c), 'no_label')).refused, 'a tier with no name is refused');
+    check((await refuses(() => addTier(svc, { label: 'Gate no price', price_cents: null }, BY, c), 'no_price_no_quote')).refused, 'a tier with neither a price nor the quote switch is refused');
+    check((await refuses(() => addTier(svc, { label: 'Gate both', price_cents: null, requires_quote: true, price_is_from: true }, BY, c), 'quote_and_from')).refused, 'quote-only and "from" together is refused');
+    check((await refuses(() => addTier(svc, { label: 'Gate cents', price_cents: 12.5 }, BY, c), 'bad_price')).refused, 'a price that is not whole cents is refused');
+    check((await refuses(() => addTier('no-such-service', { label: 'x', price_cents: 100 }, BY, c), 'no_service')).refused, 'a tier on a service that does not exist is refused');
+    const quoteOnly = await addTier(svc, { label: 'Gate tier — custom', price_cents: 5_000, requires_quote: true }, BY, c);
+    check(quoteOnly.tier.requires_quote === true && quoteOnly.tier.price_cents === null, 'NEGATIVE CONTROL: a quote-only tier is accepted, and carries no number even if one was sent');
+    const retired = await setTier(added.tier.id, { status: 'retired' }, BY, c);
+    check(retired.tier.status === 'retired', 'a tier no plan sells can be taken off the site');
   }
 
   await c.query('rollback');

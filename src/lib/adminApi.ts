@@ -166,6 +166,8 @@ export const adminApi = {
   // reason the demo toggle does: the checkout changes on the row and the public pages change on
   // a publish, and a screen that implies otherwise is a lie the owner finds on his own site.
   rateCard:    () => call<RateCard>('rate-card'),
+  addTier:     (t: { service_slug: string; label: string; price_cents: number | null; price_suffix?: string; requires_quote?: boolean; price_is_from?: boolean }) =>
+    call<{ tier: RateCardTier; changed: string[]; effective_now: string[]; effective_on_publish: string[] }>('rate-card/tier-new', { method: 'POST', body: JSON.stringify(t) }),
 
   // Custom quotes (server/lib/quotes.ts). Every number the builder shows comes back from the server.
   quotes:      () => call<{ quotes: QuoteListRow[] }>('quotes'),

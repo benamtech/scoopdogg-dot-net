@@ -219,6 +219,50 @@ export async function setTier(id: string, patch: TierPatch, by: string, q: Query
   return { tier: after, changed: moved, ...(await effect(q)) };
 }
 
+export type NewTier = {
+  label: string; price_cents: number | null; price_suffix?: string | null;
+  requires_quote?: boolean; price_is_from?: boolean;
+};
+
+/**
+ * A new tier on a service — a new size, a new band, a new "large or custom". The same refusals as
+ * an edit, because a new row can be wrong in every way an edited one can; and it lands last in its
+ * service, active, recorded in the history like any other change.
+ */
+export async function addTier(serviceSlug: string, t: NewTier, by: string, q: Queryable = db()) {
+  const { rows: [svc] } = await q.query(`select slug, name from services where slug = $1`, [serviceSlug]);
+  if (!svc) throw new RateCardError('no_service', 'We do not have that service.', 404);
+  const label = String(t.label ?? '').trim().slice(0, 120);
+  if (!label) throw new RateCardError('no_label', 'A tier needs a name the customer will read, like "Large yard (500+ sq ft)".');
+  const { rows: [dupe] } = await q.query(
+    `select 1 from service_tiers where service_slug = $1 and lower(label) = lower($2) and status = 'active'`, [serviceSlug, label]);
+  if (dupe) throw new RateCardError('duplicate_label', `${svc.name} already has a tier called "${label}".`);
+  const next = {
+    label, status: 'active',
+    price_cents: t.price_cents ?? null,
+    price_suffix: t.price_suffix ?? '',
+    requires_quote: Boolean(t.requires_quote),
+    price_is_from: Boolean(t.price_is_from),
+  };
+  if (next.price_cents !== null && !(Number.isInteger(next.price_cents) && next.price_cents > 0)) {
+    throw new RateCardError('bad_price', 'A price has to be a whole number of cents, above zero. Leave it empty if this tier is quote-only.');
+  }
+  if (next.price_cents === null && !next.requires_quote) {
+    throw new RateCardError('no_price_no_quote', 'A tier needs either a price or the quote-only switch turned on, or the site has nothing to show for it.');
+  }
+  if (next.requires_quote && next.price_is_from) {
+    throw new RateCardError('quote_and_from', 'A tier cannot be quote-only and a "from" price at the same time — the first says there is no number yet and the second shows one.');
+  }
+  if (next.requires_quote) next.price_cents = null;
+  const { rows: [{ n }] } = await q.query(`select coalesce(max(sort_order), 0)::int + 10 as n from service_tiers where service_slug = $1`, [serviceSlug]);
+  const { rows: [row] } = await q.query(
+    `insert into service_tiers (service_slug, label, price_cents, price_suffix, requires_quote, price_is_from, sort_order, status, updated_by)
+     values ($1,$2,$3,$4,$5,$6,$7,'active',$8) returning *`,
+    [serviceSlug, next.label, next.price_cents, next.price_suffix, next.requires_quote, next.price_is_from, n, by]);
+  const moved = await record('tier', row.id, `${serviceSlug} · ${label}`, {}, next, by, q);
+  return { tier: row, changed: moved, ...(await effect(q)) };
+}
+
 /**
  * PUBLISH TO STRIPE IS PART OF SAVING, NOT A BUTTON SOMEBODY FORGETS.
  *

@@ -18,7 +18,7 @@ import { checklist, setRouteDays, setOwnerSetting, setAreaBookable, confirmPrice
 import { growthBoard, unfinished } from '../server/lib/growth.js';
 import { createInvite, customerList, InviteError } from '../server/lib/invites.js';
 import { listTeam, addTeamMember, setTeamStatus, TeamError } from '../server/lib/team.js';
-import { listRateCard, setTier, setPackagePrice, RateCardError, type TierPatch } from '../server/lib/rate-card.js';
+import { listRateCard, setTier, setPackagePrice, addTier, RateCardError, type TierPatch } from '../server/lib/rate-card.js';
 import { completeVisit, completionReadiness, markArrived, markEnRoute, stopDurations, VisitError } from '../server/lib/visits.js';
 import { put, PhotoError } from '../server/lib/photos.js';
 import { sendVisitComplete, runCommsSweeps } from '../server/lib/comms.js';
@@ -506,10 +506,19 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     //
     // Owners, not superadmin. A CMS the owner cannot administer is a retainer he did not ask
     // for, and P7 keeps requireSuper on exactly two verbs — neither of them is this one.
-    if (path === 'rate-card' || path === 'rate-card/tier' || path === 'rate-card/package') {
+    if (path === 'rate-card' || path === 'rate-card/tier' || path === 'rate-card/package' || path === 'rate-card/tier-new') {
       if (session.role !== 'admin' && session.role !== 'superadmin') return sendJson(res, 403, { error: 'Owners only.' });
       try {
         if (path === 'rate-card') return sendJson(res, 200, await listRateCard());
+        if (path === 'rate-card/tier-new' && req.method === 'POST') {
+          const body = await readJsonBody(req);
+          return sendJson(res, 200, await addTier(String(body.service_slug ?? ''), {
+            label: String(body.label ?? ''),
+            price_cents: body.price_cents === null || body.price_cents === '' || body.price_cents === undefined ? null : Number(body.price_cents),
+            price_suffix: body.price_suffix == null ? '' : String(body.price_suffix),
+            requires_quote: Boolean(body.requires_quote), price_is_from: Boolean(body.price_is_from),
+          }, session.email));
+        }
         if (req.method !== 'PATCH') return sendJson(res, 405, { error: 'Method not allowed.' });
         const body = await readJsonBody(req);
         if (path === 'rate-card/tier') {
