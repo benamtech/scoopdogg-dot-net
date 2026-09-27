@@ -39,9 +39,11 @@ export default function AdminRateCardPage() {
   const [adding, setAdding] = useState<string | null>(null);
   const [fresh, setFresh] = useState<{ label: string; price: string; suffix: string; quote: boolean; from: boolean }>({ label: '', price: '', suffix: '', quote: false, from: false });
 
+  const [pub, setPub] = useState<Awaited<ReturnType<typeof adminApi.publishStatus>> | null>(null);
   const load = async () => {
     try { setCard(await adminApi.rateCard()); }
     catch (e) { setError((e as Error).message); }
+    adminApi.publishStatus().then(setPub).catch(() => setPub(null));
   };
   useEffect(() => { load(); }, []);
 
@@ -126,6 +128,19 @@ export default function AdminRateCardPage() {
               A new price applies to {card.effective_now.join(', ')} straight away. Your public
               website still shows the old number until the site is published again.
             </p>
+          )}
+          {pub && (
+            <div className="mt-3 flex flex-wrap items-center gap-3 text-sm" data-publish>
+              {pub.configured ? (
+                <button type="button" className="btn-forest btn-sm" disabled={!!busy}
+                  onClick={async () => { setBusy('publish'); setError(''); try { await adminApi.publish('rate card'); setNote('Publishing. The website usually shows new prices within two minutes.'); setPub(await adminApi.publishStatus()); } catch (e) { setError((e as Error).message); } finally { setBusy(''); } }}>
+                  {busy === 'publish' ? 'Publishing…' : 'Publish the website now'}
+                </button>
+              ) : <span className="text-ink-500">Publishing from here is switched on when the new site goes live.</span>}
+              {pub.publishes[0] && (
+                <span className="text-ink-500">Last publish {new Date(pub.publishes[0].created_at).toLocaleString()}: {pub.publishes[0].state === 'live' ? 'live on the site' : pub.publishes[0].state === 'building' ? 'building' : pub.publishes[0].state === 'failed' ? 'did not go through' : 'queued'}.</span>
+              )}
+            </div>
           )}
         </div>
 

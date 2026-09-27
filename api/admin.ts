@@ -19,6 +19,7 @@ import { growthBoard, unfinished } from '../server/lib/growth.js';
 import { createInvite, customerList, InviteError } from '../server/lib/invites.js';
 import { listTeam, addTeamMember, setTeamStatus, TeamError } from '../server/lib/team.js';
 import { listRateCard, setTier, setPackagePrice, addTier, RateCardError, type TierPatch } from '../server/lib/rate-card.js';
+import { requestPublish, publishStatus, PublishError } from '../server/lib/publish.js';
 import { completeVisit, completionReadiness, markArrived, markEnRoute, stopDurations, VisitError } from '../server/lib/visits.js';
 import { put, PhotoError } from '../server/lib/photos.js';
 import { sendVisitComplete, runCommsSweeps } from '../server/lib/comms.js';
@@ -536,6 +537,20 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         return sendJson(res, 200, await setPackagePrice(String(body.id ?? ''), Number(body.monthly_price_cents ?? 0), session.email));
       } catch (e) {
         if (e instanceof RateCardError) return sendJson(res, e.status, { error: e.message, code: e.code });
+        throw e;
+      }
+    }
+
+    // ---- publishing the public pages (server/lib/publish.ts). Owners, like the rate card.
+    if (path === 'publish') {
+      if (session.role !== 'admin' && session.role !== 'superadmin') return sendJson(res, 403, { error: 'Owners only.' });
+      if (req.method === 'GET') return sendJson(res, 200, await publishStatus());
+      if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed.' });
+      try {
+        const body = await readJsonBody(req);
+        return sendJson(res, 200, await requestPublish(undefined, { by: session.email, reason: String(body.reason ?? 'rate card') }));
+      } catch (e) {
+        if (e instanceof PublishError) return sendJson(res, e.status, { error: e.message, code: e.code });
         throw e;
       }
     }

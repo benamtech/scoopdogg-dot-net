@@ -18,7 +18,7 @@ import { SITE_URL, DEFAULT_OG_IMAGE, SITE_NAME } from '../lib/constants';
 // crawler and to any gate that reads the built HTML.
 import { DEMO_MODE, DEMO_BANNER_TEXT } from '../lib/demo';
 // The analytics tag is a ROW, not a constant. See the block below for why that matters.
-import { setting } from '../lib/catalog';
+import { setting, pulledAt } from '../lib/catalog';
 // Preload the two faces every page paints with, so the headline does not wait on font discovery.
 import outfitUrl from '@fontsource-variable/outfit/files/outfit-latin-wght-normal.woff2?url';
 import serifUrl from '@fontsource/dm-serif-display/files/dm-serif-display-latin-400-normal.woff2?url';
@@ -125,6 +125,9 @@ const schema = jsonLd
     {/* WHY it is noindex, for gates/build-gates.mjs: a page that is private ("page") and a page that is
         noindex only because this is a demo build ("demo", every preview) must not be confused. */}
     <meta name="robots" content={isNoindex ? 'noindex, nofollow' : 'index, follow'} data-noindex={noindex ? 'page' : DEMO_MODE ? 'demo' : undefined} />
+    {/* When this page's prices were read from the database. server/lib/publish.ts reads it off the live
+        site to know a publish actually landed, rather than trusting the hook that asked for one. */}
+    <meta name="sd-catalog-pulled-at" content={pulledAt} />
 
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content={SITE_NAME} />
