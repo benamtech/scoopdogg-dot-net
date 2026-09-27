@@ -91,6 +91,21 @@ if (!firstMessage) {
 firstMessage ? ok('probe message present', `${firstMessage}${seededMessage ? ' (seeded for this run)' : ''}`)
              : no('probe message present', 'contact_messages is empty and could not be seeded');
 
+// The quote screens (migration 042) need a quote to show, and there may be none. Seed one on the
+// probe lead, straight into the tables — not through /api/quote, which emails — and delete it at
+// the end. Its title and line are text only an authenticated read of these rows can produce.
+let seededQuote = null;
+if (probeLead) {
+  const q = await client.query(
+    `insert into quotes (lead_id, title, created_by) values ($1, 'AMTECH SITE TEST quote', 'gate:admin-browser') returning id, number`,
+    [probeLead.id]).catch((e) => ({ rows: [], error: e }));
+  seededQuote = q.rows[0] || null;
+  if (seededQuote) {
+    await client.query(`insert into quote_lines (quote_id, sort, description, amount_cents) values ($1, 0, 'AMTECH SITE TEST line', 12345)`, [seededQuote.id]);
+    ok('probe quote seeded', `#${seededQuote.number}`);
+  } else no('probe quote seeded', q.error?.message ?? 'no row');
+}
+
 const email = 'ben@amtechai.com';
 const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
 await client.query(
@@ -163,6 +178,15 @@ const screens = [
                        /After your time/, /An assumption, not a figure from your books/],  'growth — channels, our own visits, the assumed hour'],
   ['/admin/payments', [/Live payments/, /Monthly plans/],                                     'payments'],
   ['/admin/team',     [/\(you\)/, new RegExp(email.replace(/[.+]/g, '\\$&'))],              'team'],
+  // WS1: the rate card had never been opened in a browser. A tier label and a package name only
+  // the rate-card read returns — the login screen carries neither.
+  ['/admin/rate-card', [/Large or custom property/, /Litter-Robot/],                              'rate card'],
+  // The quote rail: the seeded quote in the list, and on its own screen with the total the server
+  // computed from its one line ($123.45) — the builder's numbers come back from quoteForOwner.
+  ['/admin/quotes',   [/AMTECH SITE TEST quote/],                                               'quotes list'],
+  // A draft's title and lines sit in <input>s, which innerText does not read; the heading and the
+  // total are rendered text.
+  [`/admin/quotes/${seededQuote?.id}`, [new RegExp(`Quote #${seededQuote?.number ?? 'never'}`), /\$123\.45/], 'quote builder'],
 ];
 
 async function visit(context, route, shot) {
@@ -221,6 +245,11 @@ if (session) {
 }
 
 await client.query("delete from verification_codes where purpose = 'admin_login'");
+if (seededQuote) {
+  await client.query('delete from quotes where id = $1', [seededQuote.id]);   // lines cascade
+  const { rows } = await client.query('select count(*)::int n from quotes where id = $1', [seededQuote.id]);
+  rows[0].n === 0 ? ok('seeded quote removed', `#${seededQuote.number}`) : no('seeded quote removed', `${seededQuote.id} is still there`);
+}
 if (seededMessage) {
   await client.query('delete from contact_messages where id = $1', [seededMessage]);
   const { rows } = await client.query('select count(*)::int n from contact_messages where id = $1', [seededMessage]);

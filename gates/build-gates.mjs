@@ -135,7 +135,15 @@ for (const [scheme, label] of [['tel', 'tel'], ['mailto', 'mailto']]) {
     const files = globSync(`${DIST}/sitemap*.xml`);
     const locs = new Set();
     for (const f of files) for (const m of readFileSync(f, 'utf8').matchAll(/<loc>([^<]+)<\/loc>/g)) locs.add(m[1]);
-    const indexable = pages.filter((f) => !/<meta\s+name="robots"\s+content="[^"]*noindex/i.test(readFileSync(f, 'utf8')));
+    // A DEMO BUILD IS NOINDEX EVERYWHERE, by design (Base.astro: a demo page in Google's index outlives
+    // the demo), and every Vercel preview is a demo build (SD_FORCE_DEMO). Judged as-is, all 74 real
+    // pages read as "noindex pages the sitemap advertises" and every preview build failed here from
+    // 2026-09-26 on — while `npm run gates`, run on a non-demo build, stayed green. So a page says WHY
+    // it is noindex (data-noindex="page" | "demo") and a demo-only noindex is judged by the rule the
+    // same code applies in production. A page that is private in its own source still fails if listed.
+    const robots = (f) => /<meta\s+name="robots"[^>]*>/i.exec(readFileSync(f, 'utf8'))?.[0] ?? '';
+    const pageNoindex = (f) => { const m = robots(f); return /content="[^"]*noindex/i.test(m) && !/data-noindex="demo"/i.test(m); };
+    const indexable = pages.filter((f) => !pageNoindex(f));
     const routes = new Set(indexable.map((f) => route(f) === '/.' ? '/' : route(f)));
     // And the other direction, which nothing checked: the sitemap must not advertise one either.
     const noindexRoutes = new Set(pages.filter((f) => !indexable.includes(f)).map((f) => route(f) === '/.' ? '/' : route(f)));

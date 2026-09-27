@@ -122,7 +122,9 @@ const schema = jsonLd
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
-    <meta name="robots" content={isNoindex ? 'noindex, nofollow' : 'index, follow'} />
+    {/* WHY it is noindex, for gates/build-gates.mjs: a page that is private ("page") and a page that is
+        noindex only because this is a demo build ("demo", every preview) must not be confused. */}
+    <meta name="robots" content={isNoindex ? 'noindex, nofollow' : 'index, follow'} data-noindex={noindex ? 'page' : DEMO_MODE ? 'demo' : undefined} />
 
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content={SITE_NAME} />
