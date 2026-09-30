@@ -90,7 +90,10 @@ try {
 
   // ---- what it may not --------------------------------------------------------------------
   const FORBIDDEN = ['customers', 'growth', 'unfinished', 'checklist', 'payments', 'leads', 'messages',
-    'summary', 'business', 'team', 'settings', 'demo', 'money/everything', 'rate-card'];
+    'summary', 'business', 'team', 'settings', 'demo', 'money/everything', 'rate-card',
+    // §3 and §4 (2026-09-30): the editors and the screens that run the business. Owners only.
+    'offers', 'services', 'areas', 'jobs', 'week', 'invoices', 'customer/00000000-0000-0000-0000-000000000000',
+    'visit/00000000-0000-0000-0000-000000000000'];
   const leaks = [];
   for (const p of FORBIDDEN) {
     const r = await callAdmin(p, crewToken);
@@ -100,7 +103,9 @@ try {
                : ok('crew is refused every business route', `${FORBIDDEN.length} routes, all 403`);
 
   for (const [p, method] of [['payments/disconnect', 'POST'], ['customers/invite', 'POST'], ['checklist/prices/confirm', 'POST'],
-                             ['rate-card/tier', 'PATCH'], ['rate-card/package', 'PATCH']]) {
+                             ['rate-card/tier', 'PATCH'], ['rate-card/package', 'PATCH'], ['rate-card/bands', 'PATCH'],
+                             ['offers', 'PATCH'], ['offers/new', 'POST'], ['services', 'PATCH'], ['services/new', 'POST'],
+                             ['areas/days', 'PATCH'], ['areas/bookable', 'PATCH'], ['jobs/schedule', 'PATCH'], ['payments/manual', 'POST']]) {
     const r = await callAdmin(p, crewToken, method);
     r.status === 403 ? ok(`crew is refused ${method} ${p}`) : no(`crew is refused ${method} ${p}`, `HTTP ${r.status}`);
   }
@@ -115,12 +120,12 @@ try {
   // ---- the same routes answer for the owner, so the refusal is the role ----------------------
   {
     const opened = [];
-    for (const p of ['customers', 'growth', 'checklist', 'leads', 'payments']) {
+    for (const p of ['customers', 'growth', 'checklist', 'leads', 'payments', 'offers', 'services', 'areas', 'jobs', 'week', 'invoices']) {
       const r = await callAdmin(p, ownerToken);
       if (r.status === 403 || r.status === 401) opened.push(`${p} -> ${r.status}`);
     }
     opened.length ? no('the owner still reaches everything', opened.join(', '))
-                  : ok('the owner still reaches everything', 'five business routes');
+                  : ok('the owner still reaches everything', 'eleven business routes, the §3 and §4 screens among them');
   }
 
   // Superadmin-only stays superadmin-only for the owner.

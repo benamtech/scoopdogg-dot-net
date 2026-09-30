@@ -16,6 +16,7 @@ import { startLogin, verifyLogin, getSession, endSession, rateLimit, isOverLimit
 import { probeAccount, createConnectedAccount, onboardingLink, publishAllPrices, publishPricesWhenReady, connection, requirementsOf, disconnect, reconnect, type StripeMode } from '../server/lib/stripe.js';
 import { checklist, setRouteDays, setOwnerSetting, setAreaBookable, confirmPrices } from '../server/lib/onboarding.js';
 import { listAreas } from '../server/lib/areas.js';
+import { listJobs, scheduleJob, recordManualPayment, customerDetail, week, visitDetail, invoicesByState, BusinessError } from '../server/lib/business.js';
 import { listOffers, saveOffer, addOffer, OfferError, type OfferPatch } from '../server/lib/offers.js';
 import { listServices, saveService, addService, ServiceError, type ServicePatch } from '../server/lib/services.js';
 import { growthBoard, unfinished } from '../server/lib/growth.js';
@@ -45,7 +46,7 @@ const MSG_STATUSES = ['unread', 'read', 'replied', 'spam'];
  * ones that can: a new screen that writes a price, a service or an area purges without anybody
  * remembering to, and the cost of a needless purge is one re-render.
  */
-const NEVER_PUBLIC = /^(login\/|logout$|visits\/|lead\/|message\/|quotes$|quote-new$|quote\/|customers\/|team|payments\/)/;
+const NEVER_PUBLIC = /^(login\/|logout$|visits\/|lead\/|message\/|quotes$|quote-new$|quote\/|customers\/|customer\/|team|payments\/|jobs\/)/;
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   const path = routePath(req);
@@ -509,6 +510,49 @@ async function route(req: ApiRequest, res: ApiResponse) {
 
     // ---- the onboarding checklist (P18 §2) --------------------------------
     if (path === 'areas' && req.method === 'GET') return sendJson(res, 200, { areas: await listAreas() });
+    // The Areas screen writes through the same functions the setup checklist uses. Owners only; the
+    // write purges the page cache (the handler above) because every city page prints its route days.
+    if ((path === 'areas/days' || path === 'areas/bookable') && req.method === 'PATCH') {
+      if (session.role !== 'admin' && session.role !== 'superadmin') return sendJson(res, 403, { error: 'Owners only.' });
+      const body = await readJsonBody(req);
+      try {
+        const area = path === 'areas/days'
+          ? await setRouteDays(String(body.slug ?? ''), Array.isArray(body.weekdays) ? body.weekdays.map(Number) : [], session.email)
+          : await setAreaBookable(String(body.slug ?? ''), Boolean(body.bookable));
+        return sendJson(res, 200, { area, effective_now: ['the booking form', 'the city page'] });
+      } catch { return sendJson(res, 400, { error: 'We do not have that area.' }); }
+    }
+
+    // ---- running the business: jobs, a customer, cash payments, the week, invoices (business.ts)
+    if (path === 'jobs' || path === 'jobs/schedule' || path === 'payments/manual' || path.startsWith('customer/')
+        || path === 'week' || path.startsWith('visit/') || path === 'invoices') {
+      if (session.role !== 'admin' && session.role !== 'superadmin') return sendJson(res, 403, { error: 'Owners only.' });
+      try {
+        if (path === 'jobs' && req.method === 'GET') return sendJson(res, 200, await listJobs());
+        if (path === 'week' && req.method === 'GET') {
+          const from = new URL(req.url || '/', 'https://local.test').searchParams.get('from') ?? undefined;
+          return sendJson(res, 200, await week(db(), from));
+        }
+        if (path === 'invoices' && req.method === 'GET') return sendJson(res, 200, await invoicesByState());
+        if (path.startsWith('customer/') && req.method === 'GET') return sendJson(res, 200, await customerDetail(db(), path.slice('customer/'.length)));
+        if (path.startsWith('visit/') && req.method === 'GET') return sendJson(res, 200, await visitDetail(db(), path.slice('visit/'.length)));
+        const body = await readJsonBody(req);
+        if (path === 'jobs/schedule' && req.method === 'PATCH') {
+          return sendJson(res, 200, { job: await scheduleJob(db(), String(body.id ?? ''), body.date ? String(body.date) : null, session.email) });
+        }
+        if (path === 'payments/manual' && req.method === 'POST') {
+          return sendJson(res, 200, { payment: await recordManualPayment(db(), {
+            customer_id: String(body.customer_id ?? ''), amount_cents: Number(body.amount_cents), method: String(body.method ?? ''),
+            note: String(body.note ?? ''), quote_id: body.quote_id ? String(body.quote_id) : null,
+            invoice_id: body.invoice_id ? String(body.invoice_id) : null, paid_on: body.paid_on ? String(body.paid_on) : null,
+          }, session.email) });
+        }
+        return sendJson(res, 405, { error: 'Method not allowed.' });
+      } catch (e) {
+        if (e instanceof BusinessError) return sendJson(res, e.status, { error: e.message, code: e.code });
+        throw e;
+      }
+    }
     if (path === 'checklist') return sendJson(res, 200, await checklist());
 
     if (path === 'checklist/route-days' && req.method === 'PATCH') {

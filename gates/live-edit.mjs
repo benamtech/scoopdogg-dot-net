@@ -138,6 +138,27 @@ const EDITS = [];
   });
 }
 
+// 5. A city's route days, through the Areas screen. The city page says "We are in <city> on ...".
+{
+  const { rows: [a] } = await db.query(`select slug, name, service_weekdays, updated_at from service_areas where slug = 'carpinteria'`);
+  const { rows: [stamp] } = await db.query(`select value, updated_by, updated_at from settings where key = 'schedule.route_days_updated_at'`);
+  const WD = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const add = [0, 6].find((d) => !a.service_weekdays.includes(d));   // a weekend day: the least likely to be a real route
+  const next = [...a.service_weekdays, add].sort();
+  EDITS.push({
+    name: `route days (${a.name})`, route: `/areas/${a.slug}`,
+    before: (h) => !new RegExp(`We are in ${a.name} on [^.]*${WD[add]}`).test(h), after: (h) => new RegExp(`We are in ${a.name} on [^.]*${WD[add]}`).test(h),
+    apply: () => s.api('areas/days', { method: 'PATCH', body: { slug: a.slug, weekdays: next } }),
+    restore: async () => {
+      await s.api('areas/days', { method: 'PATCH', body: { slug: a.slug, weekdays: a.service_weekdays } });
+      await db.query(`update service_areas set updated_at = $2 where slug = $1`, [a.slug, a.updated_at]);
+      // setRouteDays also stamps when route days last changed; put that back too.
+      if (stamp) await db.query(`update settings set value = $1::jsonb, updated_by = $2, updated_at = $3 where key = 'schedule.route_days_updated_at'`, [JSON.stringify(stamp.value), stamp.updated_by, stamp.updated_at]);
+    },
+    shown: `${WD[add]} added to ${a.name}`,
+  });
+}
+
 const startedAt = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
 try {
   // The negative control first, on the tier: a database write with no purge must not reach the page.

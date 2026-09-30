@@ -17,6 +17,12 @@ import AdminQuotesPage from '../../pages_react/admin/AdminQuotesPage';
 import AdminQuotePage from '../../pages_react/admin/AdminQuotePage';
 import AdminOffersPage from '../../pages_react/admin/AdminOffersPage';
 import AdminServicesPage from '../../pages_react/admin/AdminServicesPage';
+import AdminJobsPage from '../../pages_react/admin/AdminJobsPage';
+import AdminCustomerPage from '../../pages_react/admin/AdminCustomerPage';
+import AdminAreasPage from '../../pages_react/admin/AdminAreasPage';
+import AdminWeekPage from '../../pages_react/admin/AdminWeekPage';
+import AdminVisitPage from '../../pages_react/admin/AdminVisitPage';
+import AdminInvoicesPage from '../../pages_react/admin/AdminInvoicesPage';
 
 /**
  * One admin screen, hydrated — the whole screen, not a shell around it.
@@ -55,6 +61,12 @@ const SCREENS = {
   quote: AdminQuotePage,
   offers: AdminOffersPage,
   services: AdminServicesPage,
+  jobs: AdminJobsPage,
+  customer: AdminCustomerPage,
+  areas: AdminAreasPage,
+  week: AdminWeekPage,
+  visit: AdminVisitPage,
+  invoices: AdminInvoicesPage,
 } as const;
 
 export type AdminScreen = keyof typeof SCREENS;

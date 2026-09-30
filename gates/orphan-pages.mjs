@@ -66,6 +66,12 @@ const PRIVATE = {
   '/admin/rate-card': 'as above',
   '/admin/services': 'as above',
   '/admin/offers': 'as above',
+  '/admin/jobs': 'as above',
+  '/admin/areas': 'as above',
+  '/admin/week': 'as above',
+  '/admin/invoices': 'as above',
+  '/admin/customers/example': 'as above, one customer; rendered for the gates at a placeholder id',
+  '/admin/visits/example': 'as above, one visit',
 };
 
 let pass = 0, fail = 0;

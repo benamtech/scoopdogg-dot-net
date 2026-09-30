@@ -97,7 +97,28 @@ export interface AdminService {
 }
 export type ServiceInput = Partial<Pick<AdminService, 'name' | 'short_name' | 'h1' | 'intro' | 'what_includes' | 'who_its_for' | 'faqs' | 'pricing_note' | 'meta_title' | 'meta_description' | 'related_slugs' | 'sort_order' | 'status'>>;
 
+/** A custom job, and the stage derived from its dates (server/lib/business.ts). */
+export type JobStage = 'deposit_due' | 'to_schedule' | 'scheduled' | 'balance_owed' | 'done';
+export interface AdminJob {
+  id: string; number: number; title: string; total_cents: number; deposit_cents: number | null; deposit_paid_at: string | null;
+  accepted_at: string; scheduled_for: string | null; completed_at: string | null; balance_paid_at: string | null; approx_start: string;
+  customer_id: string | null; name: string; phone: string; city: string; address: string; owed_cents: number; manual_paid_cents: number; stage: JobStage;
+}
+export interface WeekVisit { id: string; day: string; state: string; customer_id: string; name: string; address: string; city: string; service_name: string; area_name: string | null; photos: number; charge_cents: number | null }
+export interface AdminInvoice { id: string; state: string; total_cents: number; issued_at: string | null; paid_at: string | null; customer_id: string; name: string; lines: string | null; hosted_invoice_url: string | null; collection_method: string | null }
+export type ManualMethod = 'cash' | 'venmo' | 'zelle' | 'check' | 'other';
+
 export const adminApi = {
+  jobs:        () => call<{ jobs: AdminJob[]; counts: Record<JobStage, number> }>('jobs'),
+  scheduleJob: (id: string, date: string | null) => call<{ job: AdminJob }>('jobs/schedule', { method: 'PATCH', body: JSON.stringify({ id, date }) }),
+  customer:    (id: string) => call<any>(`customer/${id}`),
+  recordPayment: (p: { customer_id: string; amount_cents: number; method: ManualMethod; note?: string; quote_id?: string | null; invoice_id?: string | null; paid_on?: string | null }) =>
+    call<{ payment: { id: string } }>('payments/manual', { method: 'POST', body: JSON.stringify(p) }),
+  week:        (from?: string) => call<{ from: string; days: { day: string; visits: WeekVisit[]; jobs: AdminJob[] }[] }>(`week${from ? `?from=${from}` : ''}`),
+  visit:       (id: string) => call<any>(`visit/${id}`),
+  invoices:    () => call<{ invoices: AdminInvoice[]; counts: Record<string, number>; owed_cents: number }>('invoices'),
+  setAreaDays: (slug: string, weekdays: number[]) => call<{ area: { slug: string; service_weekdays: number[] } }>('areas/days', { method: 'PATCH', body: JSON.stringify({ slug, weekdays }) }),
+  setAreaBookable: (slug: string, bookable: boolean) => call<{ area: { slug: string; bookable: boolean } }>('areas/bookable', { method: 'PATCH', body: JSON.stringify({ slug, bookable }) }),
   offers:      () => call<{ offers: AdminOffer[]; services: { slug: string; name: string; monthly: boolean }[] }>('offers'),
   saveOffer:   (id: string, patch: OfferInput) => call<{ offer: AdminOffer; effective_now: string[] }>('offers', { method: 'PATCH', body: JSON.stringify({ id, ...patch }) }),
   addOffer:    (o: OfferInput) => call<{ offer: AdminOffer; effective_now: string[] }>('offers/new', { method: 'POST', body: JSON.stringify(o) }),

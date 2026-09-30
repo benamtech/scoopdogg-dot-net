@@ -162,6 +162,14 @@ if (session) {
  * PRESENT with it. That is the assertion falsifying itself on every run.
  */
 const leadEmail = probeLead?.email || null;
+// §4 needs a real customer and a real visit to open. Reported, never assumed.
+const { rows: [probeCustomer] } = await client.query(
+  `select id, name from customers where deleted_at is null and name not like 'DEMO—%' order by created_at limit 1`);
+const { rows: [probeVisit] } = await client.query(
+  `select v.id, c.name from visits v join subscriptions s on s.id = v.subscription_id join customers c on c.id = s.customer_id
+    where c.name not like 'DEMO—%' order by v.scheduled_for desc limit 1`);
+const { rows: [probeArea] } = await client.query(`select name from service_areas where status = 'active' order by sort_order limit 1`);
+const esc = (x) => new RegExp(String(x ?? 'never-matches').replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
 const screens = [
   ['/admin',                          [/AMTECH SITE TEST/, /Recent Leads/],        'dashboard'],
   ['/admin/leads',                    [/AMTECH SITE TEST/],                        'leads list'],
@@ -194,6 +202,14 @@ const screens = [
   ['/admin/offers',   [/First month half off/, /customers? on it now/],                         'offers'],
   ['/admin/services', [/Pet Area Pressure Washing|Pressure Washing/, /prices? on the rate card/], 'services'],
   ['/admin/rate-card', [/Which tier a customer lands in, by dogs/, /Save ranges/],               'rate card — the ranges'],
+  // §4 (2026-09-30): the screens that run the business. A customer's own name and payment total, a
+  // visit's customer, a city with its counts, the week's stop count, the invoices' owed sentence.
+  ['/admin/jobs',     [/To schedule \(\d+\)/, /Balance owed \(\d+\)/],                         'jobs by stage'],
+  [`/admin/customers/${probeCustomer?.id}`, [esc(probeCustomer?.name), /paid in all/],           'customer detail'],
+  ['/admin/week',     [/stops? from/],                                                         'the week'],
+  [`/admin/visits/${probeVisit?.id}`, [esc(probeVisit?.name), /Photos \(\d+\)/],               'visit detail'],
+  ['/admin/areas',    [esc(probeArea?.name), /visits? in the next two weeks/],                  'areas and route days'],
+  ['/admin/invoices', [/owed, \$[\d,.]+ in all/],                                              'invoices by state'],
 ];
 
 async function visit(context, route, shot) {

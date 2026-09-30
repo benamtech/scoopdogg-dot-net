@@ -128,7 +128,7 @@ export default function AdminCustomersPage() {
                     return (
                       <tr key={c.id}>
                         <td className="px-4 py-3">
-                          <span className="font-medium text-forest-900">{c.name}</span>
+                          <a className="font-medium text-forest-900 underline" href={`/admin/customers/${c.id}`}>{c.name}</a>
                           <span className="block text-ink-500">{c.phone}{c.email ? ` · ${c.email}` : ''}</span>
                         </td>
                         <td className="px-4 py-3 text-ink-700">{c.address ?? '—'}{c.area_name ? `, ${c.area_name}` : ''}</td>
