@@ -24,6 +24,18 @@ let pass = 0, fail = 0;
 const ok = (n, m = '') => { console.log(`  PASS  ${n}${m ? ' — ' + m : ''}`); pass++; };
 const no = (n, m) => { console.log(`  FAIL  ${n} — ${m}`); fail++; };
 
+/**
+ * The file an <img src> actually shows. Since 2026-09-29 the pages render on demand and images go
+ * through Vercel's image CDN, so a src reads `/_vercel/image?url=%2F_astro%2Fx.png&w=828&q=62`
+ * (or Astro's own `/_image?href=...`). Read literally that is never a file on disk, and gates 9 and
+ * 15 silently skipped every such image until this decoded it back to the source they judge.
+ */
+const imageSource = (raw) => {
+  const src = raw.replace(/&#38;|&amp;/g, '&');
+  const m = /^\/_(?:vercel\/image\?(?:.*&)?url|image\?(?:.*&)?href)=([^&]+)/.exec(src);
+  return m ? decodeURIComponent(m[1]).replace(/^(?!\/)/, "/") : src;
+};
+
 const strip = (h) =>
   h.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<style[\s\S]*?<\/style>/gi, '');
 const textOf = (h) => strip(h).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -181,7 +193,10 @@ for (const [scheme, label] of [['tel', 'tel'], ['mailto', 'mailto']]) {
 {
   const refs = new Set();
   for (const f of pages) {
-    for (const m of readFileSync(f, 'utf8').matchAll(/src="(\/[^"]+\.(?:png|jpe?g|webp|svg|gif))"/gi)) refs.add(m[1]);
+    for (const m of readFileSync(f, 'utf8').matchAll(/<img\b[^>]*\bsrc="(\/[^"]+)"/gi)) {
+      const src = imageSource(m[1]);
+      if (/\.(?:png|jpe?g|webp|svg|gif|avif)$/i.test(src)) refs.add(src);
+    }
   }
   const broken = [];
   for (const r of refs) {
@@ -190,6 +205,10 @@ for (const [scheme, label] of [['tel', 'tel'], ['mailto', 'mailto']]) {
     const size = readFileSync(p).length;
     if (size < 5000 && !r.endsWith('.svg')) broken.push(`${r} is only ${size}B, probably blank`);
   }
+  const decoded = imageSource('/_vercel/image?url=%2F_astro%2Fdog.Ab12.png&#38;w=828&#38;q=62');
+  decoded === '/_astro/dog.Ab12.png' ? ok('image-source-decoder', 'NEGATIVE CONTROL: an image-CDN src is judged as its source file')
+                                     : no('image-source-decoder', `decoded to ${decoded}`);
+  if (refs.size === 0) broken.push('no images found at all: the src pattern is blind');
   broken.length ? no('images-have-content', broken.slice(0, 4).join('; '))
                 : ok('images-have-content', `${refs.size} referenced images`);
 }
@@ -335,7 +354,8 @@ for (const [scheme, label] of [['tel', 'tel'], ['mailto', 'mailto']]) {
     const html = readFileSync(f, 'utf8');
     for (const m of html.matchAll(/<img\b[^>]*>/gi)) {
       const tag = m[0];
-      const src = (tag.match(/\bsrc="(\/[^"]+)"/) || [])[1];
+      const raw = (tag.match(/\bsrc="(\/[^"]+)"/) || [])[1];
+      const src = raw && imageSource(raw);
       const cls = (tag.match(/\bclass="([^"]*)"/) || [, ''])[1];
       if (!src || !/(^|\s|:)absolute(\s|$)/.test(cls)) continue;
       // A photo that exactly fills its own frame (inset-0 + object-cover, e.g. the before/after

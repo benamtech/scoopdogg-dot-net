@@ -34,7 +34,12 @@ const MAX_AGE_DAYS = 120;
 // ---- A. the number has one home ------------------------------------------------------------
 console.log('A. one home for the count, and one sentence for the page');
 const catalogTs = read('src/lib/catalog.ts');
-check(/quotes: data\.reviews\.length/.test(catalogTs) && !/\bcount: data\.reviews\.length/.test(catalogTs),
+// A getter since 2026-09-29 (the catalog is live bindings, re-read per render), so either shape
+// counts as `quotes`; `count` in either shape is still the defect.
+const NAMED = (name) => new RegExp(`(\\b${name}: data\\.reviews\\.length|get ${name}\\(\\)[^{]*\\{\\s*return data\\.reviews\\.length)`);
+check(!NAMED('count').test('get quotes(): number { return data.reviews.length; }') && NAMED('count').test('get count(): number { return data.reviews.length; }'),
+  'NEGATIVE CONTROL: the name check tells `get quotes()` from `get count()`');
+check(NAMED('quotes').test(catalogTs) && !NAMED('count').test(catalogTs),
   'the curated number is called `quotes`, not `count`',
   'six pages took `count` as an invitation and put it next to the word Google');
 check(/get label\(\)/.test(catalogTs) && /reviews on this page/.test(catalogTs),

@@ -20,7 +20,10 @@ import vercel from '@astrojs/vercel';
 export default defineConfig({
   site: 'https://scoopdogg.net',
   output: 'server',
-  adapter: vercel(),
+  // imageService: Vercel's image CDN resizes and converts at the edge and caches the result, so no
+  // image request runs our function (without it, every <Image> became /_image, served by sharp inside
+  // the page function). The source files are kept small too: see assets-originals/art.
+  adapter: vercel({ imageService: true }),
   integrations: [
     react(),
     tailwind({ applyBaseStyles: false }),

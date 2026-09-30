@@ -13,6 +13,7 @@
  *   /             -> dist/index.html          /questions/x.md -> dist/questions/x.md
  *   /about        -> dist/about/index.html    /llms.txt       -> dist/llms.txt
  *   (the 404 page) -> dist/404.html           /sitemap-*.xml  -> dist/sitemap-*.xml
+ *   dist/client/*  -> dist/*  (the static files, so dist/ is the whole site as served)
  *
  * So a gate reads what a visitor would receive, not a second rendering path. The list of pages is
  * every page file in src/pages plus every URL the live sitemap names, so a service or question the
@@ -22,7 +23,7 @@
  * on the pages that exist and never see the one that failed.
  */
 import http from 'node:http';
-import { mkdirSync, writeFileSync, readdirSync, statSync, existsSync, rmSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readdirSync, statSync, existsSync, rmSync, cpSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { loadEnv } from './_env.mjs';
@@ -56,6 +57,11 @@ const write = (file, body) => { mkdirSync(path.dirname(file), { recursive: true 
 for (const f of existsSync(OUT) ? readdirSync(OUT) : []) {
   if (f !== 'client' && f !== 'server') rmSync(path.join(OUT, f), { recursive: true, force: true });
 }
+
+// The static files (public/ and the bundled _astro/ assets) sit in dist/client since the adapter
+// arrived. Mirror them into dist/ so dist/ is the whole site as the CDN serves it — pages and the
+// files they link — which is what every gate that resolves a link or an image expects.
+cpSync(path.join(OUT, 'client'), OUT, { recursive: true });
 
 const sitemap = await get('/sitemap-0.xml');
 if (sitemap.status !== 200) { console.error(`[render] /sitemap-0.xml answered ${sitemap.status}`); process.exit(1); }
