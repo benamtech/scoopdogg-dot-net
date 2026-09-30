@@ -2,7 +2,7 @@
  * Serve the built site AND the api/ functions locally, the way Vercel routes them, so booking,
  * checkout and the account can be exercised end to end before anything is deployed.
  *
- *   npx astro build && node scripts/dev-server.mjs [--port 4330]
+ *   npm run build && node scripts/dev-server.mjs [--port 4330]
  *
  * SAFE BY CONSTRUCTION: it forces demo mode for its own process (SD_FORCE_DEMO=1), so mail goes
  * to Resend's test address and Stripe runs in test mode, whatever the live settings say.
@@ -11,6 +11,7 @@ import http from 'node:http';
 import { gzipSync } from 'node:zlib';
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { loadEnv } from './_env.mjs';
 import { compileServer } from '../gates/_compile.mjs';
 
@@ -37,6 +38,7 @@ function matchRewrite(pathname) {
   return null;
 }
 
+let renderPage = null;
 http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://127.0.0.1:${port}`);
   let pathname = url.pathname.replace(/\/$/, '') || '/';
@@ -51,9 +53,32 @@ http.createServer(async (req, res) => {
     try { const mod = await import(file); return await mod.default(req, res); }
     catch (e) { console.error('function error', e); res.statusCode = 500; return res.end('function error'); }
   }
-  const candidates = [path.join(DIST, pathname), path.join(DIST, pathname, 'index.html'), path.join(DIST, `${pathname}.html`)];
-  const hit = candidates.find((c) => existsSync(c) && statSync(c).isFile());
-  if (!hit) { res.statusCode = 404; const nf = path.join(DIST, '404.html'); return res.end(existsSync(nf) ? readFileSync(nf) : 'not found'); }
+  // Since 2026-09-29 pages render on demand. A static file (public/ and the bundled _astro/) is served
+  // from dist/client as the CDN would; an image-CDN URL serves its SOURCE file unoptimised (there is
+  // no image CDN locally — measure image weight against a preview); every other path is rendered by
+  // the built function Vercel runs (.vercel/output), so /quote/<token> and /admin/leads/<id> answer
+  // here exactly as they do in production.
+  if (pathname === '/_vercel/image') {
+    const src = String(url.searchParams.get('url') ?? '').replace(/^\/?/, '/');
+    const file = path.join(DIST, 'client', src);
+    if (!src.includes('..') && existsSync(file) && statSync(file).isFile()) {
+      res.setHeader('Content-Type', types[path.extname(file)] ?? 'application/octet-stream');
+      return res.end(readFileSync(file));
+    }
+    res.statusCode = 404; return res.end('no image');
+  }
+  const staticHit = [path.join(DIST, 'client', pathname)].find((c) => pathname !== '/' && existsSync(c) && statSync(c).isFile());
+  if (!staticHit) {
+    if (!renderPage) {
+      const FUNC = path.resolve('.vercel/output/functions/_render.func/dist/server/entry.mjs');
+      if (!existsSync(FUNC)) { res.statusCode = 500; return res.end('no built function: run the build first'); }
+      renderPage = (await import(pathToFileURL(FUNC).href)).default;
+    }
+    req.url = `${url.pathname}${url.search}`;
+    try { return await renderPage(req, res); }
+    catch (e) { console.error('render error', e); res.statusCode = 500; return res.end('render error'); }
+  }
+  const hit = staticHit;
   const type = types[path.extname(hit)] ?? 'application/octet-stream';
   res.setHeader('Content-Type', type);
   // Compress and cache like Vercel does, so a local Lighthouse run measures the site, not the harness.
@@ -64,4 +89,4 @@ http.createServer(async (req, res) => {
     return res.end(gzipSync(body));
   }
   res.end(body);
-}).listen(port, '127.0.0.1', () => console.log(`  serving dist + api on http://127.0.0.1:${port}`));
+}).listen(port, '127.0.0.1', () => console.log(`  serving the built function, dist/client and api on http://127.0.0.1:${port}`));

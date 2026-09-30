@@ -190,7 +190,11 @@ async function walk(shape) {
        * It is conditional because a single-method account renders no chooser at all, and a
        * gate that requires the chooser would then fail on the simpler case.
        */
-      const cardTab = page.getByTestId('card-accordion-item').or(page.getByText(/^Card$/).first());
+      // The Card BUTTON first. Measured 2026-09-30 on a live test Checkout: for a $99 one-time payment Stripe lists Card,
+      // Cash App Pay, Klarna, Affirm and Bank; the option is a button (data-testid card-accordion-item-button)
+      // inside the item, there is no radio role, and clicking the item or the text did not select Card
+    // (output/checkout-e2e-onetime-failure.png), so the card fields never appeared.
+      const cardTab = page.getByTestId('card-accordion-item-button').or(page.getByTestId('card-accordion-item')).or(page.getByText(/^Card$/).first());
       if (await cardTab.count().catch(() => 0)) {
         await cardTab.first().click({ timeout: 10000 }).catch(() => {});
         await page.locator('#cardNumber').waitFor({ timeout: 15000 }).catch(() => {});
