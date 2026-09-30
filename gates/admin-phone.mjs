@@ -43,15 +43,18 @@ try {
     const doc = document.documentElement;
     const wide = [...document.querySelectorAll('body *')].filter((e) => e.getBoundingClientRect().right > doc.clientWidth + 1 && getComputedStyle(e).position !== 'fixed')
       .slice(0, 3).map((e) => `${e.tagName.toLowerCase()}.${String(e.className).split(' ')[0]}`);
+    // WCAG 2.5.8 exempts a link inside a sentence ("Prices live on the rate card"): its size is set
+    // by the line of text. Everything else a thumb has to hit is measured.
+    const inline = (e) => e.tagName === 'A' && e.parentElement && /^(P|LI|SPAN)$/.test(e.parentElement.tagName) && e.parentElement.textContent.trim().length > e.textContent.trim().length + 12;
     const small = [...document.querySelectorAll('main button, main a, main [role=tab], main input[type=checkbox] + *')]
-      .filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.height < 24; })
+      .filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.height < 24 && !inline(e); })
       .slice(0, 3).map((e) => `${(e.textContent || '').trim().slice(0, 24)} (${Math.round(e.getBoundingClientRect().height)}px)`);
     return { overflow: doc.scrollWidth - doc.clientWidth, wide, small, text: document.body.innerText };
   };
 
   {
     const page = await ctx.newPage();
-    await page.setContent('<html><body style="margin:0"><main><div style="width:900px">wide</div></main></body></html>');
+    await page.setContent('<html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body style="margin:0"><main><div style="width:900px">wide</div></main></body></html>');
     const m = await page.evaluate(measure);
     check(m.overflow > 0 && m.wide.length > 0, 'NEGATIVE CONTROL: the overflow measure sees a 900px element on a 390px screen', `${m.overflow}px over`);
     await page.close();

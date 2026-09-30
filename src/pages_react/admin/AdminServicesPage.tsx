@@ -170,7 +170,7 @@ export default function AdminServicesPage() {
                     <div className="min-w-0">
                       <p className="text-base font-semibold text-forest-900">{s.name}</p>
                       <p className="text-sm text-ink-500">{STATUS[s.status]} · {s.live_tiers} price{s.live_tiers === 1 ? '' : 's'} on the rate card · {s.customers} customer{s.customers === 1 ? '' : 's'}</p>
-                      {s.status === 'active' && <a className="text-sm underline text-ink-600" href={`/services/${s.slug}`} target="_blank" rel="noreferrer">See the page</a>}
+                      {s.status === 'active' && <a className="inline-block py-1.5 text-sm underline text-ink-600" href={`/services/${s.slug}`} target="_blank" rel="noreferrer">See the page</a>}
                     </div>
                     <div className="flex gap-2">
                       <button type="button" className="btn-secondary btn-sm" disabled={!!busy} onClick={() => setOpen(s.slug)}>Edit</button>

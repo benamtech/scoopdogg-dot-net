@@ -293,7 +293,7 @@ export default function AdminRateCardPage() {
                               onClick={() => saveTier(t, { price_cents: cents })}>
                               {busy === t.id ? 'Saving…' : 'Save'}
                             </button>
-                            <button type="button" className="text-sm text-ink-500 hover:text-forest-900" data-edit-tier={t.id}
+                            <button type="button" className="px-2 py-1.5 text-sm text-ink-500 hover:text-forest-900" data-edit-tier={t.id}
                               onClick={() => { setEditing(editing === t.id ? null : t.id); setEdit({ label: t.label, suffix: t.price_suffix ?? '', from: t.price_is_from }); }}>
                               {editing === t.id ? 'Close' : 'Edit'}
                             </button>
