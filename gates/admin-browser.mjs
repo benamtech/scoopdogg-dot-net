@@ -210,6 +210,8 @@ const screens = [
   [`/admin/visits/${probeVisit?.id}`, [esc(probeVisit?.name), /Photos \(\d+\)/],               'visit detail'],
   ['/admin/areas',    [esc(probeArea?.name), /visits? in the next two weeks/],                  'areas and route days'],
   ['/admin/invoices', [/owed, \$[\d,.]+ in all/],                                              'invoices by state'],
+  // §5: the card that says where the owner's time goes, and when the daily run last ran.
+  ['/admin/growth',   [/What is taking your time/, /Quotes to follow up/, /The daily run/],        'growth — what is taking your time'],
 ];
 
 async function visit(context, route, shot) {

@@ -48,7 +48,9 @@ export type SendEmailArgs = {
     // once-only check already work there.
     | 'visit_complete' | 'payment_failed' | 'card_expiring' | 'cancel_confirmation' | 'review_request'
     // The custom-quote lane (server/lib/quotes.ts, migration 042).
-    | 'quote_receipt' | 'quote_sent' | 'quote_accepted';
+    | 'quote_receipt' | 'quote_sent' | 'quote_accepted'
+    // The daily run (server/lib/daily.ts): the owner's list of quotes to follow up.
+    | 'quote_follow_up';
   /** Settings key holding the recipient list, or an explicit address for a sign-in code. */
   recipients: { settingKey: string } | { explicit: string[] };
   subject: string;

@@ -177,6 +177,53 @@ export async function growthBoard(q: Queryable = db()) {
     // page or an hour of Josue's attention is worth the most.
     where_next: density,
     waitlist: waitlist,
+    time: await whereTimeGoes(q).catch(() => null),
+  };
+}
+
+/**
+ * WHAT IS TAKING YOUR TIME (§5 of the final session). Four numbers, each from its own rows, each
+ * with `measured` like every metric on this board:
+ *   - how fast a request gets its first answer: the median of leads.first_response_at - created_at
+ *     over 90 days (R21: the number to measure, because no benchmark says what Josue's is);
+ *   - quotes waiting on a nudge: opened, not approved, on the follow-up list (server/lib/daily.ts);
+ *   - balances owed on finished custom jobs, and how many jobs;
+ *   - route days in use: how many cities have set days, and how many book any day (no route).
+ * And when the daily run last ran, because a job nobody can see run is one nobody can trust.
+ */
+export async function whereTimeGoes(q: Queryable = db()) {
+  const { rows: [r] } = await q.query(`
+    select percentile_cont(0.5) within group (order by extract(epoch from (first_response_at - created_at)) / 60)
+             filter (where first_response_at is not null and created_at > now() - interval '90 days') as median_minutes,
+           count(*) filter (where first_response_at is not null and created_at > now() - interval '90 days')::int as answered,
+           count(*) filter (where first_response_at is null and created_at > now() - interval '90 days' and status = 'new')::int as unanswered
+      from leads where name not like 'DEMO—%'`);
+  const { rows: [n] } = await q.query(`
+    select count(*)::int as n from quotes qt
+     where qt.state = 'sent'
+       and exists (select 1 from events e where e.subject_kind = 'quote' and e.subject_id = qt.id and e.event_type = 'quote.follow_up_due')
+       and not exists (select 1 from events e where e.subject_kind = 'quote' and e.subject_id = qt.id and e.event_type = 'quote.nudged')`);
+  const { rows: [owed] } = await q.query(`
+    select count(*)::int as jobs,
+           coalesce(sum(greatest(qt.total_cents - coalesce(case when qt.deposit_paid_at is not null then qt.deposit_cents end, 0)
+                                 - coalesce((select sum(p.amount_cents) from payments p where p.quote_id = qt.id and p.kind = 'manual' and p.state = 'succeeded'), 0), 0)), 0)::int as cents
+      from quotes qt
+     where qt.state = 'accepted' and qt.completed_at is not null and qt.balance_paid_at is null`);
+  const { rows: [days] } = await q.query(`
+    select count(*) filter (where cardinality(service_weekdays) > 0)::int as with_days,
+           count(*) filter (where cardinality(service_weekdays) = 0 and bookable)::int as any_day,
+           (select count(distinct d)::int from service_areas, unnest(service_weekdays) d where status = 'active') as weekdays
+      from service_areas where status = 'active'`);
+  const { rows: [run] } = await q.query(`select value from settings where key = 'daily.last_run'`);
+  return {
+    first_response: {
+      measured: r.answered > 0, median_minutes: r.median_minutes === null ? null : Math.round(Number(r.median_minutes)),
+      answered: r.answered, unanswered: r.unanswered,
+    },
+    quotes_to_nudge: n.n,
+    balances_owed: { jobs: owed.jobs, cents: owed.cents },
+    route_days: { cities_with_days: days.with_days, cities_any_day: days.any_day, weekdays_in_use: days.weekdays },
+    daily_last_run: run?.value ? { at: run.value.at, by: run.value.by } : null,
   };
 }
 

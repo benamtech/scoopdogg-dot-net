@@ -255,10 +255,10 @@ export async function resumePlan(customerId: string, subscriptionId: string) {
 }
 
 /**
- * THE CLOCK. A pause carries a date we promised the customer; nothing on Vercel runs on a
- * schedule to honour it (there is no `crons` key in vercel.json), so it is honoured on read,
- * from the customer's own account page and from the admin's business board. Whichever happens
- * first brings the plan back.
+ * THE CLOCK. A pause carries a date we promised the customer. The daily run honours it
+ * (vercel.json cron -> api/cron.ts -> server/lib/daily.ts, since 2026-09-30), and so does every
+ * read of the customer's own account page and the admin's business board, so the plan is back on
+ * the right day even between runs. Whichever happens first brings it back.
  *
  * This is deliberately not "resume whatever Stripe resumed". Stripe was told to pause
  * indefinitely precisely so that it has no opinion about when the plan comes back — one clock,

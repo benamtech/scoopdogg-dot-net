@@ -17,6 +17,7 @@ import { probeAccount, createConnectedAccount, onboardingLink, publishAllPrices,
 import { checklist, setRouteDays, setOwnerSetting, setAreaBookable, confirmPrices } from '../server/lib/onboarding.js';
 import { listAreas } from '../server/lib/areas.js';
 import { listJobs, scheduleJob, recordManualPayment, customerDetail, week, visitDetail, invoicesByState, BusinessError } from '../server/lib/business.js';
+import { runDaily, nudgeList, markNudged } from '../server/lib/daily.js';
 import { listOffers, saveOffer, addOffer, OfferError, type OfferPatch } from '../server/lib/offers.js';
 import { listServices, saveService, addService, ServiceError, type ServicePatch } from '../server/lib/services.js';
 import { growthBoard, unfinished } from '../server/lib/growth.js';
@@ -46,7 +47,7 @@ const MSG_STATUSES = ['unread', 'read', 'replied', 'spam'];
  * ones that can: a new screen that writes a price, a service or an area purges without anybody
  * remembering to, and the cost of a needless purge is one re-render.
  */
-const NEVER_PUBLIC = /^(login\/|logout$|visits\/|lead\/|message\/|quotes$|quote-new$|quote\/|customers\/|customer\/|team|payments\/|jobs\/)/;
+const NEVER_PUBLIC = /^(login\/|logout$|visits\/|lead\/|message\/|quotes$|quote-new$|quote\/|customers\/|customer\/|team|payments\/|jobs\/|daily$|nudges)/;
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   const path = routePath(req);
@@ -344,9 +345,9 @@ async function route(req: ApiRequest, res: ApiResponse) {
       // least as likely as the customer opening theirs, and the plan must not sit paused
       // waiting for whichever of them looks first.
       await expireDuePauses();
-      // The same reason, for the same absence of a scheduler: nothing on Vercel runs on a
-      // timer, so the card-expiry sweep and the review request happen when Josue opens his
-      // board. If he never opens it, nothing is sent - which is the safe direction.
+      // The same reason: the daily run (api/cron.ts) does these every morning, and running them
+      // here too keeps the board current between runs. Every message is once-only, so running
+      // twice sends nothing twice.
       await runCommsSweeps();
       const { rows: [m] } = await db().query(
         `select count(*) filter (where state = 'active')::int as active,
@@ -521,6 +522,25 @@ async function route(req: ApiRequest, res: ApiResponse) {
           : await setAreaBookable(String(body.slug ?? ''), Boolean(body.bookable));
         return sendJson(res, 200, { area, effective_now: ['the booking form', 'the city page'] });
       } catch { return sendJson(res, 400, { error: 'We do not have that area.' }); }
+    }
+
+    // ---- the daily run (server/lib/daily.ts): when it last ran, run it now, and the follow-up list.
+    if (path === 'daily' || path === 'nudges' || path === 'nudges/done') {
+      if (session.role !== 'admin' && session.role !== 'superadmin') return sendJson(res, 403, { error: 'Owners only.' });
+      const host = (req.headers['x-forwarded-host'] as string) || req.headers.host || 'scoopdogg.net';
+      const base = `${host.startsWith('127.') || host.startsWith('localhost') ? 'http' : 'https'}://${host}`;
+      if (path === 'daily' && req.method === 'GET') {
+        const { rows: [r] } = await db().query(`select value from settings where key = 'daily.last_run'`);
+        return sendJson(res, 200, { last_run: r?.value ?? null });
+      }
+      if (path === 'daily' && req.method === 'POST') return sendJson(res, 200, await runDaily({ base, by: session.email }));
+      if (path === 'nudges' && req.method === 'GET') return sendJson(res, 200, { nudges: await nudgeList(db(), base) });
+      if (path === 'nudges/done' && req.method === 'POST') {
+        const body = await readJsonBody(req);
+        await markNudged(db(), String(body.id ?? ''), session.email);
+        return sendJson(res, 200, { ok: true });
+      }
+      return sendJson(res, 405, { error: 'Method not allowed.' });
     }
 
     // ---- running the business: jobs, a customer, cash payments, the week, invoices (business.ts)

@@ -9,10 +9,11 @@
  * FOUR THINGS SHAPE EVERY FUNCTION HERE, and all four are properties of this business rather
  * than opinions about messaging:
  *
- * 1. THERE IS NO SCHEDULER. `vercel.json` has no `crons` key. Anything that must happen on a
- *    date happens when somebody reads, exactly as `expireDuePauses()` does — so the sweeps here
- *    are called from the admin's own screens, and if nobody looks, nothing is sent. That is the
- *    safe direction: a message not sent is recoverable, a message sent twice is not.
+ * 1. THE SWEEPS RUN DAILY, AND ON READ. Until 2026-09-30 there was no scheduler and they ran only
+ *    when the owner opened his board. Now vercel.json's cron runs them every morning
+ *    (server/lib/daily.ts), and the on-read call stays so the board is current between runs. Each
+ *    message is still once-only (the outbox check below): a message not sent is recoverable, a
+ *    message sent twice is not.
  *
  * 2. ONCE ONLY, PROVEN ON THE OUTBOX. Every sender records `about` so `sentAlready()` can find
  *    its own previous send. Before 2026-09-19 `sendEmail()` wrote no such key and the identical
@@ -449,7 +450,61 @@ export async function sendReviewRequests(): Promise<{ eligible: number; sent: nu
 }
 
 /**
- * The sweeps that have no scheduler behind them, run together from the admin on read.
+ * THE REVIEW ASK AFTER A PAID CUSTOM JOB (§5 of the final session, 2026-09-30).
+ *
+ * sendReviewRequests() asks after N weekly visits, which a one-off custom job never reaches — so a
+ * customer who paid $1,500 for a turf install was never asked at all, while the review they would
+ * write ("replaced our lawn with turf in Camarillo") is exactly the text R-series research says
+ * Google reads. This asks once the job is done and paid in full, after the same delay setting, and
+ * the same once-per-customer rule (outbox, 3650 days) so nobody is asked twice by the two paths.
+ */
+/** Customers with a custom job done and paid in full at least `delayDays` ago. Takes its client so
+ *  gates/daily.mjs can prove it inside a transaction. */
+export async function eligibleForJobReview(q: { query: (t: string, v?: unknown[]) => Promise<{ rows: any[] }> }, delayDays: number) {
+  const { rows } = await q.query(
+    `select distinct on (c.id) c.id as customer_id, c.name, c.email, qt.title, l.city
+       from quotes qt join customers c on c.id = qt.customer_id join leads l on l.id = qt.lead_id
+      where qt.state = 'accepted' and qt.completed_at is not null and qt.balance_paid_at is not null
+        and qt.balance_paid_at <= now() - ($1 || ' days')::interval
+        and c.email is not null and c.email like '%@%' and c.deleted_at is null
+      order by c.id, qt.balance_paid_at desc`, [String(delayDays)]);
+  return rows;
+}
+
+export async function sendCustomJobReviewRequests(): Promise<{ eligible: number; sent: number; blocked?: string; delayDays?: number }> {
+  const b = await business();
+  if (!b.reviewUrl) return { eligible: 0, sent: 0, blocked: 'reviews.google_review_url is not set, so there is no link to send' };
+  const { settings } = await loadCatalog();
+  const delayRaw = settings.get('growth.review_request_delay_days');
+  const delayDays = Number.isFinite(Number(delayRaw)) && Number(delayRaw) >= 0 ? Number(delayRaw) : 0;
+  const rows = await eligibleForJobReview(db(), delayDays);
+  let sent = 0;
+  for (const c of rows) {
+    if (await sentAlready('review_request', 'customer_id', c.customer_id, 3650)) continue;
+    const r = await sendEmail({
+      purpose: 'review_request',
+      about: { customer_id: c.customer_id },
+      recipients: { explicit: [c.email] },
+      fromName: 'Scoop Dogg',
+      subject: 'How did the job turn out?',
+      html: shell(`${first(c.name) ? `${first(c.name)}, ` : ''}would you write us a line?`, `
+        <p style="font-size:16px;line-height:1.6">Thank you for having us do ${c.title ? esc(c.title.toLowerCase()) : 'the job'}. If you are happy with how it turned out, a short review on Google helps other people nearby find us.</p>
+        <p style="font-size:16px;line-height:1.6">If you mention what we did${c.city ? ` and that you are in ${esc(c.city)}` : ''}, it helps the right neighbours find us — that is the part Google reads.</p>
+        <p style="font-size:16px;line-height:1.6"><a href="${esc(b.reviewUrl)}" style="color:#24593F"><strong>Leave a review</strong></a></p>
+        <p style="font-size:15px;line-height:1.6;color:#5B6660">And if something is not right, reply to this email instead and Josue will sort it.</p>
+        ${signoff(b.phone, b.email)}`),
+    });
+    if (r.state !== 'failed') {
+      sent++;
+      await appendEvent(db(), { subjectKind: 'customer', subjectId: c.customer_id, type: 'notice.review_request', actorKind: 'system', payload: { outbox_id: r.outboxId, after: 'custom_job' } });
+    }
+  }
+  return { eligible: rows.length, sent, delayDays };
+}
+
+/**
+ * The sweeps, run together: every morning by the daily run (server/lib/daily.ts), and from the
+ * admin on read.
  *
  * Failures are caught per sweep: a card-expiry query that throws must not stop the review
  * requests, and neither must stop the screen that called this from rendering.
@@ -467,9 +522,9 @@ export async function runCommsSweeps(): Promise<Record<string, unknown>> {
   /**
    * PHOTO RETENTION RIDES HERE, and it is not really a comms sweep.
    *
-   * It is here because this is the only mechanism on this project for "something that has to
-   * happen on a date" — `vercel.json` has no `crons` key — and a retention policy nothing calls
-   * is a retention policy that does not exist. `server/lib/photos.ts` had `prune()` written,
+   * It is here because this was the only mechanism on this project for "something that has to
+   * happen on a date" until the daily run (2026-09-30), which calls this function — and a
+   * retention policy nothing calls is a retention policy that does not exist. `server/lib/photos.ts` had `prune()` written,
    * gated and called by NOBODY when it was first committed, which is the exact defect this
    * project keeps paying for (`rate_cards`, `photo_urls`, `alreadySent()`); it is caught here
    * rather than in six months when the table is large.

@@ -163,10 +163,9 @@ export async function forVisit(visitId: string, q: Queryable = db()): Promise<{ 
 /**
  * Delete photos past the retention window, and clear the URLs that pointed at them.
  *
- * THERE IS NO SCHEDULER ON THIS PROJECT — `vercel.json` has no `crons` key — so this runs when
- * somebody reads, exactly like `expireDuePauses()` and the comms sweeps. That means retention is
- * enforced whenever the admin is opened and not on a timer, which is stated here rather than
- * implied by a default nobody checks.
+ * IT RUNS EVERY MORNING from the daily run (vercel.json cron -> server/lib/daily.ts -> the comms
+ * sweeps), and when the admin opens the business board. Until 2026-09-30 only the second was true,
+ * and retention was enforced only when somebody looked.
  *
  * The URL cleanup is the half that is easy to forget: deleting the bytes and leaving
  * `visits.photo_urls` pointing at them turns a completed visit into a row of dead links.

@@ -4,7 +4,7 @@
  */
 import { useEffect, useState } from 'react';
 import AdminLayout from '../../components/admin/AdminLayout';
-import { adminApi, type QuoteListRow } from '../../lib/adminApi';
+import { adminApi, type QuoteListRow, type Nudge } from '../../lib/adminApi';
 import { money } from '../../shared/quote-math';
 
 function nextStep(q: QuoteListRow): string {
@@ -22,7 +22,11 @@ function nextStep(q: QuoteListRow): string {
 export default function AdminQuotesPage() {
   const [rows, setRows] = useState<QuoteListRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // The follow-up list the daily run fills (server/lib/daily.ts): opened two days ago, not approved,
+  // a text already written. One tap opens Messages on his phone; "Done" takes it off the list.
+  const [nudges, setNudges] = useState<Nudge[]>([]);
   useEffect(() => { adminApi.quotes().then((r) => setRows(r.quotes)).catch((e) => setError((e as Error).message)); }, []);
+  useEffect(() => { adminApi.nudges().then((r) => setNudges(r.nudges)).catch(() => setNudges([])); }, []);
   return (
     <AdminLayout>
       <div className="mb-6">
@@ -30,6 +34,23 @@ export default function AdminQuotesPage() {
         <p className="mt-1 text-dark/60">Jobs priced one at a time. A quote starts from a lead: open it and tap "Build a quote".</p>
       </div>
       {error && <p className="rounded-xl bg-red-50 p-4 text-red-800">{error}</p>}
+      {nudges.length > 0 && (
+        <section className="mb-6 rounded-card border border-amber-300 bg-amber-50 p-4" data-nudges>
+          <h2 className="font-semibold text-dark">Follow up ({nudges.length})</h2>
+          <p className="text-sm text-dark/60">Opened two or more days ago and not approved. A short text usually settles it.</p>
+          <ul className="mt-3 flex flex-col gap-2">
+            {nudges.map((n) => (
+              <li key={n.id} className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-sm text-dark">#{n.number} · {n.name.replace(/^DEMO—/, '')} · {money(n.total_cents)}</span>
+                <span className="flex gap-2">
+                  <a className="btn-primary btn-sm" href={n.sms_href}>Text {n.name.replace(/^DEMO—/, '').split(' ')[0]}</a>
+                  <button type="button" className="btn-ghost btn-sm" onClick={async () => { await adminApi.nudged(n.id); setNudges(nudges.filter((x) => x.id !== n.id)); }}>Done</button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       {!rows && !error && <div className="flex justify-center py-16"><div className="w-8 h-8 border-4 border-sage border-t-forest rounded-full animate-spin" /></div>}
       {rows && rows.length === 0 && <div className="bg-white rounded-card shadow-card p-8 text-center text-dark/60" data-quotes-empty>No quotes yet. When somebody asks for a custom job it arrives in Leads.</div>}
       {rows && rows.length > 0 && (

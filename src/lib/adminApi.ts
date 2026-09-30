@@ -108,7 +108,13 @@ export interface WeekVisit { id: string; day: string; state: string; customer_id
 export interface AdminInvoice { id: string; state: string; total_cents: number; issued_at: string | null; paid_at: string | null; customer_id: string; name: string; lines: string | null; hosted_invoice_url: string | null; collection_method: string | null }
 export type ManualMethod = 'cash' | 'venmo' | 'zelle' | 'check' | 'other';
 
+export interface Nudge { id: string; number: number; title: string; total_cents: number; name: string; phone: string; view_count: number; first_viewed_at: string; text: string; sms_href: string }
+
 export const adminApi = {
+  daily:       () => call<{ last_run: { at: string; by: string; results: Record<string, unknown> } | null }>('daily'),
+  runDaily:    () => call<{ at: string; results: Record<string, unknown> }>('daily', { method: 'POST' }),
+  nudges:      () => call<{ nudges: Nudge[] }>('nudges'),
+  nudged:      (id: string) => call<{ ok: true }>('nudges/done', { method: 'POST', body: JSON.stringify({ id }) }),
   jobs:        () => call<{ jobs: AdminJob[]; counts: Record<JobStage, number> }>('jobs'),
   scheduleJob: (id: string, date: string | null) => call<{ job: AdminJob }>('jobs/schedule', { method: 'PATCH', body: JSON.stringify({ id, date }) }),
   customer:    (id: string) => call<any>(`customer/${id}`),
@@ -303,6 +309,13 @@ export interface AreaDensity {
 
 export interface GrowthBoard {
   instrumented: boolean; month: string;
+  /** What is taking the owner's time (server/lib/growth.ts whereTimeGoes). Null if it could not be read. */
+  time?: {
+    first_response: { measured: boolean; median_minutes: number | null; answered: number; unanswered: number };
+    quotes_to_nudge: number; balances_owed: { jobs: number; cents: number };
+    route_days: { cities_with_days: number; cities_any_day: number; weekdays_in_use: number };
+    daily_last_run: { at: string; by: string } | null;
+  } | null;
   metrics: Record<'booking_intent_starts' | 'price_step_reached' | 'booked' | 'conversion_pct'
     | 'new_customers_this_month' | 'customers_now' | 'mrr_cents' | 'platform_fee_this_month_cents', Metric>;
   fees_by_month: FeeRow[]; fees_by_year: FeeRow[];

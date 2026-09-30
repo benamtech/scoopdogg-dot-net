@@ -89,9 +89,8 @@ console.log('A. the route, the permission and the migration exist');
     'the stored URL is absolute', 'completeVisit() filters photo_urls on ^https?://');
 
   // A RETENTION POLICY NOTHING CALLS DOES NOT EXIST. prune() was written, gated, and called by
-  // nobody on its first commit — the same shape as rate_cards and photo_urls before it. There is
-  // no scheduler on this project (`vercel.json` has no crons key), so the only place it can run
-  // is a sweep the admin triggers on read.
+  // nobody on its first commit — the same shape as rate_cards and photo_urls before it. It runs in
+  // the comms sweeps, which the daily cron (server/lib/daily.ts) and the admin's board both call.
   const comms = readFileSync('server/lib/comms.ts', 'utf8');
   check(/prunePhotos\(/.test(comms) && /runCommsSweeps/.test(comms),
     'photo retention is actually called', 'from runCommsSweeps, the only read-time sweep there is');

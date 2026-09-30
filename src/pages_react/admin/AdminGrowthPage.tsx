@@ -142,6 +142,41 @@ export default function AdminGrowthPage() {
               <Tile label="AMTECH's share" metric={m.platform_fee_this_month_cents} format={money} hint="Our fee on what was collected" />
             </div>
 
+            {/* WHAT IS TAKING YOUR TIME (§5, server/lib/growth.ts whereTimeGoes). Each number links to
+                the screen where the work is. */}
+            {board.time && (
+              <>
+                <h2 className="mt-12 text-lg font-semibold text-forest-900">What is taking your time</h2>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4" data-time-card>
+                  <div className="rounded-lg border border-line bg-paper p-5">
+                    <p className="text-sm text-ink-500">First answer to a request</p>
+                    <p className="mt-1 text-2xl text-forest-900 tabular-nums">{board.time.first_response.median_minutes == null ? '—' : board.time.first_response.median_minutes < 120 ? `${board.time.first_response.median_minutes} min` : `${Math.round(board.time.first_response.median_minutes / 60)} hours`}</p>
+                    <p className="mt-1 text-sm text-ink-500">{board.time.first_response.measured ? `Middle of ${board.time.first_response.answered} in 90 days` : 'No answered request in 90 days yet.'}{board.time.first_response.unanswered ? ` · ${board.time.first_response.unanswered} not answered` : ''}</p>
+                  </div>
+                  <a href="/admin/quotes" className="rounded-lg border border-line bg-paper p-5 hover:border-forest-400">
+                    <p className="text-sm text-ink-500">Quotes to follow up</p>
+                    <p className="mt-1 text-2xl text-forest-900 tabular-nums">{board.time.quotes_to_nudge}</p>
+                    <p className="mt-1 text-sm text-ink-500">Opened, not approved, text ready</p>
+                  </a>
+                  <a href="/admin/jobs" className="rounded-lg border border-line bg-paper p-5 hover:border-forest-400">
+                    <p className="text-sm text-ink-500">Balances owed</p>
+                    <p className="mt-1 text-2xl text-forest-900 tabular-nums">{money(board.time.balances_owed.cents)}</p>
+                    <p className="mt-1 text-sm text-ink-500">On {board.time.balances_owed.jobs} finished job{board.time.balances_owed.jobs === 1 ? '' : 's'}</p>
+                  </a>
+                  <a href="/admin/areas" className="rounded-lg border border-line bg-paper p-5 hover:border-forest-400">
+                    <p className="text-sm text-ink-500">Route days</p>
+                    <p className="mt-1 text-2xl text-forest-900 tabular-nums">{board.time.route_days.cities_with_days} cities</p>
+                    <p className="mt-1 text-sm text-ink-500">On {board.time.route_days.weekdays_in_use} weekdays{board.time.route_days.cities_any_day ? ` · ${board.time.route_days.cities_any_day} book any day` : ''}</p>
+                  </a>
+                </div>
+                <p className="mt-3 text-sm text-ink-500" data-daily-last-run>
+                  {board.time.daily_last_run
+                    ? `The daily run (expiring quotes, follow-ups, review asks, card reminders, photo clean-up) last ran ${new Date(board.time.daily_last_run.at).toLocaleString()}.`
+                    : 'The daily run has not run yet.'}
+                </p>
+              </>
+            )}
+
             {/*
               * WHERE THE NEXT CUSTOMER SHOULD COME FROM (server/lib/density.ts, migration 031).
               *

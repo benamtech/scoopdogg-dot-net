@@ -119,14 +119,20 @@ check(!/resumes_at/.test(pauseCall),
 check(/pause_collection: \{ behavior: 'void' \}/.test(pauseCall),
   'Stripe is paused indefinitely, so only this system decides when the plan comes back');
 check(/export async function expireDuePauses/.test(account),
-  'something honours paused_until, because no cron does');
+  'something honours paused_until: the daily run and every read');
 const admin = readFileSync('api/admin.ts', 'utf8');
 check(/expireDuePauses\(\)/.test(admin) && /await expireDuePauses\(customerId\)/.test(account),
   'both the customer page and the owner board bring a due pause back',
   'whichever of the two looks first');
-check(!/crons/.test(readFileSync('vercel.json', 'utf8')),
-  'and this is still true: there IS no scheduler on this project',
-  'the day one is added, expireDuePauses() is what it should call');
+// The scheduler this line used to say did not exist arrived on 2026-09-30, and it calls what the
+// line said it should: vercel.json's cron runs /api/cron -> runDaily() -> expireDuePauses().
+{
+  const vercel = JSON.parse(readFileSync('vercel.json', 'utf8'));
+  const daily = readFileSync('server/lib/daily.ts', 'utf8');
+  check((vercel.crons ?? []).some((c) => c.path === '/api/cron') && /\['pauses', \(\) => expireDuePauses\(\)\]/.test(daily),
+    'a daily scheduler brings a due pause back even if nobody opens a page',
+    'vercel.json crons -> api/cron.ts -> runDaily() -> expireDuePauses()');
+}
 
 // ------------------------------------------------------- D. frozen at pause, cleared on resume
 console.log('');

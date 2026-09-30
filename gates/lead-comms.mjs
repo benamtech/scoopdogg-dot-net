@@ -80,9 +80,15 @@ console.log('A. every loop has a sender and a trigger');
   check(/CREW_PATHS = new Set\(\[[^\]]*'visits\/complete'/.test(admin),
     'a crew session may mark a stop done', 'P4: the person standing in the yard');
 
-  // There is no scheduler, so a sweep nobody calls is a sweep that never runs.
-  check(!/"crons"/.test(readFileSync('vercel.json', 'utf8')),
-    'there is still no cron, so the sweeps must run on read', 'if a cron is added, this line is the one to revisit');
+  // A sweep nobody calls is a sweep that never runs. Until 2026-09-30 the only caller was the owner
+  // opening his board; now vercel.json's cron runs them daily (api/cron.ts -> runDaily), and the
+  // on-read call stays so the board is current between runs.
+  {
+    const vercel = JSON.parse(readFileSync('vercel.json', 'utf8'));
+    const daily = readFileSync('server/lib/daily.ts', 'utf8');
+    check((vercel.crons ?? []).some((c) => c.path === '/api/cron') && /\['comms', \(\) => runCommsSweeps\(\)\]/.test(daily),
+      'the sweeps run every day from the cron, not only when somebody reads', 'vercel.json crons -> api/cron.ts -> runDaily() -> runCommsSweeps()');
+  }
 }
 
 // ---------------------------------------------- B. the once-only pair, in both files that use it
