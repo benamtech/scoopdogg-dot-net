@@ -21,11 +21,12 @@ import { services, serviceBySlug, tiersFor, packagesForService, formatTierPrice,
 import { questions } from '../../lib/questions';
 import { SITE_URL } from '../../lib/constants';
 
-export function getStaticPaths() {
-  return services.map((s) => ({ params: { service: s.slug } }));
-}
+// Rendered on demand from the live rows, so a service the owner edits, adds or retires is on this
+// page at the next render. A slug with no active service answers 404.
 const { service: slug } = Astro.params;
-const s = serviceBySlug(slug!)!;
+const found = serviceBySlug(slug!);
+if (!found) return new Response(null, { status: 404 });
+const s = found;
 const tiers = tiersFor(s.slug);
 const pkgs = packagesForService(s.slug);
 const price = headlinePrice(s.slug);

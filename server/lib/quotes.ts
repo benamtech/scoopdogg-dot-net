@@ -18,9 +18,14 @@
  * its own transaction; `gates/quote-rail.mjs` passes a client inside a transaction it rolls back,
  * and so exercises this file rather than a copy of it.
  *
- * WHAT IT WILL NOT DO: send an install contract without the facts the law puts on it (the licence
- * number and three others — `contractGaps()`), or take a deposit on one above California's cap.
- * Both are the owner's protection, and both are said to him in one sentence, not a 500.
+ * WHAT IT WILL NOT DO: take a deposit on install work above California's cap. That is a limit on
+ * money moving through our rail, and it is said to him in one sentence, not a 500.
+ *
+ * WHAT IT NO LONGER DOES (Ben, 2026-09-27): refuse a send over paperwork. Until 2026-09-29 an install
+ * job of $1,000+ could not be sent without a licence number (`licence_required`) and one over $500
+ * not without the contract facts (`contract_facts_missing`). Josue's licence, insurance and contract
+ * paperwork "has nothing to do with our work". The builder still SHOWS what the contract section is
+ * missing (`quoteForOwner().contract.gaps`); a send never stops on it.
  */
 import { randomBytes, createHash } from 'node:crypto';
 import type Stripe from 'stripe';
@@ -378,7 +383,6 @@ export async function listQuotes(q: Queryable) {
 
 export async function sendQuote(q: Queryable, quoteId: string, opts: { by: string; base: string; mode?: StripeMode }) {
   const s = await settings(q);
-  const facts = contractFacts(s);
   const mode = opts.mode ?? await currentMode();
   const result = await inTx(q, async (c) => {
     const { rows: [qt] } = await c.query(`select * from quotes where id = $1 for update`, [quoteId]);
@@ -389,13 +393,6 @@ export async function sendQuote(q: Queryable, quoteId: string, opts: { by: strin
     const withAll = quoteTotals(lines, lines.filter((l) => l.optional).map((l) => l.id));
     if (!lines.some((l) => !l.optional)) throw new QuoteError('Add at least one line that is not optional.', 400, 'no_lines');
     if (base.total <= 0) throw new QuoteError('The quote adds up to $0.', 400, 'zero_total');
-    if (needsLicence(qt.is_improvement, withAll.total) && !facts.licenceNumber) {
-      throw new QuoteError('Install work of $1,000 or more needs the contractor licence number on the quote. Add it in Settings, or split the job.', 409, 'licence_required');
-    }
-    if (needsWrittenContract(qt.is_improvement, withAll.total)) {
-      const gaps = contractGaps(facts);
-      if (gaps.length) throw new QuoteError(`An install job over $500 is a written contract in California, and it needs ${gaps.join(', ')}.`, 409, 'contract_facts_missing');
-    }
     const { rows: [lead] } = await c.query(`select * from leads where id = $1 for update`, [qt.lead_id]);
     // The customer: an existing one by phone, the natural key in a phone-first business, or new.
     let customerId: string;

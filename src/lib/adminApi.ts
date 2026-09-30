@@ -61,6 +61,13 @@ export interface Message {
   message: string; status: MessageStatus; created_at: string;
 }
 
+/** A service area as the admin sees it (api/admin.ts `areas`). */
+export interface AdminArea {
+  slug: string; name: string; bookable: boolean; market: string; market_label: string | null;
+  service_weekdays: number[]; status: 'active' | 'retired' | string; sort_order: number;
+  customers: number; visits_next_14: number;
+}
+
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api/admin/${path}`, {
     credentials: 'same-origin',
@@ -73,16 +80,16 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const adminApi = {
+  areas:       () => call<{ areas: AdminArea[] }>('areas'),
   startLogin:  (email: string) => call<{ ok: true; message: string }>('login/start', { method: 'POST', body: JSON.stringify({ email }) }),
   verifyLogin: (email: string, code: string) => call<{ ok: true; user: AdminUser }>('login/verify', { method: 'POST', body: JSON.stringify({ email, code }) }),
   session:     () => call<{ user: AdminUser; demo_mode: boolean; demo_address: string | null }>('session'),
   logout:      () => call<{ ok: true }>('logout', { method: 'POST' }),
 
-  // Demo mode. `effective_on_publish` is why the response is worth reading: mail and the
-  // booking journey change on the setting, the static public pages change on a publish.
+  // Demo mode. The response names every surface the switch changed.
   demo:        () => call<{ demo_mode: boolean; demo_address: string | null }>('demo'),
   setDemo:     (mode: boolean) => call<{
-    demo_mode: boolean; was: boolean; effective_now: string[]; effective_on_publish: string[];
+    demo_mode: boolean; was: boolean; effective_now: string[];
   }>('demo', { method: 'POST', body: JSON.stringify({ mode }) }),
 
   summary:     () => call<{
@@ -162,14 +169,10 @@ export const adminApi = {
     call<{ photo: { id: string; url: string; bytes: number; deduped: boolean } }>(
       'visits/photo', { method: 'POST', body: JSON.stringify({ visit_id: visitId, data_url: dataUrl }) }),
 
-  // The rate card. Every write returns `effective_now` / `effective_on_publish` for the same
-  // reason the demo toggle does: the checkout changes on the row and the public pages change on
-  // a publish, and a screen that implies otherwise is a lie the owner finds on his own site.
+  // The rate card. Every write returns `effective_now`: the server names what changed.
   rateCard:    () => call<RateCard>('rate-card'),
-  publishStatus: () => call<{ configured: boolean; publishes: { id: number; state: string; created_at: string; completed_at: string | null; requested_by: string }[] }>('publish'),
-  publish:     (reason: string) => call<{ id: number; state: string }>('publish', { method: 'POST', body: JSON.stringify({ reason }) }),
   addTier:     (t: { service_slug: string; label: string; price_cents: number | null; price_suffix?: string; requires_quote?: boolean; price_is_from?: boolean }) =>
-    call<{ tier: RateCardTier; changed: string[]; effective_now: string[]; effective_on_publish: string[] }>('rate-card/tier-new', { method: 'POST', body: JSON.stringify(t) }),
+    call<{ tier: RateCardTier; changed: string[]; effective_now: string[] }>('rate-card/tier-new', { method: 'POST', body: JSON.stringify(t) }),
 
   // Custom quotes (server/lib/quotes.ts). Every number the builder shows comes back from the server.
   quotes:      () => call<{ quotes: QuoteListRow[] }>('quotes'),
@@ -196,7 +199,7 @@ export const adminApi = {
 };
 
 /** What a save changes and when. Never inferred by a component — the server says. */
-export interface CatalogEffect { effective_now: string[]; effective_on_publish: string[] }
+export interface CatalogEffect { effective_now: string[] }
 
 export interface RateCardTier {
   id: string; service_slug: string; service_name: string; label: string; status: string;

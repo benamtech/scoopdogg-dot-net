@@ -15,11 +15,12 @@ import { sendJson, readJsonBody, safeError, type ApiRequest, type ApiResponse } 
 import { startLogin, verifyLogin, getSession, endSession, rateLimit, isOverLimit, type AdminSession } from '../server/lib/admin-auth.js';
 import { probeAccount, createConnectedAccount, onboardingLink, publishAllPrices, publishPricesWhenReady, connection, requirementsOf, disconnect, reconnect, type StripeMode } from '../server/lib/stripe.js';
 import { checklist, setRouteDays, setOwnerSetting, setAreaBookable, confirmPrices } from '../server/lib/onboarding.js';
+import { listAreas } from '../server/lib/areas.js';
 import { growthBoard, unfinished } from '../server/lib/growth.js';
 import { createInvite, customerList, InviteError } from '../server/lib/invites.js';
 import { listTeam, addTeamMember, setTeamStatus, TeamError } from '../server/lib/team.js';
 import { listRateCard, setTier, setPackagePrice, addTier, RateCardError, type TierPatch } from '../server/lib/rate-card.js';
-import { requestPublish, publishStatus, PublishError } from '../server/lib/publish.js';
+import { purgeSite } from '../server/lib/site-cache.js';
 import { completeVisit, completionReadiness, markArrived, markEnRoute, stopDurations, VisitError } from '../server/lib/visits.js';
 import { put, PhotoError } from '../server/lib/photos.js';
 import { sendVisitComplete, runCommsSweeps } from '../server/lib/comms.js';
@@ -35,7 +36,25 @@ const routePath = (req: ApiRequest) =>
 const LEAD_STATUSES = ['new', 'contacted', 'quoted', 'active', 'declined'];
 const MSG_STATUSES = ['unread', 'read', 'replied', 'spam'];
 
+/**
+ * EVERY SUCCESSFUL WRITE PURGES THE PUBLIC PAGES (server/lib/site-cache.ts). The pages render from
+ * the rows and sit at the CDN until a purge, so this line is what makes an owner's save live on the
+ * site in seconds. It is a denylist of writers that cannot touch a public page, not an allowlist of
+ * ones that can: a new screen that writes a price, a service or an area purges without anybody
+ * remembering to, and the cost of a needless purge is one re-render.
+ */
+const NEVER_PUBLIC = /^(login\/|logout$|visits\/|lead\/|message\/|quotes$|quote-new$|quote\/|customers\/|team|payments\/)/;
+
 export default async function handler(req: ApiRequest, res: ApiResponse) {
+  await route(req, res);
+  const path = routePath(req);
+  if (req.method !== 'GET' && res.statusCode < 400 && !NEVER_PUBLIC.test(path)) {
+    const r = await purgeSite();
+    if (!r.purged && process.env.VERCEL) safeError(`admin:${path}:purge`, new Error(r.reason));
+  }
+}
+
+async function route(req: ApiRequest, res: ApiResponse) {
   const path = routePath(req);
   try {
     // ---- open routes -----------------------------------------------------
@@ -221,15 +240,12 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
              on conflict (key) do update set value = excluded.value, updated_by = $2, updated_at = now()`,
           [JSON.stringify(body.mode), session.email]);
         const after = await demoMode();
-        // Mail and the booking journey read this setting on every request, so they change
-        // now. The public pages are statically built, so their banner and their noindex
-        // change on the next publish - saying so is the difference between a control that
-        // works and one that looks like it did nothing.
+        // Mail, the booking journey and the public pages all read this setting per request;
+        // the pages' banner and noindex follow as soon as this write purges the page cache.
         return sendJson(res, 200, {
           ...demoStatus(after),
           was: before.mode,
-          effective_now: ['mail', 'booking journey', 'admin'],
-          effective_on_publish: ['public pages'],
+          effective_now: ['mail', 'booking journey', 'admin', 'public pages'],
         });
       }
       const demo = await demoMode();
@@ -478,6 +494,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     }
 
     // ---- the onboarding checklist (P18 §2) --------------------------------
+    if (path === 'areas' && req.method === 'GET') return sendJson(res, 200, { areas: await listAreas() });
     if (path === 'checklist') return sendJson(res, 200, await checklist());
 
     if (path === 'checklist/route-days' && req.method === 'PATCH') {
@@ -537,20 +554,6 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         return sendJson(res, 200, await setPackagePrice(String(body.id ?? ''), Number(body.monthly_price_cents ?? 0), session.email));
       } catch (e) {
         if (e instanceof RateCardError) return sendJson(res, e.status, { error: e.message, code: e.code });
-        throw e;
-      }
-    }
-
-    // ---- publishing the public pages (server/lib/publish.ts). Owners, like the rate card.
-    if (path === 'publish') {
-      if (session.role !== 'admin' && session.role !== 'superadmin') return sendJson(res, 403, { error: 'Owners only.' });
-      if (req.method === 'GET') return sendJson(res, 200, await publishStatus());
-      if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed.' });
-      try {
-        const body = await readJsonBody(req);
-        return sendJson(res, 200, await requestPublish(undefined, { by: session.email, reason: String(body.reason ?? 'rate card') }));
-      } catch (e) {
-        if (e instanceof PublishError) return sendJson(res, e.status, { error: e.message, code: e.code });
         throw e;
       }
     }

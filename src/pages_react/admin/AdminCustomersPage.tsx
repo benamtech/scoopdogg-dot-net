@@ -14,7 +14,7 @@
 import { useEffect, useState } from 'react';
 import { adminApi, type CustomerRow } from '../../lib/adminApi';
 import AdminLayout from '../../components/admin/AdminLayout';
-import { areas } from '../../lib/catalog';
+import { useAdminAreas } from '../../lib/useAdminAreas';
 
 const money = (c: number | null) => (c == null ? '—' : `$${(c / 100).toFixed(0)}`);
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -22,6 +22,7 @@ const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 
 const BLANK = { name: '', email: '', phone: '', address: '', area_slug: '', price: '', starts_on: '', notes: '' };
 
 export default function AdminCustomersPage() {
+  const areas = useAdminAreas();
   const [rows, setRows] = useState<CustomerRow[] | null>(null);
   const [form, setForm] = useState({ ...BLANK });
   const [open, setOpen] = useState(false);

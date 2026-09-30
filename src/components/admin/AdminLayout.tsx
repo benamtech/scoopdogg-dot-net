@@ -32,11 +32,9 @@ const navItems = [
  * mode that ships - and the consequence of shipping in it is that every customer
  * notification is silently swallowed.
  *
- * The switch says WHEN each surface changes, because the four surfaces do not change at
- * the same moment. Mail, the booking journey and this admin read the setting on every
- * request. The public pages are statically built, so their banner and their `noindex` are
- * part of the published bytes and change on the next publish. A control that appears to do
- * nothing to the public site is how somebody concludes it is broken and turns it off.
+ * The switch says which surfaces changed. All four read the setting per request: mail, the
+ * booking journey, this admin, and the public pages, whose banner and `noindex` follow as soon
+ * as the save purges the page cache.
  */
 function DemoBanner() {
   const { demoMode, demoAddress, refresh } = useAuth();
@@ -50,8 +48,7 @@ function DemoBanner() {
       const r = await adminApi.setDemo(!demoMode);
       setNote(
         `Demo mode is ${r.demo_mode ? 'ON' : 'OFF'}. ` +
-        `${r.effective_now.join(', ')} changed now; ` +
-        `${r.effective_on_publish.join(', ')} change on the next publish.`,
+        `Changed now: ${r.effective_now.join(', ')}.`,
       );
       await refresh();
     } catch (e) {

@@ -15,10 +15,11 @@ import { questions, questionBySlug, reviewFor } from '../../lib/questions';
 import { serviceBySlug, reviewSummary, headlineOffer } from '../../lib/catalog';
 import { SITE_URL } from '../../lib/constants';
 
-export function getStaticPaths() {
-  return questions().map((q) => ({ params: { slug: q.slug } }));
-}
-const q = questionBySlug(Astro.params.slug!)!;
+// Which questions exist is decided by the live rows (src/lib/questions.ts): switch an offer off
+// and the pages that depend on it answer 404 on the next render.
+const found = questionBySlug(Astro.params.slug!);
+if (!found) return new Response(null, { status: 404 });
+const q = found;
 const svc = q.service ? serviceBySlug(q.service) : undefined;
 const review = reviewFor(q);
 const related = (q.related ?? []).map((s) => questionBySlug(s)).filter(Boolean) as ReturnType<typeof questions>;

@@ -1,21 +1,19 @@
 /**
- * Demo mode, as the built pages see it.
+ * Demo mode, as the rendered pages see it.
  *
  * ONE SETTING, FOUR SURFACES. `demo.mode` in the database gates mail (server/lib/notify.ts),
  * the client pages and the booking journey (this file), and Stripe. Four half-modes behind
  * four switches is how one of them gets left on.
  *
- * The pages read it from content/demo.json rather than from the database, because the site
- * is statically built: there is no server rendering a page when a crawler asks for it, so
- * the banner and the `noindex` have to be in the bytes. scripts/pull-demo-state.mjs writes
- * that file as build step one and fails the build rather than guessing - a demo build with
- * no banner is indistinguishable from the live site.
+ * The pages read it from the rows on each render: src/middleware.ts reads `demo.mode` with the
+ * catalog (server/lib/public-catalog.ts) and calls `setDemo()`. The banner and the `noindex` are
+ * in the HTML a crawler receives, and turning demo mode on or off reaches every page as soon as
+ * the save purges the page cache. No rebuild, no publish (2026-09-29; until then it was baked in
+ * at build from content/demo.json).
  *
- * Consequence, and it is the right one: turning demo mode on or off is a setting change
- * plus a publish, the same shape as changing a price.
+ * Live bindings, like src/lib/catalog.ts: importers keep `import { DEMO_MODE }` and see the
+ * value for the current render.
  */
-import demoJson from '../../content/demo.json';
-
 export type DemoState = {
   mode: boolean;
   banner_text: string;
@@ -24,12 +22,16 @@ export type DemoState = {
   pulled_at: string | null;
 };
 
-const state = demoJson as DemoState;
-
-/** True when this build was published with demo mode on. */
-export const DEMO_MODE: boolean = state.mode === true;
+/** True when this render has demo mode on. */
+export let DEMO_MODE = false;
 
 /** The words on the banner. Empty when demo mode is off. */
-export const DEMO_BANNER_TEXT: string = DEMO_MODE ? state.banner_text : '';
+export let DEMO_BANNER_TEXT = '';
 
-export const DEMO_STATE: DemoState = state;
+export let DEMO_STATE: DemoState = { mode: false, banner_text: '', source: 'unset', pulled_at: null };
+
+export function setDemo(state: DemoState) {
+  DEMO_STATE = state;
+  DEMO_MODE = state.mode === true;
+  DEMO_BANNER_TEXT = DEMO_MODE ? state.banner_text : '';
+}

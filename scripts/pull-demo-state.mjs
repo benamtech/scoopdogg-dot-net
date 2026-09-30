@@ -1,27 +1,16 @@
 /**
- * Read `demo.mode` out of the database and write it to content/demo.json, as build step one.
+ * Read `demo.mode` out of the database and write it to content/demo.json — FOR THE GATES ONLY.
  *
  *   node scripts/pull-demo-state.mjs
  *
- * WHY A BUILD STEP AND NOT A RUNTIME READ. The site is `output: 'static'` on purpose - every
- * one of the 71 URLs on the live site serves the same empty shell today because a bolted-on
- * prerenderer was skipped in production, and static output makes real HTML per route the
- * default instead of a step that can be turned off. Static also means there is no server
- * rendering the page when a crawler asks for it, so `noindex` and the demo banner have to be
- * IN the bytes. A script that injected the banner after the page loaded would be invisible
- * to the crawler and to any gate that reads the built HTML.
+ * NO PAGE READS THIS FILE (2026-09-29). Each render reads `demo.mode` with the catalog
+ * (server/lib/public-catalog.ts), so the banner and the `noindex` are in the HTML a crawler
+ * receives, and turning demo mode on or off reaches every page as soon as the save purges the
+ * page cache. This file is the gates' independent statement of what the rows said at build, which
+ * gates/demo-banner-on-pages.mjs compares with the rendered pages.
  *
- * So the demo banner is part of what gets published. Turning demo mode on or off is a
- * setting change plus a publish - the same shape as changing a price, which is what the
- * publish path exists for.
- *
- * IT FAILS RATHER THAN GUESSING. If DATABASE_URL is set and the read does not work, this
- * exits non-zero and the build stops. The alternative - substituting `false` - would ship a
- * demo site with no banner and no noindex, and whoever opened the tab next would have no way
- * to tell it from the live one. A reader that fails says so.
- *
- * With no DATABASE_URL at all it leaves content/demo.json exactly as it is on disk and says
- * so loudly, because that is a local build with no database, not a lie about the state.
+ * IT FAILS RATHER THAN GUESSING. If DATABASE_URL is set and the read does not work, this exits
+ * non-zero. With no DATABASE_URL at all it leaves content/demo.json as it is and says so.
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';

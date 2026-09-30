@@ -6,7 +6,7 @@ import { serviceLabel } from '../../lib/serviceLabel';
 import type { Lead } from '../../lib/types';
 import StatusBadge from '../../components/admin/StatusBadge';
 import AdminLayout from '../../components/admin/AdminLayout';
-import { areas } from '../../lib/catalog';
+import { useAdminAreas } from '../../lib/useAdminAreas';
 
 type SortField = 'name' | 'city' | 'service_slug' | 'status' | 'created_at';
 type SortDir = 'asc' | 'desc';
@@ -18,6 +18,7 @@ function formatDate(iso: string) {
 const STATUSES = ['new', 'contacted', 'quoted', 'active', 'declined'];
 
 export default function AdminLeadsPage() {
+  const areas = useAdminAreas();
   const navigate = useNavigate();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);

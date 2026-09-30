@@ -16,10 +16,11 @@ import { ARTICLES } from '../../lib/articles';
 import { SITE_URL } from '../../lib/constants';
 import { headlineOffer } from '../../lib/catalog';
 
-export function getStaticPaths() {
-  return ARTICLES.map((a) => ({ params: { slug: a.slug }, props: { a } }));
-}
-const { a } = Astro.props;
+// Rendered on demand like every page that carries the site header (the phone number and the
+// headline offer are owner rows). The articles themselves live in src/lib/articles.ts.
+const found = ARTICLES.find((x) => x.slug === Astro.params.slug);
+if (!found) return new Response(null, { status: 404 });
+const a = found;
 const NOT_OURS = ['/period-property-wandsworth', '/artificial-grass-installed-sunnyvale', '/Artificial-Grass-for-Dogs-Runs-Pet-Areas'];
 const ours = (src?: string) => !!src && !NOT_OURS.some((p) => src.startsWith(p));
 const fmt = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });

@@ -13,12 +13,12 @@
  */
 import '../index.css';
 import { SITE_URL, DEFAULT_OG_IMAGE, SITE_NAME } from '../lib/constants';
-// `demo.mode` from the database, baked in at build time by scripts/pull-demo-state.mjs.
-// The site is static, so a banner added after the page loaded would be invisible to a
-// crawler and to any gate that reads the built HTML.
+// `demo.mode` from the database, read for this render by src/middleware.ts, so the banner and
+// the noindex are in the HTML a crawler receives. A banner added after the page loaded would be
+// invisible to a crawler and to any gate that reads the rendered HTML.
 import { DEMO_MODE, DEMO_BANNER_TEXT } from '../lib/demo';
 // The analytics tag is a ROW, not a constant. See the block below for why that matters.
-import { setting, pulledAt } from '../lib/catalog';
+import { setting } from '../lib/catalog';
 // Preload the two faces every page paints with, so the headline does not wait on font discovery.
 import outfitUrl from '@fontsource-variable/outfit/files/outfit-latin-wght-normal.woff2?url';
 import serifUrl from '@fontsource/dm-serif-display/files/dm-serif-display-latin-400-normal.woff2?url';
@@ -61,16 +61,15 @@ const { title, description, canonicalPath, ogImage, jsonLd, noindex = false, bod
  * growth board reads it. GA was inherited from the predecessor site and is now measuring
  * something we measure ourselves, at the cost of every page's only JavaScript.
  *
- * TO PUT IT BACK — and it DOES need a build and a deploy, which this comment used to deny:
+ * TO PUT IT BACK, one row — and since 2026-09-29 that is true, with no build and no deploy:
  *
  *     node scripts/set-setting.mjs analytics.measurement_id '"G-SNLVJNSP05"'
- *     npm run build && <deploy>
  *
- * The row alone does nothing. `setting()` reads content/catalog.json through a static ESM
- * import, that file is written by scripts/pull-catalog.mjs as build step one, and until
- * 2026-09-26 its PUBLIC_SETTINGS allowlist did not carry this key at all — so the command this
- * comment recommended would have written a row the built site could never see. The key is in
- * the allowlist now and gates/settings-have-readers.mjs resolves this read against it.
+ * The pages render from the rows (src/middleware.ts), and the key is in PUBLIC_SETTINGS
+ * (server/lib/public-catalog.ts), which gates/settings-have-readers.mjs resolves this read
+ * against. Until 2026-09-26 the allowlist did not carry the key and until 2026-09-29 the pages
+ * were built from a file, so this comment's earlier advice wrote a row the site could never see.
+ * set-setting.mjs purges the page cache like an admin save does.
  *
  * AND READ THE LAST SENTENCE THE RIGHT WAY ROUND. The historical GA data is untouched either
  * way. Production is still the predecessor build and is still serving G-SNLVJNSP05 today
@@ -127,9 +126,6 @@ const schema = jsonLd
     {/* WHY it is noindex, for gates/build-gates.mjs: a page that is private ("page") and a page that is
         noindex only because this is a demo build ("demo", every preview) must not be confused. */}
     <meta name="robots" content={isNoindex ? 'noindex, nofollow' : 'index, follow'} data-noindex={noindex ? 'page' : DEMO_MODE ? 'demo' : undefined} />
-    {/* When this page's prices were read from the database. server/lib/publish.ts reads it off the live
-        site to know a publish actually landed, rather than trusting the hook that asked for one. */}
-    <meta name="sd-catalog-pulled-at" content={pulledAt} />
     {googleVerification && <meta name="google-site-verification" content={googleVerification} />}
 
     <meta property="og:type" content="website" />

@@ -23,11 +23,12 @@ import { articlesMentioning } from '../../lib/articles';
 import { weekdayName } from '../../shared/pricing';
 import { SITE_URL } from '../../lib/constants';
 
-export function getStaticPaths() {
-  return areas.map((a) => ({ params: { city: a.slug } }));
-}
+// Rendered on demand from the live rows: an area the owner adds or retires appears or goes with
+// no rebuild. A slug with no active row answers 404 (Astro renders src/pages/404.astro).
 const { city } = Astro.params;
-const a = areaBySlug(city!)!;
+const found = areaBySlug(city!);
+if (!found) return new Response(null, { status: 404 });
+const a = found;
 const market = markets().find((m) => m.market === a.market);
 const nearby = (a.nearby_slugs ?? []).map((n) => areaBySlug(n)).filter(Boolean) as typeof areas;
 const days = (a.service_weekdays ?? []).map(weekdayName);

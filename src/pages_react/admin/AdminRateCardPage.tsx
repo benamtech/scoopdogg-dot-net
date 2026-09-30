@@ -10,11 +10,9 @@
  * price BEFORE he changes it, and shows what those people are still paying AFTER. The third one
  * is the only one that is proof rather than a promise.
  *
- * AND IT SAYS WHAT A SAVE DOES NOT DO. The public pages are built from content/catalog.json, so
- * a new price reaches the checkout immediately and the website on the next publish. The server
- * returns `effective_now` / `effective_on_publish` and this prints them rather than deciding for
- * itself, because the day those pages render on demand the sentence stops being true and has to
- * stop being printed — one row, no component edit.
+ * AND IT SAYS WHAT A SAVE CHANGES. Since 2026-09-29 the public pages render from the rows and a
+ * save purges their cache, so a new price is on the checkout and the website at once. The server
+ * returns `effective_now` and this prints it rather than deciding for itself.
  */
 import { useEffect, useMemo, useState } from 'react';
 import AdminLayout from '../../components/admin/AdminLayout';
@@ -39,11 +37,9 @@ export default function AdminRateCardPage() {
   const [adding, setAdding] = useState<string | null>(null);
   const [fresh, setFresh] = useState<{ label: string; price: string; suffix: string; quote: boolean; from: boolean }>({ label: '', price: '', suffix: '', quote: false, from: false });
 
-  const [pub, setPub] = useState<Awaited<ReturnType<typeof adminApi.publishStatus>> | null>(null);
   const load = async () => {
     try { setCard(await adminApi.rateCard()); }
     catch (e) { setError((e as Error).message); }
-    adminApi.publishStatus().then(setPub).catch(() => setPub(null));
   };
   useEffect(() => { load(); }, []);
 
@@ -56,17 +52,15 @@ export default function AdminRateCardPage() {
     })).filter((s) => s.tiers.length || s.packages.length);
   }, [card]);
 
-  const publishLine = (e: { effective_now: string[]; effective_on_publish: string[] }) =>
-    e.effective_on_publish.length
-      ? ` Live now for ${e.effective_now[0]}; the public pages show it at the next publish.`
-      : ' Live everywhere now.';
+  const liveLine = (e: { effective_now: string[] }) =>
+    e.effective_now.includes('the public pages') ? ' Live on your website and at checkout now.' : ` Live now for ${e.effective_now.join(', ')}.`;
 
   const saveTier = async (t: RateCardTier, patch: Parameters<typeof adminApi.setTier>[1]) => {
     setBusy(t.id); setError(''); setNote('');
     try {
       const r = await adminApi.setTier(t.id, patch);
       setNote(r.changed.length
-        ? `Saved ${t.label}.${publishLine(r)}`
+        ? `Saved ${t.label}.${liveLine(r)}`
         : `Nothing changed on ${t.label}.`);
       await load();
     } catch (e) { setError((e as Error).message); }
@@ -80,7 +74,7 @@ export default function AdminRateCardPage() {
         service_slug: serviceSlug, label: fresh.label, price_cents: fresh.quote ? null : toCents(fresh.price),
         price_suffix: fresh.suffix, requires_quote: fresh.quote, price_is_from: !fresh.quote && fresh.from,
       });
-      setNote(`Added "${r.tier.label}" to ${serviceName}.${publishLine(r)}`);
+      setNote(`Added "${r.tier.label}" to ${serviceName}.${liveLine(r)}`);
       setAdding(null); setFresh({ label: '', price: '', suffix: '', quote: false, from: false });
       await load();
     } catch (e) { setError((e as Error).message); }
@@ -99,7 +93,7 @@ export default function AdminRateCardPage() {
         const kept = p.live_customers > 0
           ? ` ${p.live_customers} existing customer${p.live_customers === 1 ? '' : 's'} still pay${p.live_customers === 1 ? 's' : ''} ${p.frozen_prices.map(money).join(' and ')}.`
           : '';
-        setNote(`${p.name} is now ${money(cents)} a month.${kept}${publishLine(r)}${stripe.length ? ` ${stripe.join(', ')}.` : ''}`);
+        setNote(`${p.name} is now ${money(cents)} a month.${kept}${liveLine(r)}${stripe.length ? ` ${stripe.join(', ')}.` : ''}`);
       }
       await load();
     } catch (e) { setError((e as Error).message); }
@@ -123,25 +117,9 @@ export default function AdminRateCardPage() {
             Everyone already signed up keeps the price they were sold, for as long as they stay.
             You can see what each of them is paying beside their plan below.
           </p>
-          {card && card.effective_on_publish.length > 0 && (
-            <p className="mt-3 text-sm text-ink-600">
-              A new price applies to {card.effective_now.join(', ')} straight away. Your public
-              website still shows the old number until the site is published again.
-            </p>
-          )}
-          {pub && (
-            <div className="mt-3 flex flex-wrap items-center gap-3 text-sm" data-publish>
-              {pub.configured ? (
-                <button type="button" className="btn-forest btn-sm" disabled={!!busy}
-                  onClick={async () => { setBusy('publish'); setError(''); try { await adminApi.publish('rate card'); setNote('Publishing. The website usually shows new prices within two minutes.'); setPub(await adminApi.publishStatus()); } catch (e) { setError((e as Error).message); } finally { setBusy(''); } }}>
-                  {busy === 'publish' ? 'Publishing…' : 'Publish the website now'}
-                </button>
-              ) : <span className="text-ink-500">Publishing from here is switched on when the new site goes live.</span>}
-              {pub.publishes[0] && (
-                <span className="text-ink-500">Last publish {new Date(pub.publishes[0].created_at).toLocaleString()}: {pub.publishes[0].state === 'live' ? 'live on the site' : pub.publishes[0].state === 'building' ? 'building' : pub.publishes[0].state === 'failed' ? 'did not go through' : 'queued'}.</span>
-              )}
-            </div>
-          )}
+          <p className="mt-3 text-sm text-ink-600">
+            A saved price is on your website and at checkout within seconds. There is nothing to publish.
+          </p>
         </div>
 
         {error && <p role="alert" className="mt-4 rounded-md bg-danger-100 px-4 py-3 text-danger">{error}</p>}

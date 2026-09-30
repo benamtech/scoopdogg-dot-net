@@ -39,27 +39,16 @@ export class RateCardError extends Error {
 /**
  * WHAT A SAVE ACTUALLY CHANGES, AND WHEN — returned on every write, never implied.
  *
- * The checkout re-prices from these rows on every request (`server/lib/catalog-db.ts`), so a new
- * price is what the next customer is charged, immediately. The public pages are built from
- * `content/catalog.json` by `scripts/pull-catalog.mjs` as build step one, so they show the old
- * number until a rebuild and a deploy.
- *
- * Both halves are true and the owner has to be told which is which, or he will change a price,
- * look at his own website, see the old one, and change it again. This is the demo toggle's shape
- * (api/admin.ts) for the same reason. `catalog.public_pages_need_publish` is a settings row so
- * that the day the price-bearing pages render on demand, this sentence stops being printed
- * without a component edit.
+ * The checkout re-prices from these rows on every request (`server/lib/catalog-db.ts`), and since
+ * 2026-09-29 so do the public pages: they render from the rows (server/lib/public-catalog.ts) and
+ * every admin write purges the page cache (api/admin.ts, server/lib/site-cache.ts). So a save is
+ * live everywhere at once. Until then the pages were built from a file and this returned a second
+ * list, "effective on publish"; that list, its settings row and the publish button are gone.
  */
-export type Effect = { effective_now: string[]; effective_on_publish: string[] };
+export type Effect = { effective_now: string[] };
 
-async function effect(q: Queryable = db()): Promise<Effect> {
-  const { rows } = await q.query(
-    `select value #>> '{}' as v from settings where key = 'catalog.public_pages_need_publish'`);
-  const needsPublish = String(rows[0]?.v ?? 'true') === 'true';
-  return {
-    effective_now: ['what the next customer is charged', 'the booking journey', 'this admin'],
-    effective_on_publish: needsPublish ? ['the public pages'] : [],
-  };
+async function effect(_q: Queryable = db()): Promise<Effect> {
+  return { effective_now: ['what the next customer is charged', 'the booking journey', 'the public pages', 'this admin'] };
 }
 
 /** One row per field that actually moved. A save that changes nothing writes nothing. */

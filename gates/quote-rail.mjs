@@ -15,9 +15,10 @@
  * never to the owner or a person, and the outbox rows it leaves are counted and removed. The
  * Stripe customers it creates in test mode are deleted.
  *
- * Every rule has a negative control, and the rules that protect somebody — the deposit cap, the
- * licence, the written contract — are each tried on the side that must pass and the side that must
- * refuse. A detector that cannot go red is not a detector.
+ * Every rule has a negative control. The deposit cap on install work is tried on both sides. The
+ * licence and the written-contract facts are PAPERWORK, and since 2026-09-29 they never stop a
+ * send (Ben, 2026-09-27): this gate proves an install job with none of them sends, and that the
+ * builder still names what is missing. A detector that cannot go red is not a detector.
  */
 import pg from 'pg';
 import path from 'node:path';
@@ -157,17 +158,28 @@ try {
     check(g2.some((x) => /whether the business carries/.test(x)), 'NEGATIVE CONTROL: unconfirmed, it asks whether he is insured');
     await c.query(`update settings set value = 'true'::jsonb where key = 'trust.insured_confirmed'`);
   }
-  check((await refuses(() => Q.sendQuote(c, d0.id, { by: BY, base: BASE, mode: 'test' }), 'licence_required')).refused, 'install work of $1,000+ cannot be sent without a licence number');
+  // PAPERWORK NEVER STOPS A SEND (Ben, 2026-09-27: Josue's licence, insurance and contract paperwork
+  // "has nothing to do with our work"). Until 2026-09-29 sendQuote() refused these two jobs with
+  // `licence_required` and `contract_facts_missing`. Now both send, and the builder still names what
+  // the contract section is missing. Mutation: put either refusal back in quotes.ts -> red here.
   {
-    const small = await Q.requestQuote(c, { name: `Gate Small ${STAMP}`, phone: `805556${STAMP.slice(-4)}`, email: email('s'), city: 'Ventura', job_kinds: ['turf'], description: 'Patch a turf corner' });
-    const sl = (await c.query(`select id from leads where request_token = $1`, [small.token])).rows[0];
-    const sd = await Q.draftQuote(c, sl.id, BY);
-    await Q.saveQuote(c, sd.id, { lines: [{ description: 'Patch turf corner', amount_cents: 80_000 }] }, BY);
-    check((await refuses(() => Q.sendQuote(c, sd.id, { by: BY, base: BASE, mode: 'test' }), 'contract_facts_missing')).refused,
-      'an $800 install is a written contract: it names the missing facts rather than sending');
-    await Q.saveQuote(c, sd.id, { is_improvement: false }, BY);
-    const sent = await Q.sendQuote(c, sd.id, { by: BY, base: BASE, mode: 'test' });
-    check(!!sent.url, 'NEGATIVE CONTROL: the same job as service work sends with none of those facts', `#${sent.number}`);
+    const mk = async (tag, cents) => {
+      const r = await Q.requestQuote(c, { name: `Gate ${tag} ${STAMP}`, phone: `80555${tag === 'big' ? '7' : '6'}${STAMP.slice(-4)}`, email: email(tag), city: 'Ventura', job_kinds: ['turf'], description: `Turf job ${tag}` });
+      const l = (await c.query(`select id from leads where request_token = $1`, [r.token])).rows[0];
+      const d = await Q.draftQuote(c, l.id, BY);
+      await Q.saveQuote(c, d.id, { lines: [{ description: `Install turf ${tag}`, amount_cents: cents }] }, BY);
+      return d;
+    };
+    const big = await mk('big', 150_000);
+    const bigOwn = await Q.quoteForOwner(c, big.id);
+    check(bigOwn.contract.licenceNeeded && bigOwn.contract.gaps.length > 0, 'a $1,500 install with no licence on record: the builder shows what the contract is missing', bigOwn.contract.gaps.length + ' gap(s)');
+    const bigSent = await Q.sendQuote(c, big.id, { by: BY, base: BASE, mode: 'test' }).then((r) => r, (e) => ({ error: e?.code ?? e?.message }));
+    check(!!bigSent.url, 'install work of $1,000+ with no licence number SENDS anyway', bigSent.url ? `#${bigSent.number}` : `refused: ${bigSent.error}`);
+    const small = await mk('small', 80_000);
+    const smallSent = await Q.sendQuote(c, small.id, { by: BY, base: BASE, mode: 'test' }).then((r) => r, (e) => ({ error: e?.code ?? e?.message }));
+    check(!!smallSent.url, 'an $800 install with none of the contract facts SENDS anyway', smallSent.url ? `#${smallSent.number}` : `refused: ${smallSent.error}`);
+    const bigDep = (await Q.quoteForOwner(c, big.id)).numbers.depositOnRequired;
+    check(bigDep.capped, 'NEGATIVE CONTROL: the deposit cap on install work still holds on the job that sent without paperwork', `${bigDep.cents}`);
   }
   // The facts arrive (inside this transaction only).
   await setSetting('business.license_number', 'GATE-0000000');

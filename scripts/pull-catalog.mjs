@@ -1,18 +1,18 @@
 /**
- * Read the catalog out of the database and write content/catalog.json, as a build step.
+ * Read the catalog out of the database and write content/catalog.json — FOR THE GATES ONLY.
  *
  *   node scripts/pull-catalog.mjs
  *
- * WHY. The audit found the catalog stored twice and the site reading the copy the admin
- * could not edit: 11 services, 34 tiers and 16 areas seeded into the database, while every
- * built page read src/lib/*.ts. This makes the database the only source. The static pages,
- * the booking island and the admin all read the same rows, and a price edited in the admin
- * reaches the site on the next publish.
+ * NO PAGE READS THIS FILE (2026-09-29). Pages render from the live rows on each request
+ * (src/middleware.ts, server/lib/public-catalog.ts), which is what makes an owner's edit live
+ * with no rebuild. This file survives for one build-time consumer, named here so it is not
+ * mistaken for a source: the gates that check a rendered page against the rows
+ * (question-pages, price-clears-the-floor, no-price-in-prose, review-count, zip-coverage, ...).
+ * They read THIS copy on purpose — its own SQL, not the server's loader — because a verifier
+ * that shares the producer's code agrees with it, wrong and all.
  *
- * Same contract as scripts/pull-demo-state.mjs: if DATABASE_URL is set and the read fails,
- * the build STOPS. A site built from a stale file after a failed read would advertise a
- * price the checkout no longer charges - the exact disagreement hypershape S19 forbids.
- * With no DATABASE_URL at all it keeps the file on disk and says so.
+ * If DATABASE_URL is set and the read fails, it stops: a gate comparing pages with a stale file
+ * would report a disagreement that is not there, or miss one that is.
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -38,6 +38,7 @@ if (!url) {
 }
 
 // Only what a public page may show. No customer, lead, session or team row is read here.
+// Kept in step with server/lib/public-catalog.ts by gates/settings-have-readers.mjs.
 const PUBLIC_SETTINGS = [
   'business.name', 'business.phone', 'business.email', 'business.region_label', 'business.brand_region', 'business.timezone',
   'pricing.quote_required_message', 'pricing.currency',
