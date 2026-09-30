@@ -16,10 +16,12 @@ import { startLogin, verifyLogin, getSession, endSession, rateLimit, isOverLimit
 import { probeAccount, createConnectedAccount, onboardingLink, publishAllPrices, publishPricesWhenReady, connection, requirementsOf, disconnect, reconnect, type StripeMode } from '../server/lib/stripe.js';
 import { checklist, setRouteDays, setOwnerSetting, setAreaBookable, confirmPrices } from '../server/lib/onboarding.js';
 import { listAreas } from '../server/lib/areas.js';
+import { listOffers, saveOffer, addOffer, OfferError, type OfferPatch } from '../server/lib/offers.js';
+import { listServices, saveService, addService, ServiceError, type ServicePatch } from '../server/lib/services.js';
 import { growthBoard, unfinished } from '../server/lib/growth.js';
 import { createInvite, customerList, InviteError } from '../server/lib/invites.js';
 import { listTeam, addTeamMember, setTeamStatus, TeamError } from '../server/lib/team.js';
-import { listRateCard, setTier, setPackagePrice, addTier, RateCardError, type TierPatch } from '../server/lib/rate-card.js';
+import { listRateCard, setTier, setPackagePrice, addTier, setBands, RateCardError, type TierPatch } from '../server/lib/rate-card.js';
 import { purgeSite } from '../server/lib/site-cache.js';
 import { completeVisit, completionReadiness, markArrived, markEnRoute, stopDurations, VisitError } from '../server/lib/visits.js';
 import { put, PhotoError } from '../server/lib/photos.js';
@@ -536,7 +538,7 @@ async function route(req: ApiRequest, res: ApiResponse) {
     //
     // Owners, not superadmin. A CMS the owner cannot administer is a retainer he did not ask
     // for, and P7 keeps requireSuper on exactly two verbs — neither of them is this one.
-    if (path === 'rate-card' || path === 'rate-card/tier' || path === 'rate-card/package' || path === 'rate-card/tier-new') {
+    if (path === 'rate-card' || path === 'rate-card/tier' || path === 'rate-card/package' || path === 'rate-card/tier-new' || path === 'rate-card/bands') {
       if (session.role !== 'admin' && session.role !== 'superadmin') return sendJson(res, 403, { error: 'Owners only.' });
       try {
         if (path === 'rate-card') return sendJson(res, 200, await listRateCard());
@@ -547,6 +549,7 @@ async function route(req: ApiRequest, res: ApiResponse) {
             price_cents: body.price_cents === null || body.price_cents === '' || body.price_cents === undefined ? null : Number(body.price_cents),
             price_suffix: body.price_suffix == null ? '' : String(body.price_suffix),
             requires_quote: Boolean(body.requires_quote), price_is_from: Boolean(body.price_is_from),
+            min_qty: body.min_qty as number | null | undefined, max_qty: body.max_qty as number | null | undefined,
           }, session.email));
         }
         if (req.method !== 'PATCH') return sendJson(res, 405, { error: 'Method not allowed.' });
@@ -563,9 +566,68 @@ async function route(req: ApiRequest, res: ApiResponse) {
           if ('status' in body) patch.status = String(body.status ?? '');
           return sendJson(res, 200, await setTier(String(body.id ?? ''), patch, session.email));
         }
+        if (path === 'rate-card/bands') {
+          const bands = Array.isArray(body.bands) ? body.bands as { id: string; min_qty: number | null; max_qty: number | null }[] : [];
+          return sendJson(res, 200, await setBands(String(body.service_slug ?? ''), bands, session.email));
+        }
+        if (path !== 'rate-card/package') return sendJson(res, 404, { error: 'Not found.' });
         return sendJson(res, 200, await setPackagePrice(String(body.id ?? ''), Number(body.monthly_price_cents ?? 0), session.email));
       } catch (e) {
         if (e instanceof RateCardError) return sendJson(res, e.status, { error: e.message, code: e.code });
+        throw e;
+      }
+    }
+
+    // ---- services: the words on each page, the order, retire and bring back (server/lib/services.ts)
+    if (path === 'services' || path === 'services/new') {
+      if (session.role !== 'admin' && session.role !== 'superadmin') return sendJson(res, 403, { error: 'Owners only.' });
+      try {
+        if (path === 'services' && req.method === 'GET') return sendJson(res, 200, await listServices());
+        const body = await readJsonBody(req);
+        if (path === 'services/new' && req.method === 'POST') {
+          return sendJson(res, 200, { service: await addService(db(), {
+            name: String(body.name ?? ''), kind: String(body.kind ?? ''), price_basis: String(body.price_basis ?? ''), basis_label: String(body.basis_label ?? ''),
+          }, session.email) });
+        }
+        if (path === 'services' && req.method === 'PATCH') {
+          const str = (k: string) => (body[k] !== undefined ? { [k]: String(body[k]) } : {});
+          const patch: ServicePatch = {
+            ...str('name'), ...str('short_name'), ...str('h1'), ...str('intro'), ...str('who_its_for'), ...str('pricing_note'),
+            ...str('meta_title'), ...str('meta_description'),
+            ...(Array.isArray(body.what_includes) && { what_includes: body.what_includes.map(String) }),
+            ...(Array.isArray(body.faqs) && { faqs: body.faqs.map((f: any) => ({ q: String(f?.q ?? ''), a: String(f?.a ?? '') })) }),
+            ...(Array.isArray(body.related_slugs) && { related_slugs: body.related_slugs.map(String) }),
+            ...(body.sort_order !== undefined && { sort_order: Number(body.sort_order) }),
+            ...((body.status === 'draft' || body.status === 'active' || body.status === 'retired') && { status: body.status }),
+          };
+          return sendJson(res, 200, { service: await saveService(db(), String(body.slug ?? ''), patch, session.email), effective_now: ['the public pages'] });
+        }
+        return sendJson(res, 405, { error: 'Method not allowed.' });
+      } catch (e) {
+        if (e instanceof ServiceError) return sendJson(res, e.status, { error: e.message, code: e.code, problems: e.problems });
+        throw e;
+      }
+    }
+
+    // ---- offers: the owner adds, edits and pauses them (server/lib/offers.ts). Never deletes.
+    if (path === 'offers' || path === 'offers/new') {
+      if (session.role !== 'admin' && session.role !== 'superadmin') return sendJson(res, 403, { error: 'Owners only.' });
+      try {
+        if (path === 'offers' && req.method === 'GET') return sendJson(res, 200, await listOffers());
+        const body = await readJsonBody(req);
+        const patch: OfferPatch = {
+          ...(body.name !== undefined && { name: String(body.name) }),
+          ...(body.description !== undefined && { description: String(body.description) }),
+          ...(body.value !== undefined && { value: Number(body.value) }),
+          ...(Array.isArray(body.applies_to_slugs) && { applies_to_slugs: body.applies_to_slugs.map(String) }),
+          ...(Array.isArray(body.requires_slugs) && { requires_slugs: body.requires_slugs.map(String) }),
+          ...((body.status === 'active' || body.status === 'paused') && { status: body.status }),
+        };
+        if (path === 'offers/new' && req.method === 'POST') return sendJson(res, 200, { offer: await addOffer(db(), patch, session.email), effective_now: ['the public pages', 'the next checkout'] });
+        if (path === 'offers' && req.method === 'PATCH') return sendJson(res, 200, { offer: await saveOffer(db(), String(body.id ?? ''), patch, session.email), effective_now: ['the public pages', 'the next checkout'] });
+        return sendJson(res, 405, { error: 'Method not allowed.' });
+      } catch (e) {
+        if (e instanceof OfferError) return sendJson(res, e.status, { error: e.message, code: e.code });
         throw e;
       }
     }

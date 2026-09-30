@@ -46,7 +46,7 @@ export const PUBLIC_SETTINGS = [
 export type PublicSnapshot = {
   pulled_at: string;
   source: string;
-  services: any[]; tiers: any[]; packages: any[]; offers: any[]; areas: any[]; reviews: any[];
+  services: any[]; retired_service_slugs: string[]; tiers: any[]; packages: any[]; offers: any[]; areas: any[]; reviews: any[];
   postal_codes: Record<string, string>;
   settings: Record<string, unknown>;
   demo: { mode: boolean; banner_text: string; source: string; pulled_at: string | null };
@@ -57,10 +57,13 @@ export class SnapshotError extends Error {}
 export async function loadPublicSnapshot(q: Queryable = db()): Promise<PublicSnapshot> {
   const rows = async (sql: string, params?: unknown[]) => (await q.query(sql, params)).rows;
   // Parallel is safe here: db() is a pool, unlike the single client pull-catalog.mjs uses.
-  const [services, tiers, packages, offers, areas, reviews, postal, settings, demo] = await Promise.all([
+  const [services, retired, tiers, packages, offers, areas, reviews, postal, settings, demo] = await Promise.all([
     rows(`select slug, name, short_name, kind, price_basis, basis_label, pricing_note, sort_order,
                  meta_title, meta_description, h1, intro, what_includes, who_its_for, faqs, related_slugs
             from services where status = 'active' order by sort_order`),
+    // A retired service's URL redirects to /services rather than answering 404 (migration 003:
+    // "a retired service must keep resolving because old ... URLs still point at its slug").
+    rows(`select slug from services where status = 'retired'`),
     rows(`select id, service_slug, label, min_qty, max_qty, price_cents, price_suffix, requires_quote,
                  price_is_from, est_minutes, sort_order, covers_last_cleaned
             from service_tiers where status = 'active' order by service_slug, sort_order`),
@@ -92,7 +95,7 @@ export async function loadPublicSnapshot(q: Queryable = db()): Promise<PublicSna
   return {
     pulled_at: now,
     source: 'database',
-    services, tiers, packages, offers, areas, reviews,
+    services, retired_service_slugs: retired.map((r: any) => r.slug), tiers, packages, offers, areas, reviews,
     postal_codes: Object.fromEntries(postal.map((r: any) => [r.postal_code, r.area_slug])),
     settings: Object.fromEntries(settings.map((r: any) => [r.key, r.value])),
     demo: { mode, banner_text: mode ? banner : '', source: 'database', pulled_at: now },

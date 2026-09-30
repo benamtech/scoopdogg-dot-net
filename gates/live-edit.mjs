@@ -106,8 +106,37 @@ const EDITS = [];
   });
 }
 
-// 3 and 4 — a service's intro and an offer — join here once their editors exist (§3).
-for (const extra of (await import('./_live-edit-extra.mjs').catch(() => ({ edits: [] }))).edits ?? []) EDITS.push(await extra({ s, db }));
+// 3. A service's introduction, through the services editor.
+{
+  const { rows: [sv] } = await db.query(`select slug, intro, updated_by, updated_at from services where slug = 'pressure-washing'`);
+  const marker = `We checked this sentence went live at ${Date.now().toString(36)}.`;
+  EDITS.push({
+    name: 'service introduction', route: `/services/${sv.slug}`,
+    before: (h) => !h.includes(marker), after: (h) => h.includes(marker),
+    apply: () => s.api('services', { method: 'PATCH', body: { slug: sv.slug, intro: `${sv.intro} ${marker}` } }),
+    restore: async () => {
+      await s.api('services', { method: 'PATCH', body: { slug: sv.slug, intro: sv.intro } });
+      await db.query(`update services set updated_by = $2, updated_at = $3 where slug = $1`, [sv.slug, sv.updated_by, sv.updated_at]);
+    },
+    shown: 'a new last sentence in the introduction',
+  });
+}
+
+// 4. An offer, through the offers editor. The site header prints its name on every page.
+{
+  const { rows: [o] } = await db.query(`select id, name, updated_at from offers where status = 'active' and requires_slugs = '{}' and 'weekly-pooper-scooper-service' = any(applies_to_slugs)`);
+  const next = `${o.name}, checked ${Date.now().toString(36)}`;
+  EDITS.push({
+    name: 'offer name', route: '/',
+    before: (h) => !h.includes(next), after: (h) => h.includes(next),
+    apply: () => s.api('offers', { method: 'PATCH', body: { id: o.id, name: next } }),
+    restore: async () => {
+      await s.api('offers', { method: 'PATCH', body: { id: o.id, name: o.name } });
+      await db.query(`update offers set updated_at = $2 where id = $1`, [o.id, o.updated_at]);
+    },
+    shown: `"${o.name}" renamed in the header`,
+  });
+}
 
 const startedAt = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
 try {

@@ -79,7 +79,33 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   return body as T;
 }
 
+/** An offer as the owner edits it (server/lib/offers.ts). A first-month percentage, never deleted. */
+export interface AdminOffer {
+  id: string; name: string; description: string; kind: string; value: number;
+  applies_to_slugs: string[]; requires_slugs: string[]; status: 'active' | 'paused' | 'draft';
+  redeemed: number; customers_on_it: number; updated_at: string;
+}
+export interface OfferInput { name?: string; description?: string; value?: number; applies_to_slugs?: string[]; requires_slugs?: string[]; status?: 'active' | 'paused' }
+
+/** A service as the owner edits it (server/lib/services.ts). Retired, never deleted. */
+export interface AdminService {
+  slug: string; name: string; short_name: string; kind: string; price_basis: string | null; basis_label: string;
+  pricing_note: string; sort_order: number; status: 'draft' | 'active' | 'retired';
+  meta_title: string | null; meta_description: string | null; h1: string | null; intro: string | null;
+  what_includes: string[]; who_its_for: string; faqs: { q: string; a: string }[]; related_slugs: string[];
+  live_tiers: number; customers: number; updated_at: string; updated_by: string | null;
+}
+export type ServiceInput = Partial<Pick<AdminService, 'name' | 'short_name' | 'h1' | 'intro' | 'what_includes' | 'who_its_for' | 'faqs' | 'pricing_note' | 'meta_title' | 'meta_description' | 'related_slugs' | 'sort_order' | 'status'>>;
+
 export const adminApi = {
+  offers:      () => call<{ offers: AdminOffer[]; services: { slug: string; name: string; monthly: boolean }[] }>('offers'),
+  saveOffer:   (id: string, patch: OfferInput) => call<{ offer: AdminOffer; effective_now: string[] }>('offers', { method: 'PATCH', body: JSON.stringify({ id, ...patch }) }),
+  addOffer:    (o: OfferInput) => call<{ offer: AdminOffer; effective_now: string[] }>('offers/new', { method: 'POST', body: JSON.stringify(o) }),
+  services:    () => call<{ services: AdminService[] }>('services'),
+  saveService: (slug: string, patch: ServiceInput) => call<{ service: AdminService; effective_now: string[] }>('services', { method: 'PATCH', body: JSON.stringify({ slug, ...patch }) }),
+  addService:  (s: { name: string; kind: string; price_basis: string; basis_label?: string }) => call<{ service: AdminService }>('services/new', { method: 'POST', body: JSON.stringify(s) }),
+  setBands:    (service_slug: string, bands: { id: string; min_qty: number | null; max_qty: number | null }[]) =>
+    call<{ changed: string[]; effective_now: string[] }>('rate-card/bands', { method: 'PATCH', body: JSON.stringify({ service_slug, bands }) }),
   areas:       () => call<{ areas: AdminArea[] }>('areas'),
   startLogin:  (email: string) => call<{ ok: true; message: string }>('login/start', { method: 'POST', body: JSON.stringify({ email }) }),
   verifyLogin: (email: string, code: string) => call<{ ok: true; user: AdminUser }>('login/verify', { method: 'POST', body: JSON.stringify({ email, code }) }),
@@ -171,7 +197,7 @@ export const adminApi = {
 
   // The rate card. Every write returns `effective_now`: the server names what changed.
   rateCard:    () => call<RateCard>('rate-card'),
-  addTier:     (t: { service_slug: string; label: string; price_cents: number | null; price_suffix?: string; requires_quote?: boolean; price_is_from?: boolean }) =>
+  addTier:     (t: { service_slug: string; label: string; price_cents: number | null; price_suffix?: string; requires_quote?: boolean; price_is_from?: boolean; min_qty?: number | null; max_qty?: number | null }) =>
     call<{ tier: RateCardTier; changed: string[]; effective_now: string[] }>('rate-card/tier-new', { method: 'POST', body: JSON.stringify(t) }),
 
   // Custom quotes (server/lib/quotes.ts). Every number the builder shows comes back from the server.
@@ -225,7 +251,7 @@ export interface CatalogChange {
 }
 
 export interface RateCard extends CatalogEffect {
-  services: { slug: string; name: string; kind: string; status: string; sort_order: number }[];
+  services: { slug: string; name: string; kind: string; status: string; sort_order: number; price_basis: string | null }[];
   tiers: RateCardTier[];
   packages: RateCardPackage[];
   changes: CatalogChange[];

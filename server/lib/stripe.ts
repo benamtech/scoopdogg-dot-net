@@ -343,9 +343,24 @@ export async function publishPricesWhenReady(mode: StripeMode, by = 'system'): P
 }
 
 /** A percent-off coupon for an offer, once, on the connected account, limited to products. */
+/** Which stored coupon serves this offer: one per mode, account, discount and product set. */
+export const couponKey = (mode: StripeMode, account: string, value: number, products: string[]) =>
+  `${mode === 'live'}:${account}:${value}:${[...products].sort().join('.')}`;
+
+/**
+ * The Stripe coupon for an offer AS IT STANDS NOW.
+ *
+ * Keyed on (mode, account, value, products) since 2026-09-29. It was keyed on (mode, account) only,
+ * and never compared with the offer: once the owner could edit an offer, a changed discount would
+ * have left the checkout applying the old coupon while the page advertised the new one. A coupon is
+ * immutable in Stripe, so a changed value or product list mints a new one; the old keys stay in
+ * `stripe_coupon_ids` as history. The idempotency key carries the value too — with the old key,
+ * Stripe would have handed back the previous coupon for 24 hours.
+ */
 export async function couponForOffer(mode: StripeMode, offer: { id: string; name: string; value: number }, productIds: string[]) {
   const { stripe, account } = await resolve(mode);
-  const key = `${mode === 'live'}:${account}`;
+  const products = [...productIds].sort();
+  const key = couponKey(mode, account, offer.value, products);
   const { rows } = await db().query(`select stripe_coupon_ids from offers where id = $1`, [offer.id]);
   const ids = (rows[0]?.stripe_coupon_ids ?? {}) as Record<string, string>;
   if (ids[key]) return ids[key];
@@ -353,9 +368,9 @@ export async function couponForOffer(mode: StripeMode, offer: { id: string; name
     name: offer.name.slice(0, 40),
     percent_off: offer.value,
     duration: 'once',
-    applies_to: { products: productIds },
-    metadata: { offer_id: offer.id },
-  }, { stripeAccount: account, idempotencyKey: `coupon-${account}-${offer.id}-${productIds.sort().join('.')}` });
+    applies_to: { products },
+    metadata: { offer_id: offer.id, percent_off: String(offer.value) },
+  }, { stripeAccount: account, idempotencyKey: `coupon-${account}-${offer.id}-${offer.value}-${products.join('.')}` });
   await db().query(
     `update offers set stripe_coupon_ids = coalesce(stripe_coupon_ids, '{}'::jsonb) || jsonb_build_object($2::text, $3::text) where id = $1`,
     [offer.id, key, coupon.id]);

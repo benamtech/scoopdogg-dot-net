@@ -17,7 +17,7 @@ import GuaranteeStamp from '../../components/site/GuaranteeStamp.astro';
 import Faq from '../../components/site/Faq.astro';
 import ReviewQuotes from '../../components/site/ReviewQuotes.astro';
 import CloseCta from '../../components/site/CloseCta.astro';
-import { services, serviceBySlug, tiersFor, packagesForService, formatTierPrice, headlinePrice, trust, headlineOffer } from '../../lib/catalog';
+import { services, serviceBySlug, isRetiredService, tiersFor, packagesForService, formatTierPrice, headlinePrice, trust, headlineOffer } from '../../lib/catalog';
 import { questions } from '../../lib/questions';
 import { SITE_URL } from '../../lib/constants';
 
@@ -25,6 +25,8 @@ import { SITE_URL } from '../../lib/constants';
 // page at the next render. A slug with no active service answers 404.
 const { service: slug } = Astro.params;
 const found = serviceBySlug(slug!);
+// Retired, never deleted: a link somebody saved keeps working (migration 003's rule).
+if (!found && isRetiredService(slug!)) return Astro.redirect('/services', 301);
 if (!found) return new Response(null, { status: 404 });
 const s = found;
 const tiers = tiersFor(s.slug);

@@ -68,6 +68,8 @@ export type Review = {
 export type Raw = {
   pulled_at: string;
   services: CatalogService[];
+  /** Slugs of retired services: their pages redirect to /services instead of answering 404. */
+  retired_service_slugs?: string[];
   tiers: Tier[];
   packages: Package[];
   offers: Offer[];
@@ -113,6 +115,7 @@ export function setting<T>(key: string, fallback: T): T {
 }
 
 export const serviceBySlug = (slug: string) => data.services.find((s) => s.slug === slug);
+export const isRetiredService = (slug: string) => (data.retired_service_slugs ?? []).includes(slug);
 export const areaBySlug = (slug: string) => data.areas.find((a) => a.slug === slug);
 export const tiersFor = (slug: string) => data.tiers.filter((t) => t.service_slug === slug).sort((a, b) => a.sort_order - b.sort_order);
 export const packagesForService = (slug: string) => packagesFor(catalog, slug);

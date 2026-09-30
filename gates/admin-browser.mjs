@@ -188,6 +188,12 @@ const screens = [
   // total are rendered text.
   // The number is in a chip styled `uppercase`, and innerText returns the transformed text.
   [`/admin/quotes/${seededQuote?.id}`, [new RegExp(`Quote #${seededQuote?.number ?? 'never'}`, 'i'), /\$123\.45/], 'quote builder'],
+  // §3 (2026-09-29): the owner edits services, offers and the tier ranges himself. Each needle is a
+  // row only the authenticated read returns: a live offer's customer count sentence, a service's
+  // price count, and the rate card's range editor with a tier label in it.
+  ['/admin/offers',   [/First month half off/, /customers? on it now/],                         'offers'],
+  ['/admin/services', [/Pet Area Pressure Washing|Pressure Washing/, /prices? on the rate card/], 'services'],
+  ['/admin/rate-card', [/Which tier a customer lands in, by dogs/, /Save ranges/],               'rate card — the ranges'],
 ];
 
 async function visit(context, route, shot) {

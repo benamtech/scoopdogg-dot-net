@@ -20,6 +20,7 @@
  * WHAT IT REFUSES, and each refusal is a sentence he can act on rather than a 500.
  */
 import { db } from './db.js';
+import { bandProblems } from '../../src/shared/pricing.js';
 import { publishPricesWhenReady, type StripeMode } from './stripe.js';
 import { safeError } from './http.js';
 
@@ -119,7 +120,7 @@ export async function listRateCard(q: Queryable = db()) {
        from packages p order by p.sort_order`);
 
   const { rows: services } = await q.query(
-    `select slug, name, kind, status, sort_order from services order by sort_order`);
+    `select slug, name, kind, status, sort_order, price_basis from services order by sort_order`);
 
   const { rows: changes } = await q.query(
     `select entity, entity_id, entity_label, field, old_value, new_value, changed_by, changed_at
@@ -198,6 +199,11 @@ export async function setTier(id: string, patch: TierPatch, by: string, q: Query
     }
   }
 
+  // Retiring a band, or turning quote-only off on the catch-all tier, can open a gap.
+  if (next.status !== before.status || next.requires_quote !== before.requires_quote) {
+    await checkBands(before.service_slug, [{ id, status: next.status, requires_quote: next.requires_quote }], q);
+  }
+
   const { rows: [after] } = await q.query(
     `update service_tiers set label = $2, status = $3, price_cents = $4, price_suffix = $5,
             requires_quote = $6, price_is_from = $7, updated_by = $8, updated_at = now()
@@ -211,7 +217,63 @@ export async function setTier(id: string, patch: TierPatch, by: string, q: Query
 export type NewTier = {
   label: string; price_cents: number | null; price_suffix?: string | null;
   requires_quote?: boolean; price_is_from?: boolean;
+  /** The quantity range, for a service priced by a number (dogs, square feet, ...). */
+  min_qty?: number | null; max_qty?: number | null;
 };
+
+/**
+ * THE BANDS OF ONE SERVICE, CHECKED AS THEY WOULD STAND after a change: `overrides` replaces or
+ * adds tiers by id, and a tier whose status is not active drops out. Every writer that can move a
+ * band calls this — a range edit, a new tier, a retired tier — because retiring the middle band
+ * opens a gap as surely as typing one. Throws the first problem as the owner's sentence.
+ */
+export async function checkBands(serviceSlug: string, overrides: { id: string; label?: string; min_qty?: number | null; max_qty?: number | null; requires_quote?: boolean; status?: string }[], q: Queryable = db()) {
+  const { rows: [svc] } = await q.query(`select slug, price_basis from services where slug = $1`, [serviceSlug]);
+  if (!svc) throw new RateCardError('no_service', 'We do not have that service.', 404);
+  const { rows } = await q.query(
+    `select id, label, min_qty, max_qty, requires_quote, status from service_tiers where service_slug = $1 and status = 'active'`, [serviceSlug]);
+  const byId = new Map(rows.map((r: any) => [r.id, r]));
+  for (const o of overrides) byId.set(o.id, { ...(byId.get(o.id) ?? { status: 'active' }), ...o });
+  const live = [...byId.values()].filter((t: any) => (t.status ?? 'active') === 'active');
+  const problems = bandProblems(svc, live as never);
+  if (problems.length) throw new RateCardError('bands', problems[0], 400);
+}
+
+/**
+ * Edit the quantity ranges of one service's tiers at once — a gap or an overlap is a property of
+ * the SET, so they are checked and written together, in one transaction, or not at all.
+ */
+export async function setBands(serviceSlug: string, bands: { id: string; min_qty: number | null; max_qty: number | null }[], by: string, q: Queryable = db()) {
+  const clean = bands.map((b) => ({
+    id: String(b.id),
+    min_qty: b.min_qty === null || b.min_qty === undefined || (b.min_qty as unknown) === '' ? null : Number(b.min_qty),
+    max_qty: b.max_qty === null || b.max_qty === undefined || (b.max_qty as unknown) === '' ? null : Number(b.max_qty),
+  }));
+  const { rows: own } = await q.query(`select id, label, min_qty, max_qty from service_tiers where service_slug = $1 and status = 'active'`, [serviceSlug]);
+  const mine = new Map(own.map((r: any) => [r.id, r]));
+  const stray = clean.filter((b) => !mine.has(b.id));
+  if (stray.length) throw new RateCardError('no_tier', 'One of those tiers is not a live tier of this service.', 404);
+  await checkBands(serviceSlug, clean, q);
+  // The shared pool gets its own transaction; a caller's client (a gate's, already inside one) is used as is.
+  const client = q === db() ? await (q as unknown as { connect: () => Promise<any> }).connect() : q;
+  const changed: string[] = [];
+  try {
+    if (client !== q) await client.query('begin');
+    for (const b of clean) {
+      const before = mine.get(b.id);
+      if (before.min_qty === b.min_qty && before.max_qty === b.max_qty) continue;
+      await client.query(`update service_tiers set min_qty = $2, max_qty = $3, updated_at = now(), updated_by = $4 where id = $1`, [b.id, b.min_qty, b.max_qty, by]);
+      changed.push(...await record('tier', b.id, `${serviceSlug} · ${before.label}`, { min_qty: before.min_qty, max_qty: before.max_qty }, { min_qty: b.min_qty, max_qty: b.max_qty }, by, client));
+    }
+    if (client !== q) await client.query('commit');
+  } catch (e) {
+    if (client !== q) await client.query('rollback');
+    throw e;
+  } finally {
+    if (client !== q) client.release();
+  }
+  return { changed, ...(await effect(q)) };
+}
 
 /**
  * A new tier on a service — a new size, a new band, a new "large or custom". The same refusals as
@@ -243,11 +305,15 @@ export async function addTier(serviceSlug: string, t: NewTier, by: string, q: Qu
     throw new RateCardError('quote_and_from', 'A tier cannot be quote-only and a "from" price at the same time — the first says there is no number yet and the second shows one.');
   }
   if (next.requires_quote) next.price_cents = null;
+  const num = (v: unknown) => (v === null || v === undefined || v === '' ? null : Number(v));
+  const range = { min_qty: num(t.min_qty), max_qty: num(t.max_qty) };
+  // The new tier has to fit the service's bands as they stand: no overlap, no gap, reachable.
+  await checkBands(serviceSlug, [{ id: 'new', label, ...range, requires_quote: next.requires_quote, status: 'active' }], q);
   const { rows: [{ n }] } = await q.query(`select coalesce(max(sort_order), 0)::int + 10 as n from service_tiers where service_slug = $1`, [serviceSlug]);
   const { rows: [row] } = await q.query(
-    `insert into service_tiers (service_slug, label, price_cents, price_suffix, requires_quote, price_is_from, sort_order, status, updated_by)
-     values ($1,$2,$3,$4,$5,$6,$7,'active',$8) returning *`,
-    [serviceSlug, next.label, next.price_cents, next.price_suffix, next.requires_quote, next.price_is_from, n, by]);
+    `insert into service_tiers (service_slug, label, price_cents, price_suffix, requires_quote, price_is_from, sort_order, status, updated_by, min_qty, max_qty)
+     values ($1,$2,$3,$4,$5,$6,$7,'active',$8,$9,$10) returning *`,
+    [serviceSlug, next.label, next.price_cents, next.price_suffix, next.requires_quote, next.price_is_from, n, by, range.min_qty, range.max_qty]);
   const moved = await record('tier', row.id, `${serviceSlug} · ${label}`, {}, next, by, q);
   return { tier: row, changed: moved, ...(await effect(q)) };
 }

@@ -18,6 +18,58 @@ import { useEffect, useMemo, useState } from 'react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { adminApi, type RateCard, type RateCardTier, type RateCardPackage } from '../../lib/adminApi';
 
+const QUANTITY: Record<string, { unit: string; area: boolean }> = {
+  dogs: { unit: 'dogs', area: false }, boxes: { unit: 'litter boxes', area: false }, units: { unit: 'units', area: false },
+  levels: { unit: 'levels', area: false }, sqft: { unit: 'sq ft', area: true },
+};
+
+/**
+ * THE RANGES — which tier a number lands in. `min_qty`/`max_qty` decide it
+ * (src/shared/pricing.ts tierForQuantity): for counts the top of a range is included ("1 dog" is
+ * 1 to 1), for square feet it is not ("under 200" then "200 to 500"). The server refuses an overlap,
+ * a gap, or a priced tier nothing can reach, with the reason (bandProblems), and saves the whole set
+ * at once, because an overlap is a property of two rows, not one.
+ */
+function Bands({ slug, basis, tiers, onSaved }: { slug: string; basis: string; tiers: RateCardTier[]; onSaved: (m: string) => void }) {
+  const q = QUANTITY[basis];
+  const live = tiers.filter((t) => t.status === 'active');
+  const init = () => Object.fromEntries(live.map((t) => [t.id, { min: t.min_qty === null ? '' : String(t.min_qty), max: t.max_qty === null ? '' : String(t.max_qty) }]));
+  const [v, setV] = useState<Record<string, { min: string; max: string }>>(init);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  if (!q || !live.length) return null;
+  const dirty = live.some((t) => v[t.id] && (v[t.id].min !== (t.min_qty === null ? '' : String(t.min_qty)) || v[t.id].max !== (t.max_qty === null ? '' : String(t.max_qty))));
+  const num = (x: string) => (x.trim() === '' ? null : Number(x));
+  return (
+    <div className="mt-3 rounded-lg border border-line bg-paper p-4" data-bands={slug}>
+      <p className="text-sm font-medium text-forest-900">Which tier a customer lands in, by {q.unit}</p>
+      <p className="text-micro text-ink-500">{q.area ? 'A range runs up to, not including, its top number: "under 200" is blank to 200, "200 to 500" is 200 to 500.' : 'Both ends are included: "1 dog" is 1 to 1, "4 or more" is 4 to blank.'} Leave the top blank for "and up".</p>
+      <div className="mt-3 grid gap-2">
+        {live.map((t) => (
+          <div key={t.id} className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="min-w-[14rem] text-forest-900">{t.label}</span>
+            <input className="field w-20 tabular-nums" inputMode="numeric" aria-label={`From, ${t.label}`} value={v[t.id]?.min ?? ''} placeholder="—"
+                   onChange={(e) => setV({ ...v, [t.id]: { ...v[t.id], min: e.target.value.replace(/[^\d]/g, '') } })} />
+            <span className="text-ink-500">to</span>
+            <input className="field w-20 tabular-nums" inputMode="numeric" aria-label={`To, ${t.label}`} value={v[t.id]?.max ?? ''} placeholder="and up"
+                   onChange={(e) => setV({ ...v, [t.id]: { ...v[t.id], max: e.target.value.replace(/[^\d]/g, '') } })} />
+            <span className="text-ink-500">{q.unit}</span>
+          </div>
+        ))}
+      </div>
+      {err && <p role="alert" className="mt-3 text-sm text-danger">{err}</p>}
+      <button type="button" className="btn-primary btn-sm mt-3" disabled={busy || !dirty}
+        onClick={async () => {
+          setBusy(true); setErr('');
+          try {
+            await adminApi.setBands(slug, live.map((t) => ({ id: t.id, min_qty: num(v[t.id].min), max_qty: num(v[t.id].max) })));
+            onSaved('Saved the ranges. The booking form and your website use them now.');
+          } catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
+        }}>{busy ? 'Saving…' : 'Save ranges'}</button>
+    </div>
+  );
+}
+
 const money = (c: number | null) => (c === null ? '—' : `$${(c / 100).toFixed(2).replace(/\.00$/, '')}`);
 const dollars = (c: number | null) => (c === null ? '' : String(c / 100));
 const toCents = (s: string) => {
@@ -35,7 +87,7 @@ export default function AdminRateCardPage() {
   const [editing, setEditing] = useState<string | null>(null);
   const [edit, setEdit] = useState<{ label: string; suffix: string; from: boolean }>({ label: '', suffix: '', from: false });
   const [adding, setAdding] = useState<string | null>(null);
-  const [fresh, setFresh] = useState<{ label: string; price: string; suffix: string; quote: boolean; from: boolean }>({ label: '', price: '', suffix: '', quote: false, from: false });
+  const [fresh, setFresh] = useState<{ label: string; price: string; suffix: string; quote: boolean; from: boolean; min: string; max: string }>({ label: '', price: '', suffix: '', quote: false, from: false, min: '', max: '' });
 
   const load = async () => {
     try { setCard(await adminApi.rateCard()); }
@@ -73,9 +125,10 @@ export default function AdminRateCardPage() {
       const r = await adminApi.addTier({
         service_slug: serviceSlug, label: fresh.label, price_cents: fresh.quote ? null : toCents(fresh.price),
         price_suffix: fresh.suffix, requires_quote: fresh.quote, price_is_from: !fresh.quote && fresh.from,
+        min_qty: fresh.min === '' ? null : Number(fresh.min), max_qty: fresh.max === '' ? null : Number(fresh.max),
       });
       setNote(`Added "${r.tier.label}" to ${serviceName}.${liveLine(r)}`);
-      setAdding(null); setFresh({ label: '', price: '', suffix: '', quote: false, from: false });
+      setAdding(null); setFresh({ label: '', price: '', suffix: '', quote: false, from: false, min: '', max: '' });
       await load();
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(''); }
@@ -275,6 +328,9 @@ export default function AdminRateCardPage() {
                   </ul>
                 )}
 
+                <Bands key={`${s.slug}:${s.tiers.map((t) => `${t.id}:${t.min_qty}:${t.max_qty}:${t.status}`).join('|')}`}
+                       slug={s.slug} basis={s.price_basis ?? ''} tiers={s.tiers} onSaved={async (m) => { setNote(m); await load(); }} />
+
                 {adding === s.slug ? (
                   <div className="mt-3 rounded-lg border border-line bg-paper p-4" data-add-tier={s.slug}>
                     <div className="grid gap-3 sm:grid-cols-4">
@@ -289,6 +345,15 @@ export default function AdminRateCardPage() {
                           <input className="field mt-1" value={fresh.suffix} placeholder=" / visit" onChange={(ev) => setFresh({ ...fresh, suffix: ev.target.value })} /></label>
                       )}
                     </div>
+                    {QUANTITY[s.price_basis ?? ''] && (
+                      <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-ink-700">
+                        <span>Covers</span>
+                        <input className="field w-20 tabular-nums" inputMode="numeric" aria-label="Covers from" value={fresh.min} placeholder="—" onChange={(ev) => setFresh({ ...fresh, min: ev.target.value.replace(/[^\d]/g, '') })} />
+                        <span>to</span>
+                        <input className="field w-20 tabular-nums" inputMode="numeric" aria-label="Covers to" value={fresh.max} placeholder="and up" onChange={(ev) => setFresh({ ...fresh, max: ev.target.value.replace(/[^\d]/g, '') })} />
+                        <span className="text-ink-500">{QUANTITY[s.price_basis ?? ''].unit} — leave both blank only for a quote-only "large or custom" tier.</span>
+                      </div>
+                    )}
                     <div className="mt-3 flex flex-wrap gap-4 text-sm text-ink-700">
                       <label className="flex items-center gap-2"><input type="checkbox" checked={fresh.quote} onChange={(ev) => setFresh({ ...fresh, quote: ev.target.checked })} /> Quote only (no number on the site)</label>
                       {!fresh.quote && <label className="flex items-center gap-2"><input type="checkbox" checked={fresh.from} onChange={(ev) => setFresh({ ...fresh, from: ev.target.checked })} /> Show as a starting price</label>}
@@ -299,7 +364,7 @@ export default function AdminRateCardPage() {
                     </div>
                   </div>
                 ) : (
-                  <button type="button" className="mt-3 text-sm font-medium text-forest-700 hover:text-forest-900" onClick={() => { setAdding(s.slug); setFresh({ label: '', price: '', suffix: '', quote: false, from: false }); }}>+ Add a tier to {s.name}</button>
+                  <button type="button" className="mt-3 text-sm font-medium text-forest-700 hover:text-forest-900" onClick={() => { setAdding(s.slug); setFresh({ label: '', price: '', suffix: '', quote: false, from: false, min: '', max: '' }); }}>+ Add a tier to {s.name}</button>
                 )}
               </section>
             ))}

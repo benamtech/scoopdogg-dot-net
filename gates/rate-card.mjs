@@ -38,7 +38,8 @@ const refuses = async (fn, code) => {
 
 const out = compileServer();
 const p = (f) => `${process.cwd()}/${out}/${f}`.replace(`${process.cwd()}/${process.cwd()}`, process.cwd());
-const { listRateCard, setTier, setPackagePrice, addTier } = await import(p('server/lib/rate-card.js'));
+const { listRateCard, setTier, setPackagePrice, addTier, setBands } = await import(p('server/lib/rate-card.js'));
+const { bandProblems, tierForQuantity } = await import(p('src/shared/pricing.js'));
 
 const c = new pg.Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: true } });
 await c.connect();
@@ -201,7 +202,10 @@ try {
   // --------------------------------------------------------- D2. a new tier
   console.log('\nD2. the owner adds a tier, and a new row is held to every rule an edit is');
   {
-    const svc = card.tiers[0].service_slug;
+    // A service priced by a CHOICE the customer makes, where a tier needs no number range. Until the
+    // band rules (2026-09-29) this used card.tiers[0] — weekly scooping, priced by dogs — and added a
+    // priced tier with no range: a tier no booking could ever land in, accepted without a word.
+    const svc = card.services.find((x) => x.price_basis === 'choice' && x.status === 'active').slug;
     const added = await addTier(svc, { label: 'Gate tier — extra large', price_cents: 31_900, price_suffix: '' }, BY, c);
     check(added.tier?.status === 'active' && Number(added.tier.price_cents) === 31_900, 'a new tier is a row, active, with its price', `${svc} · ${added.tier?.label}`);
     const { rows: hist } = await c.query(`select field from catalog_changes where entity_id = $1`, [added.tier.id]);
@@ -217,6 +221,54 @@ try {
     check(quoteOnly.tier.requires_quote === true && quoteOnly.tier.price_cents === null, 'NEGATIVE CONTROL: a quote-only tier is accepted, and carries no number even if one was sent');
     const retired = await setTier(added.tier.id, { status: 'retired' }, BY, c);
     check(retired.tier.status === 'retired', 'a tier no plan sells can be taken off the site');
+  }
+
+  // --------------------------------------------------------- F. the bands
+  console.log('\nF. every quantity lands in exactly one tier, and an edit that breaks that is refused');
+  {
+    const live = card.tiers.filter((t) => t.status === 'active');
+    const bad = card.services.filter((sv) => sv.status === 'active')
+      .map((sv) => [sv.slug, bandProblems(sv, live.filter((t) => t.service_slug === sv.slug))])
+      .filter(([, pr]) => pr.length);
+    check(bad.length === 0, 'every live service\'s bands have no overlap, no gap and no unreachable tier', bad.map(([k, pr]) => `${k}: ${pr[0]}`).join('; ') || `${card.services.filter((x) => x.status === 'active').length} services`);
+    // The rule and the pricer agree: every whole number 1..1200 lands in exactly the tier the rule implies.
+    const disagree = [];
+    for (const sv of card.services.filter((x) => x.status === 'active' && ['dogs', 'boxes', 'units', 'levels', 'sqft'].includes(x.price_basis))) {
+      const own = live.filter((t) => t.service_slug === sv.slug);
+      for (let n = 1; n <= 1200; n += sv.price_basis === 'sqft' ? 1 : 1) {
+        if (sv.price_basis !== 'sqft' && n > 12) break;
+        if (!tierForQuantity(sv, own, n)) { disagree.push(`${sv.slug} ${n}`); break; }
+      }
+    }
+    check(disagree.length === 0, 'every quantity a customer can type is priced by some tier (checked by the booking pricer itself)', disagree.join(', ') || 'counts 1-12, square feet 1-1200');
+
+    const T = (label, min_qty, max_qty, requires_quote = false) => ({ label, min_qty, max_qty, requires_quote });
+    check(bandProblems({ price_basis: 'dogs' }, [T('1', 1, 1), T('2-3', 2, 3), T('3+', 3, null)]).some((x) => /overlap/.test(x)), 'NEGATIVE CONTROL: an overlap is named');
+    check(bandProblems({ price_basis: 'sqft' }, [T('s', null, 200), T('m', 250, 500), T('l', 500, null)]).some((x) => /gap/.test(x)), 'NEGATIVE CONTROL: a gap is named');
+
+    const sq = card.services.find((x) => x.status === 'active' && x.price_basis === 'sqft' &&
+      live.filter((t) => t.service_slug === x.slug && (t.min_qty !== null || t.max_qty !== null)).length >= 2);
+    const bands = live.filter((t) => t.service_slug === sq.slug && (t.min_qty !== null || t.max_qty !== null))
+      .sort((a, b) => (a.min_qty ?? -1) - (b.min_qty ?? -1));
+    const [lo, hi] = bands;
+    const asIs = bands.map((t) => ({ id: t.id, min_qty: t.min_qty, max_qty: t.max_qty }));
+    const move = (fn) => asIs.map((b) => fn({ ...b }));
+    const overlap = await refuses(() => setBands(sq.slug, move((b) => (b.id === hi.id ? { ...b, min_qty: lo.max_qty - 50 } : b)), BY, c), 'bands');
+    check(overlap.refused, `an overlapping range on ${sq.slug} is refused`, `code ${overlap.code}`);
+    const gap = await refuses(() => setBands(sq.slug, move((b) => (b.id === hi.id ? { ...b, min_qty: lo.max_qty + 50 } : b)), BY, c), 'bands');
+    check(gap.refused, 'a gap between two ranges is refused');
+    const shifted = lo.max_qty + 25;
+    const okMove = await setBands(sq.slug, move((b) => (b.id === lo.id ? { ...b, max_qty: shifted } : b.id === hi.id ? { ...b, min_qty: shifted } : b)), BY, c);
+    const { rows: [after] } = await c.query(`select max_qty from service_tiers where id = $1`, [lo.id]);
+    check(Number(after.max_qty) === shifted && okMove.changed.length > 0, 'NEGATIVE CONTROL: moving the boundary on both tiers at once is accepted and written', `${lo.label} now ends at ${shifted}`);
+    const { rows: [bandChange] } = await c.query(`select field from catalog_changes where entity_id = $1 and field = 'max_qty' order by changed_at desc limit 1`, [lo.id]);
+    check(!!bandChange, 'a range change is in the history like a price change');
+    const middle = await refuses(() => setTier(lo.id, { status: 'retired' }, BY, c), 'bands');
+    check(middle.refused || middle.code === 'tier_has_packages', 'retiring the bottom band, which would leave small jobs with no tier, is refused', `code ${middle.code}`);
+    const overlapNew = await refuses(() => addTier(sq.slug, { label: 'Gate overlapping band', price_cents: 9_900, min_qty: 1, max_qty: 50 }, BY, c), 'bands');
+    check(overlapNew.refused, 'a new tier whose range overlaps an existing one is refused');
+    const unreachable = await refuses(() => addTier(sq.slug, { label: 'Gate unreachable', price_cents: 9_900 }, BY, c), 'bands');
+    check(unreachable.refused, 'a new priced tier with no range, which no booking could land in, is refused');
   }
 
   await c.query('rollback');

@@ -101,6 +101,60 @@ export function tierForQuantity(service: Service, tiers: Tier[], qty: number): T
   return own.find((t) => t.requires_quote && t.min_qty === null && t.max_qty === null) ?? null;
 }
 
+/**
+ * WHAT IS WRONG WITH A SERVICE'S BANDS, as sentences. Empty means every quantity lands in exactly
+ * one tier. The owner edits `min_qty`/`max_qty` on the rate card; this is what a save checks, and
+ * gates/rate-card.mjs checks it against every live service.
+ *
+ * Same semantics as tierForQuantity() above, because a band rule that disagreed with the function
+ * that prices a booking would approve a card that quotes the wrong tier:
+ *   - count bases (dogs, boxes, units, levels): max is INCLUSIVE, so the next band starts at max+1;
+ *   - area (sqft): max is EXCLUSIVE, so the next band starts at max.
+ * Above the top band, a quantity must still land somewhere: either the top band is open (no max)
+ * or an unbounded quote tier catches it (e.g. "Large or custom area").
+ */
+export function bandProblems(service: Pick<Service, 'price_basis'>, tiers: Pick<Tier, 'label' | 'min_qty' | 'max_qty' | 'requires_quote'>[]): string[] {
+  if (!['dogs', 'boxes', 'units', 'levels', 'sqft'].includes(service.price_basis ?? '')) {
+    const ranged = tiers.filter((t) => t.min_qty !== null || t.max_qty !== null);
+    return ranged.length ? [`This service is priced by ${service.price_basis === 'choice' ? 'a choice the customer makes' : 'a flat price'}, so its tiers take no number ranges.`] : [];
+  }
+  const area = service.price_basis === 'sqft';
+  const out: string[] = [];
+  const ranged = tiers.filter((t) => t.min_qty !== null || t.max_qty !== null)
+    .sort((a, b) => (a.min_qty ?? -Infinity) - (b.min_qty ?? -Infinity));
+  const catchAll = tiers.some((t) => t.requires_quote && t.min_qty === null && t.max_qty === null);
+  for (const t of tiers) {
+    if (t.min_qty === null && t.max_qty === null && !t.requires_quote) {
+      out.push(`"${t.label}" has a price but no ${area ? 'size' : 'number'} range, so no booking can ever land in it. Give it a range, or make it quote-only.`);
+    }
+  }
+  for (const t of ranged) {
+    if ((t.min_qty !== null && (!Number.isInteger(t.min_qty) || t.min_qty < 0)) || (t.max_qty !== null && (!Number.isInteger(t.max_qty) || t.max_qty < 1))) {
+      out.push(`"${t.label}": the range uses whole numbers from 0 up.`);
+    } else if (t.min_qty !== null && t.max_qty !== null && (area ? t.min_qty >= t.max_qty : t.min_qty > t.max_qty)) {
+      out.push(`"${t.label}": the range ends before it starts.`);
+    }
+  }
+  if (out.length) return out;
+  const first = ranged[0];
+  if (first && first.min_qty !== null && first.min_qty > (area ? 0 : 1)) {
+    out.push(`Nothing covers ${area ? `under ${first.min_qty}` : `fewer than ${first.min_qty}`}: start "${first.label}" at ${area ? 'nothing (blank)' : '1'}.`);
+  }
+  for (let i = 1; i < ranged.length; i++) {
+    const a = ranged[i - 1], b = ranged[i];
+    if (a.max_qty === null) { out.push(`"${a.label}" has no upper end, so "${b.label}" can never be reached.`); continue; }
+    const nextStart = area ? a.max_qty : a.max_qty + 1;
+    const bMin = b.min_qty ?? -Infinity;
+    if (bMin < nextStart) out.push(`"${a.label}" and "${b.label}" overlap: ${area ? `${b.min_qty ?? 0}–${a.max_qty}` : `${Math.max(bMin, 0)}–${a.max_qty}`} would land in both.`);
+    else if (bMin > nextStart) out.push(`There is a gap between "${a.label}" and "${b.label}": ${area ? `${nextStart}–${bMin}` : bMin - 1 === nextStart ? `${nextStart}` : `${nextStart}–${bMin - 1}`} lands in neither.`);
+  }
+  const last = ranged[ranged.length - 1];
+  if (last && last.max_qty !== null && !catchAll) {
+    out.push(`Nothing covers ${area ? `${last.max_qty} and up` : `more than ${last.max_qty}`}: leave the top of "${last.label}" open, or add a custom-quote tier with no range.`);
+  }
+  return out;
+}
+
 export type TierPrice =
   | { kind: 'price'; cents: number; suffix: string }
   | { kind: 'from'; cents: number; suffix: string }

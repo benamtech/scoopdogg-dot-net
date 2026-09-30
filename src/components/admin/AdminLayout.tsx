@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, MessageSquare, LogOut, Menu, X, CreditCard, TrendingUp, ListChecks, Truck, UserPlus, UsersRound, Tags, FileText } from 'lucide-react';
+import { LayoutDashboard, Users, MessageSquare, LogOut, Menu, X, CreditCard, TrendingUp, ListChecks, Truck, UserPlus, UsersRound, Tags, FileText, BadgePercent, LayoutList } from 'lucide-react';
 import { adminApi } from '../../lib/adminApi';
 import { useAuth } from '../../lib/auth';
 
@@ -20,6 +20,8 @@ const navItems = [
   { to: '/admin/messages', label: 'Messages', icon: MessageSquare, exact: false, crew: false },
   { to: '/admin/payments', label: 'Payments', icon: CreditCard, exact: false, crew: false },
   { to: '/admin/rate-card', label: 'Rate card', icon: Tags, exact: false, crew: false },
+  { to: '/admin/services', label: 'Services', icon: LayoutList, exact: false, crew: false },
+  { to: '/admin/offers', label: 'Offers', icon: BadgePercent, exact: false, crew: false },
   { to: '/admin/setup', label: 'Your setup', icon: ListChecks, exact: false, crew: false },
   { to: '/admin/team', label: 'Team', icon: UsersRound, exact: false, crew: false },
 ];
