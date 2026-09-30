@@ -364,7 +364,7 @@ export default function AdminRateCardPage() {
                     </div>
                   </div>
                 ) : (
-                  <button type="button" className="mt-3 text-sm font-medium text-forest-700 hover:text-forest-900" onClick={() => { setAdding(s.slug); setFresh({ label: '', price: '', suffix: '', quote: false, from: false, min: '', max: '' }); }}>+ Add a tier to {s.name}</button>
+                  <button type="button" className="mt-3 py-1.5 text-sm font-medium text-forest-700 hover:text-forest-900" onClick={() => { setAdding(s.slug); setFresh({ label: '', price: '', suffix: '', quote: false, from: false, min: '', max: '' }); }}>+ Add a tier to {s.name}</button>
                 )}
               </section>
             ))}
