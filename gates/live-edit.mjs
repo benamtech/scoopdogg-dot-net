@@ -10,7 +10,8 @@
  * WHY THE URL IS THE PROOF OF "NO DEPLOYMENT". Every request goes to the deployment's own immutable
  * URL (https://scoopdogg-<hash>-….vercel.app). A rebuild makes a NEW deployment with a NEW URL, so a
  * new value appearing at THIS one can only have come from the page rendering again from the rows.
- * The GitHub deployment list is read before and after as a second instrument.
+ * GitHub's deployment list (every Vercel project on this repo) is read as a second instrument:
+ * nothing may be created after the gate starts.
  *
  * For each edit: warm the page until the CDN serves it from cache (x-vercel-cache: HIT), save the
  * change through the admin API, poll the page until it shows the new value (the time is reported),
@@ -64,9 +65,13 @@ const until = async (route, test, limitMs = 30_000) => {
   return null;
 };
 const seen = () => lastSeen ? `last read ${lastSeen.status} x-vercel-cache=${lastSeen.cache}, prices on page: ${[...new Set([...lastSeen.html.matchAll(/data-price-cents="(\d+)"/g)].map((m) => m[1]))].join(',')}` : 'no read';
-const githubDeployments = () => {
-  try { return Number(execFileSync('gh', ['api', 'repos/benamtech/scoopdogg-dot-net/deployments?per_page=1', '--jq', '.[0].id'], { encoding: 'utf8' }).trim()); }
-  catch { return null; }
+/** Deployments GitHub records as created since `sinceIso`, from every Vercel project on this repo. */
+const deploymentsSince = (sinceIso) => {
+  try {
+    const out = execFileSync('gh', ['api', 'repos/benamtech/scoopdogg-dot-net/deployments?per_page=20',
+      '--jq', '.[] | "\\(.created_at) \\(.sha[0:7]) \\(.environment)"'], { encoding: 'utf8' });
+    return out.trim().split('\n').filter(Boolean).filter((l) => l.split(' ')[0] >= sinceIso);
+  } catch { return null; }
 };
 
 const EDITS = [];
@@ -104,7 +109,7 @@ const EDITS = [];
 // 3 and 4 — a service's intro and an offer — join here once their editors exist (§3).
 for (const extra of (await import('./_live-edit-extra.mjs').catch(() => ({ edits: [] }))).edits ?? []) EDITS.push(await extra({ s, db }));
 
-const deploymentsBefore = githubDeployments();
+const startedAt = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
 try {
   // The negative control first, on the tier: a database write with no purge must not reach the page.
   {
@@ -139,8 +144,8 @@ try {
   await s.end();
   await db.end();
 }
-const deploymentsAfter = githubDeployments();
-check(deploymentsBefore !== null && deploymentsBefore === deploymentsAfter, 'no new deployment was created while the edits went live', `latest GitHub deployment ${deploymentsBefore} before and ${deploymentsAfter} after; every page was read from ${new URL(base).host}`);
-
+const created = deploymentsSince(startedAt);
+check(created !== null && created.length === 0, 'no new deployment was created while the edits went live',
+  created === null ? 'GitHub deployments could not be read' : created.length ? `created during the run: ${created.join('; ')}` : `none since ${startedAt}; every page was read from ${new URL(base).host}`);
 console.log(`\n${fail ? 'FAIL' : 'PASS'} ${pass}/${pass + fail}`);
 process.exit(fail ? 1 : 0);
