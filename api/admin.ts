@@ -46,11 +46,23 @@ const MSG_STATUSES = ['unread', 'read', 'replied', 'spam'];
 const NEVER_PUBLIC = /^(login\/|logout$|visits\/|lead\/|message\/|quotes$|quote-new$|quote\/|customers\/|team|payments\/)/;
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
-  await route(req, res);
   const path = routePath(req);
-  if (req.method !== 'GET' && res.statusCode < 400 && !NEVER_PUBLIC.test(path)) {
-    const r = await purgeSite();
-    if (!r.purged && process.env.VERCEL) safeError(`admin:${path}:purge`, new Error(r.reason));
+  if (req.method === 'GET' || NEVER_PUBLIC.test(path)) return route(req, res);
+  // THE PURGE RUNS BEFORE THE RESPONSE LEAVES. Measured 2026-09-30 on a preview: purging after
+  // `res.end()` let the function freeze with the purge unfinished, and a saved tier price stayed off
+  // the cached page for the whole 30-second window. So a write's response is held until the purge
+  // has run, and "Saved" on the screen means the page will show it.
+  const end = res.end.bind(res);
+  let held: unknown[] | null = null;
+  (res as unknown as { end: (...a: unknown[]) => ApiResponse }).end = (...args: unknown[]) => { held = args; return res; };
+  try {
+    await route(req, res);
+    if (res.statusCode < 400) {
+      const r = await purgeSite();
+      if (!r.purged && process.env.VERCEL) safeError(`admin:${path}:purge`, new Error(r.reason));
+    }
+  } finally {
+    (end as (...a: unknown[]) => ApiResponse)(...(held ?? []));
   }
 }
 
