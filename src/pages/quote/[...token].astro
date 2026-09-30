@@ -4,10 +4,10 @@
  * The island reads the token from the address; the page itself carries nothing personal, so it can
  * be built static like every other page. noindex: a capability link must never reach a search index.
  */
-import Base from '../layouts/Base.astro';
-import Logo from '../components/site/Logo.astro';
-import QuoteApp from '../components/quote/QuoteApp';
-import { business } from '../lib/catalog';
+import Base from '../../layouts/Base.astro';
+import Logo from '../../components/site/Logo.astro';
+import QuoteApp from '../../components/quote/QuoteApp';
+import { business } from '../../lib/catalog';
 ---
 <Base title="Your quote | Scoop Dogg" description="Your custom quote from Scoop Dogg." canonicalPath="/quote" noindex>
   <header class="tone-white border-b border-line bg-paper print:hidden">

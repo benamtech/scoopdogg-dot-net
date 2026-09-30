@@ -71,10 +71,6 @@
       "destination": "/api/photo"
     },
     {
-      "source": "/account/:path*",
-      "destination": "/account"
-    },
-    {
       "source": "/api/account/:path*",
       "destination": "/api/account"
     },
@@ -87,24 +83,8 @@
       "destination": "/api/admin"
     },
     {
-      "source": "/admin/leads/:id",
-      "destination": "/admin/lead"
-    },
-    {
-      "source": "/admin/messages/:id",
-      "destination": "/admin/message"
-    },
-    {
       "source": "/api/quote/:path*",
       "destination": "/api/quote"
-    },
-    {
-      "source": "/quote/:token",
-      "destination": "/quote"
-    },
-    {
-      "source": "/admin/quotes/:id",
-      "destination": "/admin/quote"
     }
   ]
 }

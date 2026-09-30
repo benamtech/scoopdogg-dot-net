@@ -34,22 +34,37 @@ if (!existsSync(FUNC)) { console.error('[render] no built function — run `astr
 const OUT = path.resolve('dist');
 
 const { default: handler } = await import(pathToFileURL(FUNC).href);
-const server = http.createServer((req, res) => handler(req, res));
+const server = http.createServer((req, res) => {
+  // A render that throws is a FAILED page with its route named, not a reset socket and a stack
+  // trace from fetch with no route in it.
+  Promise.resolve(handler(req, res)).catch((e) => {
+    console.error(`  FAIL  ${req.url} threw: ${e?.stack?.split('\n').slice(0, 3).join(' | ') ?? e}`);
+    if (!res.headersSent) { res.statusCode = 500; res.end('render threw'); } else res.destroy();
+  });
+});
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const base = `http://127.0.0.1:${server.address().port}`;
 
 // Page files, as routes. Dynamic ones ([slug]) come from the sitemap instead.
 const walk = (d) => readdirSync(d).flatMap((f) => { const p = path.join(d, f); return statSync(p).isDirectory() ? walk(p) : [p]; });
+// Page files as routes. A rest parameter (`quote/[...token]`) is rendered at its base (/quote); an
+// admin detail screen (`admin/leads/[id]`) at a placeholder id, because the screen reads its id in
+// the browser and the server HTML is the same shell for every id. Other dynamic pages
+// (services, areas, questions, resources) come from the sitemap, which lists the real ones.
 const fileRoutes = walk('src/pages')
-  .filter((f) => f.endsWith('.astro') && !f.includes('['))
+  .filter((f) => f.endsWith('.astro'))
   .map((f) => '/' + path.relative('src/pages', f).replace(/\\/g, '/').replace(/\.astro$/, '').replace(/(^|\/)index$/, ''))
-  .map((r) => (r === '/' ? '/' : r.replace(/\/$/, '')))
+  .map((r) => r.replace(/\/\[\.\.\.[^\]]+\]$/, '').replace(/^(\/admin\/.*)\[[^\]]+\]$/, '$1example'))
+  .filter((r) => !r.includes('['))
+  .map((r) => (r === '/' || r === '' ? '/' : r.replace(/\/$/, '')))
   .filter((r) => r !== '/404');
 
 let failed = 0;
 const get = async (route) => {
-  const r = await fetch(base + route, { redirect: 'manual' });
-  return { status: r.status, body: await r.text() };
+  try {
+    const r = await fetch(base + route, { redirect: 'manual' });
+    return { status: r.status, body: await r.text() };
+  } catch (e) { return { status: `no answer (${e.cause?.code ?? e.message})`, body: '' }; }
 };
 const write = (file, body) => { mkdirSync(path.dirname(file), { recursive: true }); writeFileSync(file, body); };
 

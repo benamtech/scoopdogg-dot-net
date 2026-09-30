@@ -52,18 +52,20 @@ const PRIVATE = {
   '/admin/login': 'as above',
   '/admin/today': 'as above',
   '/admin/leads': 'as above',
-  '/admin/lead': 'as above',
+  '/admin/leads/example': 'as above — every lead\'s screen; rendered for the gates at a placeholder id (scripts/render-pages.mjs)',
   '/admin/messages': 'as above',
-  '/admin/message': 'as above',
+  '/admin/messages/example': 'as above, one message',
   '/admin/customers': 'as above',
   '/admin/payments': 'as above',
   '/admin/growth': 'as above',
   '/admin/setup': 'as above',
   '/admin/team': 'as above',
   '/admin/quotes': 'as above',
-  '/admin/quote': 'as above',
+  '/admin/quotes/example': 'as above, one quote',
   '/quote': 'a customer opens it from the capability link in their request or quote; noindex, never linked',
   '/admin/rate-card': 'as above',
+  '/admin/services': 'as above',
+  '/admin/offers': 'as above',
 };
 
 let pass = 0, fail = 0;
