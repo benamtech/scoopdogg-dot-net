@@ -18,3 +18,7 @@ await c.query(
 const after = await c.query('select value from settings where key = $1', [key]);
 console.log(`  ${key}\n    was: ${JSON.stringify(before.rows[0]?.value ?? null)}\n    now: ${JSON.stringify(after.rows[0].value)}`);
 await c.end();
+// The pages render from the rows but sit behind the CDN until a purge (server/lib/site-cache.ts). An
+// admin save purges by itself; a row changed here must purge too, or the site shows the old value.
+try { const { purgeSite } = await import('./purge-site.mjs'); console.log(`  purged the public pages (${purgeSite()})`); }
+catch (e) { console.error(`  the row is saved but the purge failed — run node scripts/purge-site.mjs: ${String(e.message).split('\n')[0]}`); process.exitCode = 1; }

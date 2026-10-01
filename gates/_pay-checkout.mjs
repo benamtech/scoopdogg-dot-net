@@ -25,12 +25,20 @@ export async function payCheckout(url, opts = {}) {
  */
 export async function payOnPage(page, { card = '4242424242424242', name = 'Gate Customer', zip = '93001', leaveTo = /^(?!https:\/\/checkout\.stripe\.com)/, screenshot = null } = {}) {
     await page.locator('#cardNumber').or(page.getByTestId('card-accordion-item')).first().waitFor({ timeout: 45000 }).catch(() => {});
-    // The Card BUTTON first. Measured 2026-09-30 on a live test Checkout: for a $99 one-time payment Stripe lists Card,
-    // Cash App Pay, Klarna, Affirm and Bank; the option is a button (data-testid card-accordion-item-button)
-    // inside the item, there is no radio role, and clicking the item or the text did not select Card
-    // (output/checkout-e2e-onetime-failure.png), so the card fields never appeared.
-    const cardTab = page.getByTestId('card-accordion-item-button').or(page.getByTestId('card-accordion-item')).or(page.getByText(/^Card$/).first());
-    if (await cardTab.count().catch(() => 0)) await cardTab.first().click({ timeout: 10000 }).catch(() => {});
+    // SELECT CARD, AND CHECK IT TOOK. Measured 2026-09-30 on live test Checkouts: clicking the item
+    // (data-testid card-accordion-item) or forcing its radio opens the card form; the inner button and
+    // the "Card" label time out. A single click sometimes lands before the page is interactive, so this
+    // clicks, waits for #cardNumber, and tries again up to three times.
+    const selectCard = async () => {
+      for (let i = 0; i < 3; i++) {
+        if (await page.locator('#cardNumber').isVisible().catch(() => false)) return;
+        await page.getByTestId('card-accordion-item').click({ timeout: 5000 }).catch(() => {});
+        if (await page.locator('#cardNumber').waitFor({ timeout: 5000 }).then(() => true, () => false)) return;
+        await page.locator('#payment-method-accordion-item-title-card').click({ force: true, timeout: 5000 }).catch(() => {});
+        if (await page.locator('#cardNumber').waitFor({ timeout: 5000 }).then(() => true, () => false)) return;
+      }
+    };
+    await selectCard();
     try {
       await page.locator('#cardNumber').waitFor({ timeout: 30000 });
     } catch (e) {

@@ -177,6 +177,26 @@ try {
     }
   }
 
+  // A row changed OUTSIDE the admin (set-setting.mjs, SQL) reaches the page once scripts/purge-site.mjs
+  // runs: the same tier, written directly, then the command-line purge.
+  {
+    const e = EDITS[0];
+    await warm(e.route);
+    const { rows: [t] } = await db.query(`select id, price_cents from service_tiers where service_slug = 'pressure-washing' and status = 'active' and price_cents is not null order by sort_order limit 1`);
+    await db.query(`update service_tiers set price_cents = price_cents + 100 where id = $1`, [t.id]);
+    try {
+      const { purgeSite } = await import('../scripts/purge-site.mjs');
+      purgeSite();
+      const took = await until(e.route, e.after);
+      check(took !== null, 'a change made outside the admin reaches the page once scripts/purge-site.mjs runs', took !== null ? `${(took / 1000).toFixed(1)}s after the purge` : `not visible after 30s; ${seen()}`);
+    } finally {
+      await db.query(`update service_tiers set price_cents = $2 where id = $1`, [t.id, t.price_cents]);
+      const { purgeSite } = await import('../scripts/purge-site.mjs');
+      purgeSite();
+    }
+    check(await until(e.route, e.before) !== null, 'and the restored price is back on the page after a second purge');
+  }
+
   for (const e of EDITS) {
     await warm(e.route);
     const t0 = Date.now();
