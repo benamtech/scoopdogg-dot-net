@@ -311,6 +311,18 @@ try {
 }
 
 check('no JavaScript errors', errors.length === 0, errors.slice(0, 2).join(' | '));
+
+// LEAVE NOTHING BEHIND. This walk books real subscriptions in the one database, and until
+// 2026-10-01 it never removed them: 20 test visits had filled Tuesday 6 October to
+// schedule.day_capacity, so real customers saw the day as Full. Every DEMO—E2E customer and
+// everything attached to them goes, then the gate counts what is left.
+{
+  const { removeTestCustomers } = await import('../scripts/cleanup-e2e-customers.mjs');
+  const removed = await removeTestCustomers('DEMO—E2E', c).catch((e) => ({ error: e.message }));
+  const { rows: [left] } = await c.query(`select count(*)::int as n from customers where name like 'DEMO—E2E%'`);
+  check('every customer and booking this walk made is removed from the database', !removed.error && left.n === 0,
+    removed.error ?? `${removed.customers ?? 0} customers, ${removed.visits ?? 0} visits removed; ${left.n} left`);
+}
 await c.end();
 await browser.close();
 

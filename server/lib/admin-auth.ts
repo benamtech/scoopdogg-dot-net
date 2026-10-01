@@ -94,12 +94,14 @@ export async function startLogin(emailRaw: string): Promise<{ sent: boolean; nam
      values ($1, $2, 'admin_login', now() + ($3 || ' minutes')::interval)`,
     [hmac(email), hmac(`${email}:${code}`), String(CODE_TTL_MINUTES)]);
 
-  // Through the one send function, so the sign-in code honours demo mode like every other
-  // message. In demo mode the code for any address arrives at demo.address, which is what
-  // lets the acceptance walk sign in AS the owner without sending him anything.
+  // Through the one send function. The code goes to the person who asked for it even in demo
+  // mode (toRequesterInDemo): every preview forces demo mode, and the owner has to be able to sign
+  // in to one. Only this call sets the flag, and only after the address was found above as an
+  // active team member. The gates sign in by minting a code in the database, not by email.
   const sent = await sendEmail({
     purpose: 'admin_login',
     recipients: { explicit: [email] },
+    toRequesterInDemo: true,
     subject: `Your Scoop Dogg admin code: ${code}`,
     html: `<div style="font-family:system-ui,sans-serif">
       <p style="font-size:15px;color:#444">Your sign-in code for the Scoop Dogg admin:</p>

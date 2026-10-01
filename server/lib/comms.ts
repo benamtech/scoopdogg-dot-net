@@ -253,8 +253,13 @@ export async function cardsExpiringSoon(q: Queryable = db()) {
       join customers c on c.id = pm.customer_id
       join subscriptions s on s.customer_id = c.id and s.state = 'active'
      where pm.detached_at is null
-       and make_date(pm.exp_year, pm.exp_month, 1) + interval '1 month'
-             between now() and now() + interval '60 days'`);
+       -- THIS CALENDAR MONTH OR NEXT, on Ventura's calendar. A card works through the last day
+       -- of its expiry month. This read "stops working within 60 days" until 2026-10-01, which
+       -- on the 1st of a month missed next month's cards: a November card stops on 1 December,
+       -- 61 days after 1 October. gates/lead-comms.mjs went red on exactly that morning.
+       and make_date(pm.exp_year, pm.exp_month, 1)
+             between date_trunc('month', now() at time zone 'America/Los_Angeles')::date
+                 and (date_trunc('month', now() at time zone 'America/Los_Angeles') + interval '1 month')::date`);
   return rows;
 }
 

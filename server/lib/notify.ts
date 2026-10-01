@@ -55,6 +55,15 @@ export type SendEmailArgs = {
     | 'ops_alert';
   /** Settings key holding the recipient list, or an explicit address for a sign-in code. */
   recipients: { settingKey: string } | { explicit: string[] };
+  /**
+   * Deliver to the requested address EVEN IN DEMO MODE. Set by exactly one caller:
+   * admin-auth.ts startLogin(), after it has checked the address is an active team member who
+   * typed it on the sign-in screen. Without it, the owner could not sign in to a preview (demo
+   * mode is forced on every preview) because his code would go to demo.address. A code reaching
+   * the person who asked for it is not a notification leaking from a demo; everything else,
+   * including a sign-in email sent any other way, is still rewritten.
+   */
+  toRequesterInDemo?: boolean;
   subject: string;
   html: string;
   replyTo?: string;
@@ -232,7 +241,7 @@ export async function sendEmail(args: SendEmailArgs): Promise<SendEmailResult> {
     !requestedTo.length
       ? `no recipient: ${'settingKey' in args.recipients ? args.recipients.settingKey : 'explicit list'} is empty or unset`
       : !from ? `no sender: ${fromKey} is empty or unset`
-      : demo.mode && !demo.address ? 'demo mode is on and demo.address is unset'
+      : demo.mode && !demo.address && !args.toRequesterInDemo ? 'demo mode is on and demo.address is unset'
       : null;
 
   if (refusal) {
@@ -249,7 +258,7 @@ export async function sendEmail(args: SendEmailArgs): Promise<SendEmailResult> {
 
   // Demo mode rewrites the addresses BEFORE the network call. This is the whole point of
   // the file: it happens once, for every message, whatever the caller remembered to do.
-  const to = demo.mode ? [demo.address as string] : requestedTo;
+  const to = demo.mode && !args.toRequesterInDemo ? [demo.address as string] : requestedTo;
   const cc = demo.mode ? [] : requestedCc;
 
   const payload = {

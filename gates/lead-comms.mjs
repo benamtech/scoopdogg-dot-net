@@ -213,6 +213,13 @@ console.log('\nD. the shipped eligibility query, against planted rows');
       [cust.id, soon.getMonth() + 1, soon.getFullYear()]);
     const mineCards = async () => (await cardsExpiringSoon(c)).filter((r) => r.customer_id === cust.id);
     check((await mineCards()).length === 1, 'a card expiring next month is found');
+    {
+      // The boundary, by calendar month: two months out is not "soon" yet, on any day of the month.
+      const later = new Date(); later.setDate(1); later.setMonth(later.getMonth() + 2);
+      await c.query(`update payment_methods set exp_month = $2, exp_year = $3 where id = $1`, [pm.id, later.getMonth() + 1, later.getFullYear()]);
+      check((await mineCards()).length === 0, 'NEGATIVE CONTROL: a card expiring two months out is not found yet');
+      await c.query(`update payment_methods set exp_month = $2, exp_year = $3 where id = $1`, [pm.id, soon.getMonth() + 1, soon.getFullYear()]);
+    }
     await c.query(`update payment_methods set exp_year = exp_year + 2 where id = $1`, [pm.id]);
     check((await mineCards()).length === 0, 'a card expiring in two years is not');
     await c.query(`update payment_methods set exp_year = exp_year - 2, detached_at = now() where id = $1`, [pm.id]);
