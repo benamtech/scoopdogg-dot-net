@@ -45,7 +45,7 @@ jobs:
         run: |
           set +e
           node scripts/production-check.mjs --daily --alert | tee out.txt
-          code=$?
+          code=${PIPESTATUS[0]}
           set -e
           echo "exit $code"
           [ "$code" = "1" ] && grep -q "alert to Ben: " out.txt && ! grep -q "alert to Ben: failed" out.txt
