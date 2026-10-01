@@ -1,0 +1,51 @@
+# TEMPORARY: proves production-check.yml's moving parts on this branch before the merge, because
+# deployment_status and schedule workflows only run from main. Deleted once it has passed.
+name: production-check-selftest
+on:
+  push:
+    branches: [elevation-2026-09-16]
+    paths: ['.github/workflows/production-check-selftest.yml']
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - id: google
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/109708278569/locations/global/workloadIdentityPools/github/providers/scoopdogg
+          service_account: search-console@amtech-search-console.iam.gserviceaccount.com
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/siteverification,https://www.googleapis.com/auth/webmasters
+      - name: The Google token works (Site Verification API answers 200)
+        env:
+          TOKEN: ${{ steps.google.outputs.access_token }}
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $TOKEN" https://www.googleapis.com/siteVerification/v1/webResource)
+          echo "siteVerification: $code"; [ "$code" = "200" ]
+      - name: The check runs, and against the old production it fails and alerts (to the sandbox)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          STRIPE_SECRET_KEY_LIVE: ${{ secrets.STRIPE_SECRET_KEY_LIVE }}
+          STRIPE_SECRET_KEY_TEST: ${{ secrets.STRIPE_SECRET_KEY_TEST }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+          SD_FORCE_DEMO: '1'
+          SD_DEMO_ADDRESS: delivered+production-check-selftest@resend.dev
+        run: |
+          set +e
+          node scripts/production-check.mjs --daily --alert | tee out.txt
+          code=$?
+          set -e
+          echo "exit $code"
+          [ "$code" = "1" ] && grep -q "alert to Ben: " out.txt && ! grep -q "alert to Ben: failed" out.txt

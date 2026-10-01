@@ -25,7 +25,8 @@
     "gates:promotion": "node gates/promotion-ready.mjs",
     "gates:SENDS-REAL-EMAIL": "node gates/demo-negative-control.mjs",
     "gates:live-edit": "node gates/live-edit.mjs",
-    "after-merge": "node scripts/after-merge.mjs"
+    "production-check": "node scripts/production-check.mjs --deploy",
+    "health": "node scripts/production-check.mjs --daily"
   },
   "dependencies": {
     "@astrojs/react": "^4.4.2",

@@ -19,10 +19,11 @@ if (!sql) {
   console.error('usage: sql-read.mjs "<select ...>"');
   process.exit(2);
 }
-const c = new pg.Client({
-  host: process.env.PGHOST, user: process.env.PGUSER, password: process.env.PGPASSWORD,
-  database: process.env.PGDATABASE, ssl: { rejectUnauthorized: true },
-});
+// PG* variables locally (Vercel's Neon integration writes them to .env.local); DATABASE_URL where
+// only that is set, as in the GitHub Actions production check.
+const c = new pg.Client(process.env.PGHOST
+  ? { host: process.env.PGHOST, user: process.env.PGUSER, password: process.env.PGPASSWORD, database: process.env.PGDATABASE, ssl: { rejectUnauthorized: true } }
+  : { connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: true } });
 await c.connect();
 try {
   await c.query('begin transaction read only');

@@ -50,7 +50,9 @@ export type SendEmailArgs = {
     // The custom-quote lane (server/lib/quotes.ts, migration 042).
     | 'quote_receipt' | 'quote_sent' | 'quote_accepted'
     // The daily run (server/lib/daily.ts): the owner's list of quotes to follow up.
-    | 'quote_follow_up';
+    | 'quote_follow_up'
+    // The automatic production checks (scripts/after-merge.mjs, .github/workflows): a failure, to Ben.
+    | 'ops_alert';
   /** Settings key holding the recipient list, or an explicit address for a sign-in code. */
   recipients: { settingKey: string } | { explicit: string[] };
   subject: string;

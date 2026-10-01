@@ -19,7 +19,11 @@ import { execFileSync } from 'node:child_process';
 const SA = 'search-console@amtech-search-console.iam.gserviceaccount.com';
 const SITE = 'https://scoopdogg.net/';
 const OWNER = 'ben@amtechai.com';
-const token = execFileSync('gcloud', ['auth', 'print-access-token', `--impersonate-service-account=${SA}`,
+// In GitHub Actions the token arrives already minted: google-github-actions/auth exchanges the
+// workflow's own OIDC token for one as this service account (keyless Workload Identity Federation,
+// pool `github`, limited to this repository) and hands it over as SEARCH_CONSOLE_TOKEN. On a laptop
+// the signed-in gcloud user impersonates the service account, as before.
+const token = process.env.SEARCH_CONSOLE_TOKEN || execFileSync('gcloud', ['auth', 'print-access-token', `--impersonate-service-account=${SA}`,
   '--scopes=https://www.googleapis.com/auth/siteverification,https://www.googleapis.com/auth/webmasters'],
   { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
 const api = async (url, init = {}) => {
