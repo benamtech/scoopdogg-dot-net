@@ -304,8 +304,16 @@ try {
   const { rows: mail } = await c.query(
     `select payload->'to' as to_list, demo from outbox where created_at > now() - interval '15 minutes'
        and (payload->>'subject' ilike $1 or payload->'requested_to' ?| $2)`, [`%${stamp}%`, Object.values(people).map((p) => p.email)]);
-  const leaked = mail.filter((m) => !m.demo || JSON.stringify(m.to_list).match(/scoopdogg|amtechai|gmail/));
-  check('every message these bookings sent was demo-addressed (no real inbox)', leaked.length === 0, `${mail.length} messages`);
+  // Demo-addressed means sent ONLY to the demo address in force: the process's SD_DEMO_ADDRESS for a
+  // local server, the demo.address setting (Ben) on a deployed preview — never to a customer or the
+  // owner. Until 2026-10-01 this matched /amtechai/ as a "real inbox", which is the demo address on
+  // every preview, so the check failed on a correct run there.
+  const { rows: [da] } = await c.query(`select value #>> '{}' as v from settings where key = 'demo.address'`);
+  const allowed = (addr) => addr === da?.v || addr === process.env.SD_DEMO_ADDRESS || /@resend\.dev$/.test(addr);
+  const leaked = mail.filter((m) => !m.demo || !(m.to_list ?? []).every(allowed));
+  check('every message these bookings sent went only to the demo address, never to a customer or the owner', leaked.length === 0,
+    `${mail.length} messages${leaked.length ? `; to ${JSON.stringify(leaked[0].to_list)}` : ''}`);
+  check('NEGATIVE CONTROL: the owner\'s own address would count as a leak', !allowed('josue@scoopdogg.net'));
 } catch (e) {
   check('the rows could be read back', false, String(e.message).split('\n')[0]);
 }
