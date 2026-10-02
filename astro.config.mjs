@@ -23,7 +23,23 @@ export default defineConfig({
   // imageService: Vercel's image CDN resizes and converts at the edge and caches the result, so no
   // image request runs our function (without it, every <Image> became /_image, served by sharp inside
   // the page function). The source files are kept small too: see assets-originals/art.
-  adapter: vercel({ imageService: true }),
+  //
+  // THE WIDTH LIST IS NOT OPTIONAL. Vercel's image CDN serves only the widths named here, and the
+  // adapter silently drops any `widths={[...]}` value that is not on the list; with none left it
+  // falls back to the width nearest the SOURCE file. Measured 2026-10-02: a 160px cartoon asked
+  // for [160, 320], both were dropped, and it was served at 1080px, quality 100, 335KB. The
+  // adapter's default list starts at 640. So the list below carries every width a component asks
+  // for, and gates/image-widths.mjs fails the build when a component asks for one that is not
+  // here, or leaves `quality` to the adapter's default of 100.
+  adapter: vercel({
+    imageService: true,
+    imagesConfig: {
+      sizes: [160, 176, 200, 260, 320, 352, 380, 390, 400, 480, 520, 600, 640, 750, 800, 828, 960, 1080, 1200, 1280, 1920],
+      domains: [],
+      formats: ['image/webp'],
+      minimumCacheTTL: 2678400,
+    },
+  }),
   integrations: [
     react(),
     tailwind({ applyBaseStyles: false }),

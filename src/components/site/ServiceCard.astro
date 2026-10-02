@@ -65,7 +65,7 @@ const FLOAT_ROOM = 'sm:pt-28';
   {art && (
     // On a phone the cartoon sits above its card, centred, as it does on the live site.
     <div class="mb-3 flex justify-center sm:hidden">
-      <Image
+      <Image quality={75}
         src={art}
         alt={artAlt}
         widths={[160, 320]}
@@ -93,11 +93,11 @@ const FLOAT_ROOM = 'sm:pt-28';
 
     {art && (framed ? (
       <div class="-mt-2 mb-6 hidden justify-center sm:flex">
-        <Image src={art} alt={artAlt} widths={[200, 400]} sizes="200px" loading="lazy" decoding="async"
+        <Image quality={75} src={art} alt={artAlt} widths={[200, 400]} sizes="200px" loading="lazy" decoding="async"
           class="pointer-events-none h-52 w-auto select-none rounded-lg bg-paper object-contain p-2 shadow-sm ring-1 ring-ink-900/10" />
       </div>
     ) : (
-      <Image src={art} alt={artAlt} widths={[176, 352]} sizes="176px" loading="lazy" decoding="async"
+      <Image quality={75} src={art} alt={artAlt} widths={[176, 352]} sizes="176px" loading="lazy" decoding="async"
         class={`pointer-events-none absolute -right-3 hidden h-44 w-44 select-none object-contain drop-shadow-md sm:block ${FLOAT_RISE}`} />
     ))}
 

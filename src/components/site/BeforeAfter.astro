@@ -22,9 +22,9 @@ const { before, after, caption, alt, sizes = '(min-width: 1024px) 380px, (min-wi
 ---
 <figure class="group" data-before-after>
   <div class={`relative ${landscape ? 'aspect-[4/3]' : 'aspect-[3/4]'} overflow-hidden bg-forest-100 ${feature ? 'rounded-xl shadow-lg' : 'rounded-lg shadow-md'}`} style="--pos: 50%">
-    <Image src={after} alt={`After: ${alt}`} widths={[380, 480]} sizes={sizes} class="absolute inset-0 h-full w-full object-cover" loading={eager ? 'eager' : 'lazy'} {...(eager ? { fetchpriority: 'high' } : {})} />
+    <Image quality={68} src={after} alt={`After: ${alt}`} widths={[380, 480]} sizes={sizes} class="absolute inset-0 h-full w-full object-cover" loading={eager ? 'eager' : 'lazy'} {...(eager ? { fetchpriority: 'high' } : {})} />
     <div class="absolute inset-0 [clip-path:inset(0_calc(100%-var(--pos))_0_0)]" data-before-layer>
-      <Image src={before} alt={`Before: ${alt}`} widths={[380, 480]} sizes={sizes} class="h-full w-full object-cover" loading={eager ? 'eager' : 'lazy'} />
+      <Image quality={68} src={before} alt={`Before: ${alt}`} widths={[380, 480]} sizes={sizes} class="h-full w-full object-cover" loading={eager ? 'eager' : 'lazy'} />
     </div>
     <span class="absolute left-3 top-3 rounded-sm bg-forest-900/85 px-2 py-1 text-micro font-semibold uppercase text-white">Before</span>
     <span class="absolute right-3 top-3 rounded-sm bg-amber-500 px-2 py-1 text-micro font-semibold uppercase text-forest-900">After</span>

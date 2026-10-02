@@ -242,7 +242,7 @@ const jsonLd = [
 ];
 
 /**
- * THE PRELOAD HAS TO NAME THE SAME FILES THE <Image> WILL ASK FOR.
+ * THE PRELOAD HAS TO NAME THE SAME FILES THE <Image quality={68}> WILL ASK FOR.
  *
  * A `<link rel=preload as=image href="...">` pointing at a different URL than the rendered
  * srcset does not warm the cache — it downloads a second image and makes LCP worse, which is
@@ -383,7 +383,7 @@ const posterPreload = await getImage({
           </div>
         </div>
         <div class="relative mx-auto w-fit max-w-md lg:max-w-none">
-          <Image src={artPressureScene} alt="Scoop Dogg mascot pressure washing a driveway" widths={[400, 640, 960]} sizes="(min-width: 1024px) 540px, 90vw" class="mx-auto h-auto max-h-[480px] w-auto max-w-full rounded-xl shadow-lg" loading="lazy" />
+          <Image quality={75} src={artPressureScene} alt="Scoop Dogg mascot pressure washing a driveway" widths={[400, 640, 960]} sizes="(min-width: 1024px) 540px, 90vw" class="mx-auto h-auto max-h-[480px] w-auto max-w-full rounded-xl shadow-lg" loading="lazy" />
           <span class="absolute -right-2 -top-3 rounded-full bg-amber-500 px-4 py-2 text-sm font-bold text-forest-900 shadow-lg">Most requested add-on</span>
         </div>
       </div>
@@ -462,7 +462,7 @@ const posterPreload = await getImage({
     <div class="grid items-center gap-12 lg:grid-cols-12">
       <div class="lg:col-span-5">
         <div class="relative mx-auto max-w-sm lg:max-w-none">
-          <Image src={josue} alt="Josue, owner of Scoop Dogg, cleaning a backyard" widths={[400, 800]} sizes="(min-width: 1024px) 440px, 85vw" class="aspect-[4/5] w-full rounded-card object-cover shadow-lg" />
+          <Image quality={68} src={josue} alt="Josue, owner of Scoop Dogg, cleaning a backyard" widths={[400, 800]} sizes="(min-width: 1024px) 440px, 85vw" class="aspect-[4/5] w-full rounded-card object-cover shadow-lg" />
           {reviewSummary.rating && (
             <a href="/reviews" class="absolute -bottom-5 -right-3 rounded-lg bg-forest-700 px-5 py-4 text-white shadow-lg sm:-right-5">
               <span class="block font-serif text-h3 leading-none">{reviewSummary.rating.toFixed(1)}</span>

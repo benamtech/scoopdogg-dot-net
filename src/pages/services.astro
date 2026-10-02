@@ -17,7 +17,7 @@ const Card = (s: (typeof services)[number]) => ({ s, p: headlinePrice(s.slug) })
 <Site title="Services | Dog Poop Cleanup, Turf Care & More | Scoop Dogg" description="Weekly dog poop scooping, turf maintenance, yard care, litter box service and one-time cleanups across Ventura and Santa Barbara counties." canonicalPath="/services">
   <PageHero eyebrow="Services" title="Everything your yard and your pets need" lede="Monthly plans that run themselves, and one-time jobs when you need a reset.">
     <div slot="aside" class="hidden justify-center lg:flex" aria-hidden="true">
-      <Image src={mowing} alt="" widths={[260, 438]} sizes="260px" class="h-auto w-60" loading="eager" />
+      <Image quality={75} src={mowing} alt="" widths={[260, 520]} sizes="260px" class="h-auto w-60" loading="eager" />
     </div>
   </PageHero>
   <Section tone="white" labelledby="plans">
