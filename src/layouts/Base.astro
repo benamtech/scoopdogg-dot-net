@@ -71,11 +71,10 @@ const { title, description, canonicalPath, ogImage, jsonLd, noindex = false, bod
  * were built from a file, so this comment's earlier advice wrote a row the site could never see.
  * set-setting.mjs purges the page cache like an admin save does.
  *
- * AND READ THE LAST SENTENCE THE RIGHT WAY ROUND. The historical GA data is untouched either
- * way. Production is still the predecessor build and is still serving G-SNLVJNSP05 today
- * (measured 2026-09-26), so promoting this branch TURNS GA OFF rather than leaving it alone.
- * That is a deliberate choice — P19 §2 chose the first-party spine over a vendor tag — but it
- * is a change to what production does, and the promotion checklist in SPEC step 11 names it.
+ * THE ROW IS SET. The live database carries analytics.measurement_id = G-SNLVJNSP05 (read
+ * 2026-10-02), so promoting this branch keeps GA running on the same property, and its history
+ * reads straight across the change of site. Ben, 2026-10-02: the site keeps Google Analytics.
+ * Read the row before believing any sentence about it, this one included.
  */
 const measurementId = setting<string>('analytics.measurement_id', '');
 // Search Console ownership (scripts/search-console.mjs). A setting, not code: the token is public by design.
