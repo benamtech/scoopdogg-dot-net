@@ -10,13 +10,62 @@
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 C="sd-schema-gate-$$"
-cleanup() { docker rm -f "$C" >/dev/null 2>&1 || true; }
+cleanup() { timeout 20 docker rm -f "$C" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 
-docker run -d --name "$C" -e POSTGRES_PASSWORD=x -e POSTGRES_DB=scoopdogg postgres:17-alpine >/dev/null
+# A HANG IS NOT A TEST FAILURE, and this script was one. Measured 2026-09-22: the daemon answers
+# (`docker info` -> 29.5.2), `registry-1.docker.io` answers from curl, and a `docker pull` produces
+# no output and never finishes on this box. `docker run` then failed silently into /dev/null and the
+# unbounded `until` loop below span forever — so `npm run gates:db` sat at 100% of nothing with no
+# message, which is strictly worse than a red. It is what let "gates:db 25" be recorded as green on
+# a day nobody could have run it.
+if ! timeout 20 docker info >/dev/null 2>&1; then
+  echo "CANNOT RUN: the Docker daemon did not answer in 20s — absent, or wedged."
+  echo "  'docker info' answering once does not mean it will answer again: on this box it returned"
+  echo "  29.5.2 in under a second and then stopped answering at all after a pull hung."
+  echo "  This gate needs Docker; scripts/rehearse-in-transaction.mjs does not."
+  exit 2
+fi
+# EVERY DOCKER CALL IN THE SETUP PATH IS WRAPPED IN `timeout`, and that is the actual fix.
+#
+# Three attempts got this wrong, each in an instructive way. A bounded `until` loop still hung,
+# because the hang was inside `docker run` (a missing image triggers an implicit pull). Guarding
+# with `docker image inspect` still hung — inspect on an absent reference does not return on this
+# box. `docker images -q postgres:17-alpine` still hung, while the same command on a nonsense
+# reference returned instantly, which points at a daemon holding a lock on that repository after an
+# earlier pull wedged.
+#
+# So the shape of the problem is not "which docker subcommand is safe". It is that a gate must not
+# be able to hang on an external daemon AT ALL, whatever that daemon is doing. `timeout` is the only
+# guard that holds for every case including the ones nobody has met yet.
+d() { timeout 20 docker "$@"; }
+
+if ! d image inspect postgres:17-alpine >/dev/null 2>&1; then
+  echo "CANNOT RUN: postgres:17-alpine is not usable here — absent, or the daemon did not answer in 20s."
+  echo "  Measured on this box 2026-09-22: 'docker pull' produces no output and never finishes, and"
+  echo "  afterwards even a local query against that reference hangs. That is a Docker problem, not"
+  echo "  a schema problem, and this gate now says so in twenty seconds instead of spinning forever."
+  echo "  For migration rehearsal that needs no Docker at all: scripts/rehearse-in-transaction.mjs"
+  exit 2
+fi
+if ! d run -d --pull=never --name "$C" -e POSTGRES_PASSWORD=x -e POSTGRES_DB=scoopdogg postgres:17-alpine 2>&1; then
+  echo "CANNOT RUN: the image is present but the container would not start (see the error above)."
+  exit 2
+fi
+
 # Probe the TARGET database: during initdb a bootstrap server answers for `postgres`
-# while `scoopdogg` does not exist yet.
-until docker exec "$C" psql -U postgres -d scoopdogg -tAc 'select 1' >/dev/null 2>&1; do sleep 2; done
+# while `scoopdogg` does not exist yet. BOUNDED: 60 tries at 2s is two minutes, and initdb on a
+# cached image is seconds. Past that something is wrong and saying so beats spinning.
+tries=0
+until d exec "$C" psql -U postgres -d scoopdogg -tAc 'select 1' >/dev/null 2>&1; do
+  tries=$((tries + 1))
+  if [ "$tries" -ge 60 ]; then
+    echo "CANNOT RUN: postgres never became ready in 120s. Container log:"
+    d logs --tail 20 "$C" 2>&1 | sed 's/^/  /'
+    exit 2
+  fi
+  sleep 2
+done
 
 for f in 001_core 002_leads 003_catalog 004_catalog_seed 005_stripe 006_settings 007_event_hash; do
   docker cp "$HERE/migrations/$f.sql" "$C:/tmp/$f.sql" >/dev/null

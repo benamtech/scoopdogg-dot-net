@@ -1,0 +1,36 @@
+---
+/**
+ * Real Google reviews, quoted, on white cards — so they read on any band (white, forest or
+ * orange) and the words, not a star badge, carry the proof (R6 §A5: a bare 5.0 is weak proof;
+ * the text and the count are what readers trust). The count is the number of rows we hold; a
+ * star rating is shown only when `reviews.google_rating` is set with a source (S20).
+ */
+import { reviews, reviewSummary } from '../../lib/catalog';
+import Stars from './Stars.astro';
+export interface Props { limit?: number; ids?: string[]; footer?: boolean }
+const { limit = 3, ids, footer = true } = Astro.props;
+const list = (ids ? ids.map((id) => reviews.find((r) => r.id === id)).filter(Boolean) : reviews.filter((r) => r.featured)).slice(0, limit) as typeof reviews;
+const initials = (n: string) => n.split(' ').map((p) => p[0]).slice(0, 2).join('');
+---
+<div class={`-mx-5 flex snap-x snap-mandatory gap-4 overflow-x-auto px-5 pb-3 sm:-mx-8 sm:px-8 md:mx-0 md:grid md:overflow-visible md:px-0 md:pb-0 lg:gap-5 ${limit >= 3 ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
+  {list.map((r) => (
+    <figure class="tone-white flex w-[85%] shrink-0 snap-center flex-col md:w-auto rounded-xl bg-paper p-6 shadow-md ring-1 ring-black/5 sm:p-7">
+      <Stars rating={5} size={16} />
+      <blockquote class="mt-4 flex-1 text-base text-ink-700">“{r.quote}”</blockquote>
+      <figcaption class="mt-6 flex items-center gap-3 border-t border-line pt-5">
+        <span class="flex h-10 w-10 items-center justify-center rounded-full bg-forest-700 text-sm font-semibold text-white" aria-hidden="true">{initials(r.author_name)}</span>
+        <span class="flex flex-col leading-tight">
+          <span class="text-base font-semibold text-forest-900">{r.author_name}</span>
+          <span class="text-sm text-ink-500">Google review{r.reviewed_on ? ` · ${r.reviewed_on}` : ''}</span>
+        </span>
+      </figcaption>
+    </figure>
+  ))}
+</div>
+{footer && (
+  <p class="mt-8 flex flex-wrap items-center gap-x-4 gap-y-2 text-base text-tone-fg">
+    {reviewSummary.rating && <span class="font-semibold text-tone-heading">{reviewSummary.rating.toFixed(1)} on Google</span>}
+    <a href="/reviews" class="link">Read all {reviewSummary.shown} reviews</a>
+    <a href={reviewSummary.profileUrl} rel="noopener" class="link">See them on Google</a>
+  </p>
+)}

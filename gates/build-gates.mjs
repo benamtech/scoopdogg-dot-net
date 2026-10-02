@@ -24,6 +24,18 @@ let pass = 0, fail = 0;
 const ok = (n, m = '') => { console.log(`  PASS  ${n}${m ? ' — ' + m : ''}`); pass++; };
 const no = (n, m) => { console.log(`  FAIL  ${n} — ${m}`); fail++; };
 
+/**
+ * The file an <img src> actually shows. Since 2026-09-29 the pages render on demand and images go
+ * through Vercel's image CDN, so a src reads `/_vercel/image?url=%2F_astro%2Fx.png&w=828&q=62`
+ * (or Astro's own `/_image?href=...`). Read literally that is never a file on disk, and gates 9 and
+ * 15 silently skipped every such image until this decoded it back to the source they judge.
+ */
+const imageSource = (raw) => {
+  const src = raw.replace(/&#38;|&amp;/g, '&');
+  const m = /^\/_(?:vercel\/image\?(?:.*&)?url|image\?(?:.*&)?href)=([^&]+)/.exec(src);
+  return m ? decodeURIComponent(m[1]).replace(/^(?!\/)/, "/") : src;
+};
+
 const strip = (h) =>
   h.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<style[\s\S]*?<\/style>/gi, '');
 const textOf = (h) => strip(h).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -33,8 +45,11 @@ if (!pages.length) { console.log('  FAIL  no pages in dist/ — did the build ru
 
 // 1. crawlable — the defect that made all 71 live URLs serve one empty shell
 {
+  // A noindex app screen (the booking confirmation, the customer account) is not for a
+  // crawler, so the rule applies to every page a crawler is invited to index (2026-09-16).
   const bad = pages.filter((f) => {
     const h = readFileSync(f, 'utf8');
+    if (/name="robots"\s+content="noindex/.test(h)) return false;
     return (h.match(/<h1/g) || []).length !== 1 || textOf(h).length < 1000;
   });
   bad.length
@@ -93,7 +108,9 @@ for (const [scheme, label] of [['tel', 'tel'], ['mailto', 'mailto']]) {
 {
   const bad = pages.filter((f) => {
     const h = readFileSync(f, 'utf8');
-    const body = h.slice(h.indexOf('<body'));
+    // An invisible <input> laid over a control (the before/after slider's range) hides no
+    // content; everything else at opacity-0 is content a no-JS visitor never sees.
+    const body = h.slice(h.indexOf('<body')).replace(/<input\b[^>]*>/gi, '');
     return /class="[^"]*\bopacity-0\b/.test(body);
   });
   bad.length ? no('visible-without-js', `${bad.length} page(s) render content at opacity-0: ${bad.slice(0,3).map(route)}`)
@@ -108,8 +125,21 @@ for (const [scheme, label] of [['tel', 'tel'], ['mailto', 'mailto']]) {
              : ok('no-loading-fallback');
 }
 
-// 7. the sitemap must list the pages that exist. The live sitemap advertises 71 URLs,
-//    every one of them a city x service page, and omits the homepage entirely.
+// 7. the sitemap must list the INDEXABLE pages that exist. The live sitemap advertises 71 URLs,
+//    every one of them a city x service page, and omits the homepage entirely — that is the
+//    omission this catches and it is unchanged.
+//
+//    NOINDEX PAGES ARE EXCLUDED, and they used to be required. A sitemap is a list of pages you
+//    are asking to have indexed, so a noindex page in one is the site contradicting itself to a
+//    crawler. This gate only ever excluded /admin, so /account, /invite and /book/complete —
+//    the same three gates/orphan-pages.mjs declares private — were advertised while serving
+//    `robots: noindex, nofollow`. scripts/visibility-ledger.mjs found it on its first run, and
+//    this gate was the reason it had stayed: astro.config.mjs's filter could not be tightened
+//    without failing here.
+//
+//    The check that matters is unchanged in strength. Every page a crawler is meant to see must
+//    still be listed, and a page that drops out of the sitemap by accident still fails — it can
+//    only be excused by actually serving noindex, which is a deliberate act in its own source.
 {
   const idx = `${DIST}/sitemap-index.xml`;
   if (!existsSync(idx)) no('sitemap-present', 'no sitemap-index.xml');
@@ -117,7 +147,22 @@ for (const [scheme, label] of [['tel', 'tel'], ['mailto', 'mailto']]) {
     const files = globSync(`${DIST}/sitemap*.xml`);
     const locs = new Set();
     for (const f of files) for (const m of readFileSync(f, 'utf8').matchAll(/<loc>([^<]+)<\/loc>/g)) locs.add(m[1]);
-    const routes = new Set(pages.map((f) => route(f) === '/.' ? '/' : route(f)));
+    // A DEMO BUILD IS NOINDEX EVERYWHERE, by design (Base.astro: a demo page in Google's index outlives
+    // the demo), and every Vercel preview is a demo build (SD_FORCE_DEMO). Judged as-is, all 74 real
+    // pages read as "noindex pages the sitemap advertises" and every preview build failed here from
+    // 2026-09-26 on — while `npm run gates`, run on a non-demo build, stayed green. So a page says WHY
+    // it is noindex (data-noindex="page" | "demo") and a demo-only noindex is judged by the rule the
+    // same code applies in production. A page that is private in its own source still fails if listed.
+    const robots = (f) => /<meta\s+name="robots"[^>]*>/i.exec(readFileSync(f, 'utf8'))?.[0] ?? '';
+    const pageNoindex = (f) => { const m = robots(f); return /content="[^"]*noindex/i.test(m) && !/data-noindex="demo"/i.test(m); };
+    const indexable = pages.filter((f) => !pageNoindex(f));
+    const routes = new Set(indexable.map((f) => route(f) === '/.' ? '/' : route(f)));
+    // And the other direction, which nothing checked: the sitemap must not advertise one either.
+    const noindexRoutes = new Set(pages.filter((f) => !indexable.includes(f)).map((f) => route(f) === '/.' ? '/' : route(f)));
+    const advertised = [...locs].map((l) => new URL(l).pathname.replace(/\/$/, '') || '/')
+      .filter((pn) => noindexRoutes.has(pn));
+    advertised.length ? no('sitemap-no-noindex', `the sitemap advertises ${advertised.length} noindex page(s): ${advertised.join(', ')}`)
+                      : ok('sitemap-no-noindex', `${noindexRoutes.size} noindex page(s), none advertised`);
     const missing = [...routes].filter((r) => ![...locs].some((l) => new URL(l).pathname.replace(/\/$/, '') === r.replace(/\/$/, '')));
     missing.length ? no('sitemap-complete', `${missing.length} built page(s) absent from the sitemap: ${missing.slice(0,3)}`)
                    : ok('sitemap-complete', `${routes.size} routes listed`);
@@ -148,7 +193,10 @@ for (const [scheme, label] of [['tel', 'tel'], ['mailto', 'mailto']]) {
 {
   const refs = new Set();
   for (const f of pages) {
-    for (const m of readFileSync(f, 'utf8').matchAll(/src="(\/[^"]+\.(?:png|jpe?g|webp|svg|gif))"/gi)) refs.add(m[1]);
+    for (const m of readFileSync(f, 'utf8').matchAll(/<img\b[^>]*\bsrc="(\/[^"]+)"/gi)) {
+      const src = imageSource(m[1]);
+      if (/\.(?:png|jpe?g|webp|svg|gif|avif)$/i.test(src)) refs.add(src);
+    }
   }
   const broken = [];
   for (const r of refs) {
@@ -157,6 +205,10 @@ for (const [scheme, label] of [['tel', 'tel'], ['mailto', 'mailto']]) {
     const size = readFileSync(p).length;
     if (size < 5000 && !r.endsWith('.svg')) broken.push(`${r} is only ${size}B, probably blank`);
   }
+  const decoded = imageSource('/_vercel/image?url=%2F_astro%2Fdog.Ab12.png&#38;w=828&#38;q=62');
+  decoded === '/_astro/dog.Ab12.png' ? ok('image-source-decoder', 'NEGATIVE CONTROL: an image-CDN src is judged as its source file')
+                                     : no('image-source-decoder', `decoded to ${decoded}`);
+  if (refs.size === 0) broken.push('no images found at all: the src pattern is blind');
   broken.length ? no('images-have-content', broken.slice(0, 4).join('; '))
                 : ok('images-have-content', `${refs.size} referenced images`);
 }
@@ -177,14 +229,27 @@ for (const [scheme, label] of [['tel', 'tel'], ['mailto', 'mailto']]) {
 //     green. A site that cannot take a booking is worse than the one it replaced.
 {
   const checks = [
-    ['/book', ['Where&#x27;s your yard?', 'Ventura'], 'booking wizard step 1'],
+    // Copy updated for the 2026-09-19 ZIP-first flow (P16 §2); THE INVARIANT IS UNCHANGED and is
+    // the reason this gate exists: step one of booking, and the list of cities served, are in the
+    // SERVER HTML. The heading and the field moved from a street address to a ZIP; the city list
+    // stopped being a <select> inside the island and became text on the page. A reader with no
+    // JavaScript, and a crawler, still get both.
+    ['/book', ["Where's your yard?", 'id="bk-zip"', 'See my price', 'Ventura'], 'booking flow step 1'],
     ['/contact', ['<textarea', '<input'], 'contact form fields'],
-    ['/', ['Book in 60 Seconds'], 'homepage booking call to action'],
+    ['/', ['data-hero-cta', 'See my price', 'name="address"'], 'homepage address form (the first step of booking)'],
   ];
+  // Entities: an apostrophe is one character to a reader and six (`&#x27;`) in the markup, so a
+  // needle typed the way a person reads it never matches the bytes. gates/e2e.mjs learned the
+  // same thing measuring meta-description lengths; the rule is that a gate reads what a reader
+  // reads. Attribute needles (id="bk-zip") are unaffected by unescaping.
+  const readable = (h) => h
+    .replace(/&#x27;|&#39;/g, "'").replace(/&quot;|&#34;/g, '"')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n));
   for (const [route, needles, what] of checks) {
     const f = path.join(DIST, route === '/' ? '' : route, 'index.html');
     if (!existsSync(f)) { no('lead-path-renders', `${route} was not built`); continue; }
-    const h = readFileSync(f, 'utf8');
+    const h = readable(readFileSync(f, 'utf8'));
     const missing = needles.filter((n) => !h.includes(n));
     missing.length
       ? no('lead-path-renders', `${route} is missing ${what} (${missing.join(', ')})`)
@@ -289,9 +354,13 @@ for (const [scheme, label] of [['tel', 'tel'], ['mailto', 'mailto']]) {
     const html = readFileSync(f, 'utf8');
     for (const m of html.matchAll(/<img\b[^>]*>/gi)) {
       const tag = m[0];
-      const src = (tag.match(/\bsrc="(\/[^"]+)"/) || [])[1];
+      const raw = (tag.match(/\bsrc="(\/[^"]+)"/) || [])[1];
+      const src = raw && imageSource(raw);
       const cls = (tag.match(/\bclass="([^"]*)"/) || [, ''])[1];
       if (!src || !/(^|\s|:)absolute(\s|$)/.test(cls)) continue;
+      // A photo that exactly fills its own frame (inset-0 + object-cover, e.g. the before/after
+      // slider) is not floated over anything; the rule is about cut-out art pasted on a card.
+      if (/\binset-0\b/.test(cls) && /\bobject-cover\b/.test(cls)) continue;
       floated.set(src, [...(floated.get(src) || []), route(f)]);
     }
   }
@@ -406,6 +475,50 @@ for (const [scheme, label] of [['tel', 'tel'], ['mailto', 'mailto']]) {
     orphanShapes.length
       ? no('predecessor-dynamic-routes', `${orphanShapes.length} dynamic route(s) from App.tsx land nowhere: ${orphanShapes.join(', ')}`)
       : ok('predecessor-dynamic-routes', `${snap.dynamicRoutes.length} dynamic shapes`);
+  }
+}
+
+// N. the serverless bundle can resolve what it ships.
+//
+// `src/shared` is loaded three ways and each resolver wants a different specifier: Node's own
+// type-stripper (`node --test tests/*.test.ts`) resolves the literal one and will NOT rewrite
+// `.js` to `.ts`; Vite resolves either; the emitted serverless JS needs `.js`. The convention
+// that satisfies all three is `.ts` in the source plus `rewriteRelativeImportExtensions` in the
+// compiler. Either half alone is broken, and one half was missing.
+//
+// gates/_compile.mjs passes the flag on its command line, so every gate was green while the
+// DEPLOYMENT - which reads tsconfig.json - shipped `src/shared/consent.js` importing
+// `./pricing.ts`, a file not in the bundle. Every function that imported it exited 1, and
+// /api/booking/price and /api/booking/track answered 500 for nine hours on 2026-09-19.
+//
+// This checks the PAIR, because that is the invariant. Banning the `.ts` specifier instead
+// would break `npm test`, which is the trap the first attempt at this gate fell into.
+{
+  const sources = [
+    ...globSync('src/shared/**/*.ts'),
+    ...globSync('server/**/*.ts'),
+    ...globSync('api/**/*.ts'),
+  ];
+  const tsSpecifiers = [];
+  for (const f of sources) {
+    for (const m of readFileSync(f, 'utf8').matchAll(/(?:from|import)\s*\(?\s*['"](\.[^'"]*\.ts)['"]/g)) {
+      tsSpecifiers.push(`${f} -> ${m[1]}`);
+    }
+  }
+  // Comments are stripped so the prose above a setting cannot satisfy the check.
+  const tsconfig = readFileSync('tsconfig.json', 'utf8').replace(/^\s*\/\/.*$/gm, '');
+  const rewrites = /"rewriteRelativeImportExtensions"\s*:\s*true/.test(tsconfig)
+    && /"allowImportingTsExtensions"\s*:\s*true/.test(tsconfig);
+
+  if (!tsSpecifiers.length) {
+    ok('serverless-import-specifiers', `${sources.length} server-side sources, no .ts specifiers to rewrite`);
+  } else if (rewrites) {
+    ok('serverless-import-specifiers', `${tsSpecifiers.length} .ts specifier(s), and tsconfig.json rewrites them on emit`);
+  } else {
+    no('serverless-import-specifiers',
+      `${tsSpecifiers.length} .ts import specifier(s) and tsconfig.json does NOT set `
+      + `allowImportingTsExtensions + rewriteRelativeImportExtensions, so the emitted JS will keep them `
+      + `and the function will exit 1 on Vercel: ${tsSpecifiers.join('; ')}`);
   }
 }
 

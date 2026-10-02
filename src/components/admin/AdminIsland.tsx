@@ -6,6 +6,23 @@ import AdminLeadsPage from '../../pages_react/admin/AdminLeadsPage';
 import AdminLeadDetailPage from '../../pages_react/admin/AdminLeadDetailPage';
 import AdminMessagesPage from '../../pages_react/admin/AdminMessagesPage';
 import AdminMessageDetailPage from '../../pages_react/admin/AdminMessageDetailPage';
+import AdminPaymentsPage from '../../pages_react/admin/AdminPaymentsPage';
+import AdminChecklistPage from '../../pages_react/admin/AdminChecklistPage';
+import AdminCustomersPage from '../../pages_react/admin/AdminCustomersPage';
+import AdminGrowthPage from '../../pages_react/admin/AdminGrowthPage';
+import AdminTodayPage from '../../pages_react/admin/AdminTodayPage';
+import AdminTeamPage from '../../pages_react/admin/AdminTeamPage';
+import AdminRateCardPage from '../../pages_react/admin/AdminRateCardPage';
+import AdminQuotesPage from '../../pages_react/admin/AdminQuotesPage';
+import AdminQuotePage from '../../pages_react/admin/AdminQuotePage';
+import AdminOffersPage from '../../pages_react/admin/AdminOffersPage';
+import AdminServicesPage from '../../pages_react/admin/AdminServicesPage';
+import AdminJobsPage from '../../pages_react/admin/AdminJobsPage';
+import AdminCustomerPage from '../../pages_react/admin/AdminCustomerPage';
+import AdminAreasPage from '../../pages_react/admin/AdminAreasPage';
+import AdminWeekPage from '../../pages_react/admin/AdminWeekPage';
+import AdminVisitPage from '../../pages_react/admin/AdminVisitPage';
+import AdminInvoicesPage from '../../pages_react/admin/AdminInvoicesPage';
 
 /**
  * One admin screen, hydrated — the whole screen, not a shell around it.
@@ -33,6 +50,23 @@ const SCREENS = {
   lead: AdminLeadDetailPage,
   messages: AdminMessagesPage,
   message: AdminMessageDetailPage,
+  payments: AdminPaymentsPage,
+  setup: AdminChecklistPage,
+  customers: AdminCustomersPage,
+  growth: AdminGrowthPage,
+  today: AdminTodayPage,
+  team: AdminTeamPage,
+  rateCard: AdminRateCardPage,
+  quotes: AdminQuotesPage,
+  quote: AdminQuotePage,
+  offers: AdminOffersPage,
+  services: AdminServicesPage,
+  jobs: AdminJobsPage,
+  customer: AdminCustomerPage,
+  areas: AdminAreasPage,
+  week: AdminWeekPage,
+  visit: AdminVisitPage,
+  invoices: AdminInvoicesPage,
 } as const;
 
 export type AdminScreen = keyof typeof SCREENS;

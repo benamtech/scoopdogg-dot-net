@@ -1,0 +1,274 @@
+/**
+ * The catalog, as every rendered page sees it: THE LIVE ROWS, read on each render.
+ *
+ * Until 2026-09-29 this file imported content/catalog.json, written at build, so an owner's edit
+ * reached the pages only through a deploy. Now src/middleware.ts reads the rows
+ * (server/lib/public-catalog.ts) before a page renders and calls `setCatalog()`. Every export below
+ * is an ES module LIVE BINDING (`export let`), so the pages and components that import `services`
+ * or `trust` keep their imports and see the new rows on the next render.
+ *
+ * A VALUE DERIVED AT MODULE SCOPE IN ANOTHER FILE WOULD FREEZE. Derive inside a function or a
+ * component's frontmatter, never in a top-level `const` of an importing module. Everything this
+ * file derives (headlineOffer, business, trust, ...) is recomputed in `setCatalog()`.
+ *
+ * Nothing here runs in the browser: the admin reads areas from its own API, and the booking
+ * island receives its catalog as props from the page that rendered it.
+ */
+import type { Catalog, Service, Tier, Package, Offer } from '../shared/pricing';
+import { lowestMonthly, packagesFor, formatCents, formatTierPrice } from '../shared/pricing';
+
+export type Faq = { q: string; a: string };
+
+export type CatalogService = Service & {
+  pricing_note: string;
+  sort_order: number;
+  meta_title: string | null;
+  meta_description: string | null;
+  h1: string | null;
+  intro: string | null;
+  what_includes: string[];
+  who_its_for: string;
+  faqs: Faq[];
+  related_slugs: string[];
+};
+
+export type Area = {
+  slug: string;
+  name: string;
+  county: string | null;
+  state: string | null;
+  tier: number;
+  bookable: boolean;
+  market: string;
+  market_label: string;
+  neighborhoods: string[];
+  nearby_slugs: string[];
+  service_weekdays: number[];
+  meta_title: string | null;
+  meta_description: string | null;
+  intro: string | null;
+  local_context: string | null;
+  faqs: Faq[];
+  sort_order: number;
+};
+
+export type Review = {
+  id: string;
+  author_name: string;
+  author_badge: string | null;
+  quote: string;
+  rating: number | null;
+  source: string;
+  source_url: string | null;
+  reviewed_on: string | null;
+  featured: boolean;
+  sort_order: number;
+};
+
+export type Raw = {
+  pulled_at: string;
+  services: CatalogService[];
+  /** Slugs of retired services: their pages redirect to /services instead of answering 404. */
+  retired_service_slugs?: string[];
+  tiers: Tier[];
+  packages: Package[];
+  offers: Offer[];
+  areas: Area[];
+  reviews: Review[];
+  /** ZIP -> area slug, served codes only. Generated from rows. */
+  postal_codes: Record<string, string>;
+  settings: Record<string, unknown>;
+};
+
+let data: Raw = { pulled_at: '', services: [], tiers: [], packages: [], offers: [], areas: [], reviews: [], postal_codes: {}, settings: {} };
+
+/** True once a render has been handed the rows. A page rendered before that is a bug, and
+ *  src/middleware.ts refuses to render rather than print an empty catalog. */
+export let catalogLoaded = false;
+
+export let catalog: Catalog;
+export let services: CatalogService[];
+export let areas: Area[];
+export let reviews: Review[];
+export let tiers: Tier[];
+export let packages: Package[];
+export let offers: Offer[];
+export let pulledAt: string;
+/** Served postal codes, generated from rows. Never hand-edited. */
+export let postalCodes: Record<string, string>;
+/** The offer the site leads with: the active, unconditional offer on weekly scooping. Every
+ *  "first month half off" on a page reads this row, so switching the offer off removes the
+ *  claim everywhere on the next render (S19). */
+export let headlineOffer: Offer | null;
+export let business: { name: string; phone: string; phoneHref: string; email: string };
+/** The short region for headlines. */
+export let serviceRegion: string;
+export let trust: { insured: boolean; backgroundChecked: boolean; guarantee: string | null };
+export let growth: { careers: boolean; commercial: boolean };
+
+/** True when the value comes from a settings row, false when a page would use a code fallback. */
+export const hasSetting = (key: string) => data.settings[key] !== undefined && data.settings[key] !== null;
+
+export function setting<T>(key: string, fallback: T): T {
+  const v = data.settings[key];
+  return (v === undefined || v === null ? fallback : (v as T));
+}
+
+export const serviceBySlug = (slug: string) => data.services.find((s) => s.slug === slug);
+export const isRetiredService = (slug: string) => (data.retired_service_slugs ?? []).includes(slug);
+export const areaBySlug = (slug: string) => data.areas.find((a) => a.slug === slug);
+export const tiersFor = (slug: string) => data.tiers.filter((t) => t.service_slug === slug).sort((a, b) => a.sort_order - b.sort_order);
+export const packagesForService = (slug: string) => packagesFor(catalog, slug);
+
+/**
+ * Ben, 2026-09-16: "dont limit it to ventura county in the copy. they serve Ventura and Santa
+ * Barbara counties, as well as all the other specific service areas already listed." So the
+ * headline region is two counties, and the market groups name Santa Barbara County outright.
+ * Database labels win when present; these are the display defaults.
+ */
+const MARKET_LABELS: Record<string, string> = {
+  'ventura-county': 'Ventura County',
+  'conejo-valley': 'the Conejo Valley',
+  'south-coast': 'Santa Barbara County',
+  'malibu-coast': 'Malibu',
+};
+
+/** The market groups, in the order a visitor reads them. */
+export function markets(): { market: string; label: string; areas: Area[] }[] {
+  const order = ['ventura-county', 'conejo-valley', 'south-coast', 'malibu-coast'];
+  const byMarket = new Map<string, Area[]>();
+  for (const a of data.areas) byMarket.set(a.market, [...(byMarket.get(a.market) ?? []), a]);
+  return [...byMarket.entries()]
+    .sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]))
+    .map(([market, list]) => ({
+      market,
+      label: MARKET_LABELS[market] ?? list[0]?.market_label ?? market,
+      areas: list.sort((x, y) => x.sort_order - y.sort_order),
+    }));
+}
+
+
+/** The full sentence: two counties, then the places people name that sit outside or across them. */
+export function regionSentence(): string {
+  return setting<string>('business.region_sentence', `${serviceRegion}, including Malibu and the Conejo Valley`);
+}
+
+/**
+ * How a service's price reads on a card: the monthly package when one exists, else the tier.
+ *
+ * `cents` comes back alongside the text so a caller can emit `data-price-cents`. That attribute
+ * is not decoration: `gates/price-four-places.mjs` uses it to find a price on a page and check
+ * it against the database and Stripe, and `src/index.css` hangs tabular figures off it. A price
+ * rendered without it is a price no gate can see.
+ */
+export function headlinePrice(slug: string): { text: string; per: string; cents: number; derived: boolean } | null {
+  const pkg = lowestMonthly(catalog, slug);
+  if (pkg) return { text: formatCents(pkg.monthly_price_cents), per: '/month', cents: pkg.monthly_price_cents, derived: pkg.source === 'derived_from_published' };
+  const priced = tiersFor(slug).filter((t) => t.price_cents !== null && !t.requires_quote);
+  if (!priced.length) return null;
+  const low = priced.sort((a, b) => (a.price_cents ?? 0) - (b.price_cents ?? 0))[0];
+  return { text: `From ${formatCents(low.price_cents!)}`, per: low.price_suffix || '', cents: low.price_cents!, derived: false };
+}
+
+export { formatCents, formatTierPrice };
+
+/**
+ * Conversion-first defaults (Ben, 2026-09-16: "an amazing, impressive, high-conversion
+ * website experience that will be very profitable"). Each default below is either Josue's
+ * own published claim from the pre-elevation site or a market-standard offer from R5, and
+ * every one is overridden the moment its setting exists in the database. The list of
+ * assumptions for Ben to veto is in portal/P13-THE-EXPERIENCE.md §6.
+ */
+/**
+ * THE REVIEW COUNT HAS ONE HOME, and it did not until 2026-09-23.
+ *
+ * `content/catalog.json` holds 18 review quotes. The Google Business Profile holds 42 (measured
+ * by `scripts/pull-review-count.mjs`, two instruments agreeing, 2026-09-23). The 18 were always a
+ * hand-curated set for the page and nothing claimed otherwise — but the field was called `count`,
+ * `reviews.google_count` had never been written, and SIX surfaces put the 18 in front of a
+ * visitor next to the word Google: /reviews twice including its meta description, ProofBar,
+ * ReviewQuotes, every question page, and llms.txt, which is the file AI answer engines read.
+ *
+ * The site was publishing 43% of its own strongest asset, on the trust signal R5 scored as table
+ * stakes. The number was not wrong anywhere; the NAME was, and six readers took the invitation.
+ *
+ * So `count` is gone. `quotes` is what this repo holds, `googleCount` is what Google holds, and
+ * `label` is the only thing a page should render — because the honest sentence differs depending
+ * on which of the two we have, and asking six pages to remember that is how this happened.
+ */
+export const reviewSummary = {
+  /** How many quotes this repo carries. A curated subset. NOT the Google total. */
+  get quotes(): number { return data.reviews.length; },
+  get googleCount(): number | null { return setting<number | null>('reviews.google_count', null); },
+  // Published on the pre-elevation site as "5.0 average" and "5-Star Rated".
+  get rating(): number | null { return setting<number | null>('reviews.google_rating', 5.0); },
+  // The canonical Maps place URL, derived in migration 028 from the feature id in Josue's own
+  // share link. The previous default was https://share.google/… which 302s to a Google SEARCH
+  // page; it appeared 30 times in a clean build, so every one of those was an external link to
+  // a redirect. This one answers 200 with no redirect. Read them here; ASK for one with
+  // reviews.google_review_url, which only server/lib/comms.ts uses.
+  get profileUrl(): string { return setting<string>('reviews.google_profile_url', 'https://www.google.com/maps/place/?q=place_id:ChIJx2f0lVCt6YARL_qslmyUQKM'); },
+  /** When the live profile was last read. `null` means never, and the gate says so. */
+  get checkedOn(): string | null { return setting<string | null>('reviews.google_checked_on', null); },
+
+  /**
+   * The count to put in front of a visitor, and the sentence to put it in.
+   *
+   * Every surface uses `label`. A page that builds its own string out of `quotes` is the defect
+   * this replaced, and `gates/review-count.mjs` fails on one.
+   */
+  get shown(): number { return this.googleCount ?? this.quotes; },
+  get shownIsGoogle(): boolean { return this.googleCount != null; },
+  get label(): string {
+    return this.googleCount != null
+      ? `${this.googleCount} Google reviews`
+      : `${this.quotes} reviews on this page`;
+  },
+};
+
+/**
+ * Hand this module the rows for one render. Called by src/middleware.ts, and by the gates that
+ * render a page outside a request. Replaces every binding in one synchronous step, so a page never
+ * reads half of one snapshot and half of another from this module.
+ */
+export function setCatalog(raw: Raw) {
+  data = { ...raw, postal_codes: raw.postal_codes ?? {}, settings: raw.settings ?? {} };
+  catalog = { services: data.services, tiers: data.tiers, packages: data.packages, offers: data.offers };
+  services = data.services;
+  areas = data.areas;
+  reviews = data.reviews;
+  tiers = data.tiers;
+  packages = data.packages;
+  offers = data.offers;
+  pulledAt = data.pulled_at;
+  postalCodes = data.postal_codes;
+  headlineOffer = data.offers.find(
+    (o) => o.status === 'active' && o.applies_to_slugs.includes('weekly-pooper-scooper-service') && !(o.requires_slugs ?? []).length,
+  ) ?? null;
+  const phone = setting('business.phone', '(805) 869-8070');
+  business = {
+    name: setting('business.name', 'Scoop Dogg'),
+    phone,
+    phoneHref: `tel:${phone.replace(/[^\d]/g, '')}`,
+    email: setting('business.email', 'josue@scoopdogg.net'),
+  };
+  serviceRegion = setting<string>('business.service_region', 'Ventura and Santa Barbara counties');
+  trust = {
+    // Both published on the pre-elevation site (AboutTrust, CityPage).
+    insured: setting<boolean>('trust.insured_confirmed', true),
+    backgroundChecked: setting<boolean>('trust.background_checked_confirmed', true),
+    // Market standard: 82% of scoopers carry a satisfaction guarantee (R5 §4).
+    guarantee: setting<string | null>(
+      'trust.guarantee_text',
+      'Happy-yard guarantee: if we miss a spot, tell us within 24 hours and we come back and make it right, free.',
+    ),
+  };
+  growth = {
+    careers: setting<boolean>('growth.careers_enabled', true),
+    commercial: setting<boolean>('growth.commercial_enabled', true),
+    // Referrals removed by Ben, 2026-09-16 ("get rid of the referrals").
+  };
+  catalogLoaded = true;
+}
+setCatalog(data);
+catalogLoaded = false;

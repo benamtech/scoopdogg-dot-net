@@ -1,25 +1,196 @@
 ---
-import Base from '../../layouts/Base.astro';
-import Nav from '../../components/Nav';
-import Footer from '../../components/Footer';
-import CityPage from '../../pages_react/CityPage';
-import { CITIES } from '../../lib/cities';
+/**
+ * A city page: local, specific, and one step from a price. The city rides along into booking
+ * (the address form carries it), and the service days show when Josue has set them (P6).
+ *
+ * Bands: header (brand green, the ZIP card) -> proof (sage) -> plans (white) -> how it works
+ * here (amber) -> yards in the city (white) -> reviews (green) -> also available (white) ->
+ * questions (sand) -> read up (white) -> close (green).
+ */
+import Site from '../../layouts/Site.astro';
+import PageHero from '../../components/site/PageHero.astro';
+import Section from '../../components/site/Section.astro';
+import SectionHeading from '../../components/site/SectionHeading.astro';
+import ProofBar from '../../components/site/ProofBar.astro';
+import PackageCards from '../../components/site/PackageCards.astro';
+import Steps from '../../components/site/Steps.astro';
+import ReviewQuotes from '../../components/site/ReviewQuotes.astro';
+import Faq from '../../components/site/Faq.astro';
+import CloseCta from '../../components/site/CloseCta.astro';
+import { areas, areaBySlug, markets, services, headlinePrice, setting, headlineOffer } from '../../lib/catalog';
+import { questions } from '../../lib/questions';
+import { articlesMentioning } from '../../lib/articles';
+import { weekdayName } from '../../shared/pricing';
 import { SITE_URL } from '../../lib/constants';
 
-export function getStaticPaths() {
-  return CITIES.map((c) => ({ params: { city: c.slug }, props: { c } }));
-}
-const { c } = Astro.props;
-const jsonLd = {
-  '@context': 'https://schema.org', '@type': 'LocalBusiness',
-  '@id': `${SITE_URL}/areas/${c.slug}#business`,
-  name: `Scoop Dogg — ${c.name}`, description: c.metaDescription,
-  telephone: '+18058698070', url: `${SITE_URL}/areas/${c.slug}`,
-  areaServed: { '@type': 'City', name: c.name, addressRegion: 'CA' },
-};
+// Rendered on demand from the live rows: an area the owner adds or retires appears or goes with
+// no rebuild. A slug with no active row answers 404 (Astro renders src/pages/404.astro).
+const { city } = Astro.params;
+const found = areaBySlug(city!);
+if (!found) return new Response(null, { status: 404 });
+const a = found;
+const market = markets().find((m) => m.market === a.market);
+const nearby = (a.nearby_slugs ?? []).map((n) => areaBySlug(n)).filter(Boolean) as typeof areas;
+const days = (a.service_weekdays ?? []).map(weekdayName);
+const startDays = setting<number>('schedule.new_customer_start_days', 3);
+const title = a.meta_title || `Dog Poop Cleanup in ${a.name}, CA | Scoop Dogg`;
+const description = a.meta_description || `Weekly dog poop cleanup in ${a.name}. Same day every week, first month half off, no contract.`;
+const steps = [
+  { t: 'Enter your address', d: `We check it is on our ${a.name} route and show you the monthly price for your dogs.` },
+  { t: days.length ? `Pick ${days.join(' or ')}` : 'Pick your day', d: days.length ? `We are in ${a.name} on ${days.join(' and ')}. Your day stays the same every week.` : `Choose from the days we run in ${a.name}. Your day stays the same every week.` },
+  { t: `Start in ${startDays} days`, d: 'Pay your first month online, then run your plan from your account: skip, pause or cancel in a tap.' },
+];
+const jsonLd = [
+  {
+    '@context': 'https://schema.org', '@type': 'Service', name: `Dog poop cleanup in ${a.name}`, description,
+    provider: { '@type': 'LocalBusiness', '@id': `${SITE_URL}/#business`, name: 'Scoop Dogg', telephone: '+18058698070' },
+    areaServed: { '@type': 'City', name: `${a.name}, CA` },
+  },
+  ...(a.faqs?.length ? [{ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: a.faqs.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) }] : []),
+];
+const check = 'M5 12l5 5 9-10';
+/**
+ * Cross-links out of a city page (P15 §8, "every area page links its guides and its city
+ * questions"). Two different rules, and the difference is deliberate:
+ *
+ *  - The GUIDES vary by city, because `articlesMentioning` reads the guides' own text. Six of
+ *    the sixteen cities are named in no guide and get an empty list — they link the index
+ *    instead. An identical six-link list on sixteen city pages is the templated-location-page
+ *    shape Google calls doorway abuse, and the whole reason `gates/city-pages.mjs` now measures
+ *    how close these pages are to each other.
+ *  - The QUESTIONS do NOT vary, because they are the questions about the service this page
+ *    sells, and every city page sells the same service. Pretending otherwise would mean
+ *    inventing a city-specific question that nobody asked. There are no per-city question
+ *    pages; this is the true version of "its city questions".
+ */
+const cityGuides = articlesMentioning(a.name);
+const cityQuestions = questions().filter((q) => q.service === 'weekly-pooper-scooper-service').slice(0, 6);
 ---
-<Base title={c.metaTitle} description={c.metaDescription} canonicalPath={`/areas/${c.slug}`} jsonLd={jsonLd}>
-  <Nav client:load />
-  <main><CityPage city={c.slug} /></main>
-  <Footer />
-</Base>
+<Site title={title} description={description} canonicalPath={`/areas/${a.slug}`} jsonLd={jsonLd}>
+  <PageHero
+    eyebrow={market?.label ? `${a.name} · ${market.label.replace(/^the /, 'the ')}` : a.name}
+    title={`Dog poop cleanup in ${a.name}`}
+    lede={a.intro ?? description}
+    crumbs={[{ href: '/areas', label: 'Areas' }]}
+    form
+    formTitle={`See your ${a.name} price`}
+    source={`area-${a.slug}`}
+  >
+    <ul class="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-base font-medium text-tone-heading">
+      {[days.length ? `In ${a.name} on ${days.join(' & ')}` : 'Same day every week', headlineOffer?.name, 'No contract'].filter(Boolean).map((t) => (
+        <li class="inline-flex items-center gap-2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-tone-accent" aria-hidden="true"><path d={check} /></svg>{t}</li>
+      ))}
+    </ul>
+  </PageHero>
+
+  <ProofBar tone="sage" />
+
+  <Section tone="white" labelledby="city-plans">
+    <SectionHeading id="city-plans" eyebrow={`Plans in ${a.name}`} title={`Weekly scooping in ${a.name}`} lede="One monthly price by how many dogs you have. Every visit covers the whole yard." />
+    <div class="mt-12"><PackageCards service="weekly-pooper-scooper-service" /></div>
+  </Section>
+
+  <Section tone="amber" labelledby="city-how">
+    <div class="grid gap-8 lg:grid-cols-12 lg:items-end">
+      <div class="lg:col-span-7">
+        <p class="eyebrow mb-4">How it works in {a.name}</p>
+        <h2 id="city-how" class="text-h2 text-tone-heading">Your {a.name} day, every week.</h2>
+      </div>
+      <p class="text-xl text-tone-fg lg:col-span-5">You never need to be home. We close the gate behind us.</p>
+    </div>
+    <div class="mt-12"><Steps steps={steps} /></div>
+  </Section>
+
+  {(a.local_context || a.neighborhoods?.length) && (
+    <Section tone="white" labelledby="local">
+      <div class="grid gap-12 lg:grid-cols-12">
+        <div class="lg:col-span-7">
+          <p class="eyebrow mb-4">Local knowledge</p>
+          <h2 id="local" class="text-h2 text-forest-900">Yards in {a.name}</h2>
+          {a.local_context && <p class="mt-6 text-lg text-ink-700">{a.local_context}</p>}
+        </div>
+        {a.neighborhoods?.length > 0 && (
+          <div class="tone-tint rounded-xl bg-tone-bg p-7 lg:col-span-5">
+            <h3 class="font-sans text-base font-semibold uppercase tracking-[0.1em] text-forest-700">Neighborhoods we serve</h3>
+            <ul class="mt-4 flex flex-wrap gap-2">
+              {a.neighborhoods.map((n) => <li class="rounded-full bg-paper px-3.5 py-1.5 text-base text-forest-900 ring-1 ring-forest-200">{n}</li>)}
+            </ul>
+            {nearby.length > 0 && (
+              <>
+                <h3 class="mt-8 font-sans text-base font-semibold uppercase tracking-[0.1em] text-forest-700">Nearby</h3>
+                <p class="mt-3 text-base">{nearby.map((n, i) => <><a href={`/areas/${n.slug}`} class="link">{n.name}</a>{i < nearby.length - 1 ? ', ' : ''}</>)}</p>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </Section>
+  )}
+
+  <Section tone="forest" labelledby="city-reviews">
+    <SectionHeading id="city-reviews" eyebrow="Reviews" title="What customers say" />
+    <div class="mt-12"><ReviewQuotes limit={3} /></div>
+  </Section>
+
+  <Section tone="white" labelledby="city-services">
+    <div class="grid gap-12 lg:grid-cols-12">
+      <div class="lg:col-span-4">
+        <p class="eyebrow mb-4">More in {a.name}</p>
+        <h2 id="city-services" class="text-h2 text-forest-900">Also available</h2>
+      </div>
+      <ul class="grid gap-3 sm:grid-cols-2 lg:col-span-8">
+        {services.filter((s) => s.slug !== 'weekly-pooper-scooper-service').map((s) => {
+          const p = headlinePrice(s.slug);
+          return <li><a href={`/services/${s.slug}`} class="card-lift flex h-full items-center justify-between gap-4 px-5 py-4"><span class="text-base font-semibold text-forest-900">{s.name}</span>{p && <span class="shrink-0 text-sm text-ink-500">{p.text}{p.per}</span>}</a></li>;
+        })}
+      </ul>
+    </div>
+  </Section>
+
+  {a.faqs?.length > 0 && (
+    <Section tone="sand" rule labelledby="city-faq">
+      <div class="grid gap-12 lg:grid-cols-12">
+        <div class="lg:col-span-4">
+          <p class="eyebrow mb-4">Questions</p>
+          <h2 id="city-faq" class="text-h2 text-forest-900">{a.name} questions</h2>
+        </div>
+        <div class="lg:col-span-8"><Faq items={a.faqs} /></div>
+      </div>
+    </Section>
+  )}
+
+  <Section tone="white" size="sm" rule labelledby="city-knowledge">
+    <div class="grid gap-10 lg:grid-cols-12 lg:gap-12">
+      <div class="lg:col-span-4">
+        <p class="eyebrow mb-4">Before you book</p>
+        <h2 id="city-knowledge" class="text-h3 text-forest-900">Read up first</h2>
+        <p class="mt-4 text-base text-ink-500">
+          {cityGuides.length > 0
+            ? `Guides that cover ${a.name}, and the questions people ask before their first visit.`
+            : `The questions people ask before their first visit, and our guides for the whole area.`}
+        </p>
+      </div>
+      <div class="lg:col-span-8">
+        {cityGuides.length > 0 ? (
+          <ul class="grid gap-3 sm:grid-cols-2">
+            {cityGuides.map((g) => (
+              <li><a href={`/resources/${g.slug}`} class="card-lift flex h-full flex-col p-5">
+                <span class="text-micro font-semibold uppercase tracking-wide text-ink-400">Guide</span>
+                <span class="mt-1.5 text-base font-semibold text-forest-900">{g.title}</span>
+              </a></li>
+            ))}
+          </ul>
+        ) : (
+          <p><a href="/resources" class="link text-base">Read our guides for the area →</a></p>
+        )}
+        <ul class="mt-4 flex flex-wrap gap-2">
+          {cityQuestions.map((q) => (
+            <li><a href={`/questions/${q.slug}`} class="inline-flex rounded-full border border-line-strong px-4 py-2 text-sm text-forest-900 transition duration-fast hover:border-forest-500 hover:bg-forest-50">{q.q}</a></li>
+          ))}
+          <li><a href="/questions" class="inline-flex rounded-full bg-forest-700 px-4 py-2 text-sm font-medium text-white transition duration-fast hover:bg-forest-800">All questions →</a></li>
+        </ul>
+      </div>
+    </div>
+  </Section>
+  <CloseCta source={`area-${a.slug}-close`} above="white" title={`Clean yards in ${a.name}, every week.`} />
+</Site>

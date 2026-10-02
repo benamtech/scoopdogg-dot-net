@@ -1,0 +1,55 @@
+---
+/**
+ * Every public page: head, header, content, footer, and the mobile price bar.
+ * The price bar appears once the page's first call to action has scrolled away, and never
+ * on /book (where it would point at itself).
+ */
+import Base from './Base.astro';
+import Header from '../components/site/Header.astro';
+import Footer from '../components/site/Footer.astro';
+import { headlineOffer } from '../lib/catalog';
+
+export interface Props {
+  title: string;
+  description: string;
+  canonicalPath: string;
+  ogImage?: string;
+  jsonLd?: object | object[];
+  noindex?: boolean;
+  mobileCta?: boolean;
+  /** Where the phone price bar goes. A service page sends it into the funnel at that service. */
+  mobileCtaHref?: string;
+  mobileCtaLabel?: string;
+}
+const { mobileCta = true, mobileCtaHref = '/book', mobileCtaLabel = 'See my price', ...base } = Astro.props;
+---
+<Base {...base}>
+  <slot name="head" slot="head" />
+  <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-paper focus:px-4 focus:py-2 focus:shadow-md">Skip to content</a>
+  <Header current={base.canonicalPath} />
+  <main id="main">
+    <slot />
+  </main>
+  <Footer />
+  {mobileCta && (
+    <div class="pointer-events-none fixed inset-x-0 bottom-0 z-30 translate-y-full p-3 transition duration-base ease-brand sm:hidden" data-mobile-cta aria-hidden="true">
+      <div class="tone-forest pointer-events-auto flex items-center gap-3 rounded-full bg-tone-bg p-2 pl-5 shadow-lg">
+        <p class="flex-1 text-sm leading-tight text-white">{headlineOffer && <span class="font-semibold text-amber-400">{headlineOffer.name}.</span>} No contract.</p>
+        <a href={mobileCtaHref} class="btn-primary btn-sm" tabindex="-1" data-cta="mobile-bar">{mobileCtaLabel}</a>
+      </div>
+    </div>
+  )}
+</Base>
+
+<script>
+  const bar = document.querySelector<HTMLElement>('[data-mobile-cta]');
+  const anchor = document.querySelector('[data-hero-cta]') ?? document.querySelector('main h1');
+  if (bar && anchor && 'IntersectionObserver' in window) {
+    new IntersectionObserver(([e]) => {
+      const show = !e.isIntersecting && e.boundingClientRect.top < 0;
+      bar.classList.toggle('translate-y-full', !show);
+      bar.setAttribute('aria-hidden', String(!show));
+      bar.querySelector('a')?.setAttribute('tabindex', show ? '0' : '-1');
+    }).observe(anchor);
+  }
+</script>

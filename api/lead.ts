@@ -13,7 +13,8 @@
  *   2. Nothing internal reaches the customer. One reviewed sentence, always.
  */
 import { randomUUID } from 'node:crypto';
-import { db, setting } from '../server/lib/db.js';
+import { db } from '../server/lib/db.js';
+import { sendEmail, demoMode } from '../server/lib/notify.js';
 import { sendJson, readJsonBody, safeError, type ApiRequest, type ApiResponse } from '../server/lib/http.js';
 
 /**
@@ -70,6 +71,20 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   }
 
   // 1. Save it. This is the part that must not fail silently.
+  //
+  // The SAME `demo.mode` that gates mail gates the booking journey. A booking made during
+  // a demo is not a lead, so it is written carrying the mark scripts/demo-clear.mjs deletes
+  // by - which is what makes a walked-through booking removable in one command instead of
+  // something somebody has to pick out of the owner's lead list by hand afterwards.
+  try {
+    const demo = await demoMode();
+    if (demo.mode) lead.name = `DEMO—${lead.name}`;
+  } catch (e) {
+    // Unreadable means we do not know; write the lead as it was given. A live lead
+    // wrongly kept is recoverable, a lost one is not.
+    safeError('lead:demo-mode', e);
+  }
+
   try {
     await db().query(
       `insert into leads (id, name, phone, email, address, city, service_slug,
@@ -87,48 +102,35 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   }
 
   // 2. Notify. Best effort: a failure here must never cost the lead we just saved.
+  //
+  // One send function, and it owns the recipient list, the demo-mode rewrite and the
+  // outbox row. There is no fallback address here any more: if the recipient setting
+  // cannot be read, sendEmail refuses and records the refusal, because the old fallback
+  // meant a deleted or emptied settings row mailed the owner anyway - which made demo
+  // mode impossible to trust.
   try {
-    const key = process.env.RESEND_API_KEY;
-    if (key) {
-      const to = await setting<string[]>('notify.lead_recipients', ['josue@scoopdogg.net']);
+    const label = SERVICE_LABELS[String(lead.service_slug)] || String(lead.service_slug) || 'Not specified';
+    const row = (k: string, v: unknown) =>
+      `<tr><td style="padding:6px 12px;color:#666">${k}</td><td style="padding:6px 12px;font-weight:600">${String(v ?? '—') || '—'}</td></tr>`;
+    await sendEmail({
+      purpose: 'lead',
       // AMTECH is copied, not addressed. The owner is the recipient; we are oversight.
-      const cc = await setting<string[]>('notify.lead_cc', []);
-      const from = await setting<string>('notify.from_address', 'leads@mail.amtechleads.com');
-      const label = SERVICE_LABELS[String(lead.service_slug)] || String(lead.service_slug) || 'Not specified';
-      const row = (k: string, v: unknown) =>
-        `<tr><td style="padding:6px 12px;color:#666">${k}</td><td style="padding:6px 12px;font-weight:600">${String(v ?? '—') || '—'}</td></tr>`;
-      await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${key}`,
-          'Content-Type': 'application/json',
-          // Resend sits behind Cloudflare, which answers a bare or library
-          // user agent with 403 "error code: 1010". That reads exactly like a
-          // dead API key and is not one. Send a real UA.
-          'User-Agent': 'ScoopDogg-Site/1.0 (+https://scoopdogg.net)',
-        },
-        body: JSON.stringify({
-          from: `Scoop Dogg Leads <${from}>`,
-          to,
-          ...(cc.length ? { cc } : {}),
-          reply_to: String(lead.email),
-          subject: `New Lead: ${lead.name} — ${label}`,
-          html: `<div style="font-family:system-ui,sans-serif;max-width:560px">
-            <h2 style="color:#1B4332">New lead from scoopdogg.net</h2>
-            <table style="width:100%;border-collapse:collapse;background:#f9f8f5;border-radius:10px">
-              ${row('Name', lead.name)}${row('Phone', lead.phone)}${row('Email', lead.email)}
-              ${row('Address', [lead.address, lead.city].filter(Boolean).join(', '))}
-              ${row('Service', label)}${row('Dogs', lead.num_dogs)}${row('Yard', lead.yard_size)}
-              ${row('From page', lead.source_page)}
-            </table>
-            ${lead.notes ? `<p style="color:#444"><strong>Notes:</strong><br>${String(lead.notes).replace(/</g, '&lt;')}</p>` : ''}
-          </div>`,
-        }),
-      });
-    } else {
-      // Visible degradation beats a silent one. The lead is safe in the database.
-      console.warn('[api:lead] RESEND_API_KEY not set — lead saved, no notification sent');
-    }
+      recipients: { settingKey: 'notify.lead_recipients' },
+      ccSettingKey: 'notify.lead_cc',
+      fromName: 'Scoop Dogg Leads',
+      replyTo: String(lead.email),
+      subject: `New Lead: ${lead.name} — ${label}`,
+      html: `<div style="font-family:system-ui,sans-serif;max-width:560px">
+        <h2 style="color:#1B4332">New lead from scoopdogg.net</h2>
+        <table style="width:100%;border-collapse:collapse;background:#f9f8f5;border-radius:10px">
+          ${row('Name', lead.name)}${row('Phone', lead.phone)}${row('Email', lead.email)}
+          ${row('Address', [lead.address, lead.city].filter(Boolean).join(', '))}
+          ${row('Service', label)}${row('Dogs', lead.num_dogs)}${row('Yard', lead.yard_size)}
+          ${row('From page', lead.source_page)}
+        </table>
+        ${lead.notes ? `<p style="color:#444"><strong>Notes:</strong><br>${String(lead.notes).replace(/</g, '&lt;')}</p>` : ''}
+      </div>`,
+    });
   } catch (e) {
     safeError('lead:notify', e);
   }

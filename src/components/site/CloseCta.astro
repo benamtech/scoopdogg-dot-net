@@ -1,0 +1,41 @@
+---
+/**
+ * The last band on a page, as scoopdogg.net closes: the brand green, a centred serif heading,
+ * one line under it, and the first step of booking. The live band holds its whole booking
+ * widget; this one holds the ZIP field that starts the funnel, which is the same promise in one
+ * field. `above` names the surface of the band before it and draws the live page's curved top
+ * edge in that colour; without it the edge is straight.
+ *
+ * THE ONE LINE OF THE LIVE PAGE THAT DOES NOT PORT. Its closing CTA reads *"Takes less than 60
+ * seconds. No credit card required. We'll reach out same day."* The speed promise is true and
+ * comes across. **"No credit card required" does not**, because both lanes of the funnel now
+ * ask for a card — lane B just does not charge it yet.
+ *
+ * P15 §7 listed this as copy to tidy. It is more than that. §17602(a)(5) makes it unlawful to
+ * *"include any information in the contract that interferes with, detracts from, contradicts,
+ * or otherwise undermines the ability of consumers to provide their affirmative consent"*, and
+ * a page telling a reader no card is needed, leading to a screen that takes one, is exactly
+ * that. R9 §2. `gates/consent.mjs` fails the build if the phrase reappears on any built page,
+ * so this is a decision with a reader rather than a line somebody remembered to delete.
+ *
+ * What keeps faith with the old promise is the pay-after lane itself, and the funnel says so
+ * where it is true: at the price step, and in the consent block.
+ */
+import { Image } from 'astro:assets';
+import AddressForm from './AddressForm.astro';
+import mascot from '../../assets/art/dog-jumping.png';
+import { headlineOffer } from '../../lib/catalog';
+export interface Props { title?: string; lede?: string; source?: string; service?: string; tone?: 'forest' | 'amber'; above?: 'cream' | 'white' | 'sage' | 'sand' }
+const { title = 'Never pick up after your dog again.', lede = `Takes about a minute, and you see your price before we ask for anything else.${headlineOffer ? ` ${headlineOffer.name}.` : ''}`, source = 'close', service, tone = 'forest', above } = Astro.props;
+const curve = { cream: 'bg-cream', white: 'bg-paper', sage: 'bg-forest-100', sand: 'bg-sand' } as const;
+---
+<section class={`tone-${tone} relative overflow-hidden bg-tone-bg`} aria-labelledby={`${source}-title`}>
+  {above && <div class={`absolute inset-x-[-10%] top-0 h-10 rounded-b-[100%] ${curve[above]} sm:h-14`} aria-hidden="true"></div>}
+  <div class={`container-site relative flex flex-col items-center text-center ${above ? 'pb-section-sm pt-24 lg:pb-20 lg:pt-32' : 'py-section-sm lg:py-20'}`}>
+    <Image quality={75} src={mascot} alt="" widths={[160, 320]} sizes="140px" class="pointer-events-none mb-4 h-auto w-28 drop-shadow-xl sm:w-32" loading="lazy" aria-hidden="true" />
+    <h2 id={`${source}-title`} class="max-w-2xl text-h2 text-tone-heading">{title}</h2>
+    <p class="mt-4 max-w-xl text-lg text-tone-fg">{lede}</p>
+    <div class="mt-8 flex w-full max-w-xl justify-center"><AddressForm size="md" label="Your ZIP code" hideLabel source={source} service={service} /></div>
+    <p class="mt-5 text-sm text-tone-muted">No contract · Cancel anytime · Skip or pause any week</p>
+  </div>
+</section>

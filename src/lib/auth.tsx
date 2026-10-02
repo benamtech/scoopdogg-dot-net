@@ -9,20 +9,31 @@ import { adminApi, type AdminUser } from './adminApi';
 interface AuthContextType {
   user: AdminUser | null;
   loading: boolean;
+  /** Whether the system is in demo mode. Rides the session so every screen can see it. */
+  demoMode: boolean;
+  demoAddress: string | null;
   refresh: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
-  user: null, loading: true, refresh: async () => {}, signOut: async () => {},
+  user: null, loading: true, demoMode: false, demoAddress: null,
+  refresh: async () => {}, signOut: async () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AdminUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [demoMode, setDemoMode] = useState(false);
+  const [demoAddress, setDemoAddress] = useState<string | null>(null);
 
   const refresh = async () => {
-    try { setUser((await adminApi.session()).user); }
+    try {
+      const s = await adminApi.session();
+      setUser(s.user);
+      setDemoMode(s.demo_mode === true);
+      setDemoAddress(s.demo_address ?? null);
+    }
     catch { setUser(null); }
     finally { setLoading(false); }
   };
@@ -33,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => { void refresh(); }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, refresh, signOut }}>
+    <AuthContext.Provider value={{ user, loading, demoMode, demoAddress, refresh, signOut }}>
       {children}
     </AuthContext.Provider>
   );

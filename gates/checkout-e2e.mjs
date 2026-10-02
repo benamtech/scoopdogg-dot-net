@@ -1,0 +1,344 @@
+/**
+ * S15/S14: a visitor goes from the homepage to a booking, in all three shapes the funnel now
+ * offers, and every price on the way is the resolver's price.
+ *
+ *   node scripts/dev-server.mjs --port 4330 &   # forces demo mode: test Stripe, test inbox
+ *   node gates/checkout-e2e.mjs [--base http://127.0.0.1:4330] [--card 4242424242424242]
+ *
+ * TWO HONEST OUTCOMES, AND IT SAYS WHICH IT MEASURED
+ *   payments connected   -> Stripe Checkout, pay with the test card, land in the account: PASS(paid)
+ *   not connected yet    -> the booking is saved as a request and the owner path fires: PASS(request)
+ * The second is not the first. The oracle edge for S15 expects PASS(paid); PASS(request) keeps
+ * the no-dead-end promise green without pretending money moved.
+ *
+ * THREE RUNS, because the funnel is three shapes now (P16 §3, §5):
+ *   A  a recurring plan, prepay          -> the first month is charged
+ *   B  the same plan, pay after visit 1  -> a card is saved, payment_state 'trialing', $0 today
+ *   C  a one-time cleanup                -> frequency 'one_time', charged through chargeOnce()
+ *
+ * It never mails a real person: the dev server forces demo mode, and this gate asserts the outbox
+ * rows it created were addressed only to the demo address. Its rows carry the DEMO— mark so
+ * scripts/demo-clear.mjs removes them.
+ */
+import { chromium } from 'playwright';
+import pg from 'pg';
+import { readFileSync } from 'node:fs';
+import { loadEnv } from '../scripts/_env.mjs';
+/**
+ * The resolver, compiled here rather than read out of a directory somebody else made.
+ *
+ * This was a static `import ... from '../.gate-build/src/shared/pricing.js'`, which only worked
+ * when another gate had run first and had not cleaned up after itself. Run this gate on its own
+ * — which is exactly what SPEC §5 tells you to do with browser jobs — and it died on
+ * ERR_MODULE_NOT_FOUND before a single check. An import that depends on the order gates happen
+ * to run in is not a dependency, it is a coincidence.
+ */
+import { compileServer } from './_compile.mjs';
+const { quoteBooking, quoteOneTime, formatCents } = await import(`${compileServer()}/src/shared/pricing.js`);
+
+loadEnv();
+const arg = (k, d) => (process.argv.includes(k) ? process.argv[process.argv.indexOf(k) + 1] : d);
+const BASE = arg('--base', 'http://127.0.0.1:4330');
+const CARD = arg('--card', '4242424242424242');
+const catalog = JSON.parse(readFileSync('content/catalog.json', 'utf8'));
+const pkg = catalog.packages.find((p) => p.slug === 'scoop-weekly-2-dogs');
+const quote = quoteBooking(catalog, { packageId: pkg.id });
+const cleanupTier = catalog.tiers.find((t) => t.service_slug === 'one-time-dog-poop-cleanup' && t.price_cents && !t.requires_quote && !t.price_is_from);
+const oneTime = quoteOneTime(catalog, cleanupTier.id);
+const expectMonthly = formatCents(pkg.monthly_price_cents);
+const expectFirst = formatCents(quote.firstChargeCents, { forceDecimals: quote.firstChargeCents % 100 !== 0 });
+const stamp = Date.now().toString().slice(-6);
+
+const results = [];
+const check = (name, ok, detail = '') => { results.push({ name, ok }); console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? ` — ${detail}` : ''}`); };
+
+/**
+ * EVERY SESSION THIS FILE CREATES IS MARKED AS OURS (migration 033).
+ *
+ * A browser-driven verifier walks the real funnel, so it writes real `funnel_sessions` rows into
+ * the client's database — and until 033 nothing distinguished them. Measured 2026-09-23: all 25
+ * rows in the table were ours, and the growth board was reporting AMTECH's continuous integration
+ * as this client's booking-intent sessions.
+ *
+ * `api/booking.ts` maps this header to `source = 'gate'` and `server/lib/growth.ts` filters it out
+ * of every number an owner sees. Deleting the rows afterwards is still worth doing and is not
+ * enough on its own: a walk that fails halfway leaves its rows behind, and that is exactly the
+ * walk somebody is staring at the board during.
+ */
+const VERIFIER_HEADER = { 'x-scoopdogg-verifier': 'gate' };
+
+const browser = await chromium.launch();
+const errors = [];
+const outcomes = {};
+/** What each walk was shown on screen, so the stored record can be compared to it. */
+const sentences = {};
+const people = {};
+const c = new pg.Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: true } });
+await c.connect();
+
+/** One walk. `shape` is 'prepay' | 'payafter' | 'onetime'. */
+async function walk(shape) {
+  const page = await browser.newPage({ extraHTTPHeaders: VERIFIER_HEADER, viewport: { width: 1280, height: 900 } });
+  page.on('pageerror', (e) => errors.push(e.message));
+  const person = {
+    name: `DEMO—E2E ${shape} ${stamp}`,
+    email: `delivered+sd-e2e-${shape}-${stamp}@resend.dev`,
+    phone: `805${shape === 'prepay' ? '511' : shape === 'payafter' ? '522' : '533'}${stamp.slice(-4)}`,
+  };
+  people[shape] = person;
+  let outcome = 'unknown';
+  let consentSentence = null;
+  try {
+    // The hero: one field, a plain GET to /book. A pasted street address still works, which is
+    // the promise P16 §2 makes about the ZIP field.
+    await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
+    const hero = page.locator('form[data-hero-cta]');
+    const t0 = Date.now();
+    await hero.locator('input[name=address]').fill(shape === 'prepay' ? '123 Main St, Ventura, CA 93001' : '93001');
+    await hero.locator('button[type=submit]').click();
+    await page.waitForURL(/\/book/);
+    await page.getByRole('heading', { name: /what do you need/i }).waitFor({ timeout: 20000 });
+    if (shape === 'prepay') check('a pasted address still reaches the service question (the ZIP is parsed out)', true, `${Date.now() - t0}ms`);
+
+    if (shape === 'onetime') {
+      await page.getByRole('button', { name: /one-time dog poop cleanup/i }).first().click();
+      await page.getByRole('heading', { name: /how much has built up/i }).waitFor();
+      await page.getByRole('button', { name: new RegExp(cleanupTier.label.split(' (')[0], 'i') }).first().click();
+      await page.getByRole('heading', { name: /here's your price/i }).waitFor();
+      const text = await page.locator('main').innerText();
+      check('the one-time price on screen is the tier row', text.includes(formatCents(oneTime.cents)), formatCents(oneTime.cents));
+      await page.getByRole('button', { name: /choose my day/i }).click();
+    } else {
+      await page.getByRole('button', { name: /weekly pooper scooper/i }).first().click();
+      await page.getByRole('heading', { name: /how many dogs/i }).waitFor();
+      await page.getByRole('button', { name: /^.*2 dogs/i }).first().click();
+      await page.getByRole('heading', { name: /here's your price/i }).waitFor();
+      if (shape === 'prepay') {
+        const priceText = await page.locator('main').innerText();
+        check(`price step shows the resolver's monthly price ${expectMonthly}`, priceText.includes(expectMonthly));
+        check(`price step shows the resolver's first month ${expectFirst}`, priceText.includes(expectFirst));
+        check('no contact field appears before the price', (await page.locator('input[type=email], input[type=tel]').count()) === 0);
+      }
+      if (shape === 'payafter') await page.getByRole('button', { name: /pay after my first visit/i }).click();
+      await page.getByRole('button', { name: /^this week$/i }).click().catch(() => {});
+      await page.getByRole('button', { name: /choose my start day/i }).click();
+    }
+
+    await page.getByRole('heading', { name: shape === 'onetime' ? /when should we come/i : /when should we start/i }).waitFor({ timeout: 20000 });
+    const firstDay = page.locator('main button[aria-pressed]').first();
+    await firstDay.waitFor();
+    await firstDay.click();
+    await page.getByRole('heading', { name: /almost done/i }).waitFor();
+    await page.fill('#bk-name', person.name);
+    await page.fill('#bk-address', '123 Main St');
+    await page.fill('#bk-email', person.email);
+    await page.fill('#bk-phone', person.phone);
+    await page.fill('#bk-notes', 'Automated end-to-end gate. Not a real customer.');
+    await page.getByRole('button', { name: /review and book/i }).click();
+    await page.getByRole('heading', { name: /review your booking/i }).waitFor();
+    const review = await page.locator('main').innerText();
+    if (shape === 'prepay') check(`review shows Due today ${expectFirst}`, review.includes(expectFirst));
+    if (shape === 'payafter') check('lane B shows nothing due today and the date of the first charge',
+      /Due today\s*Nothing/i.test(review) && /first payment is/i.test(review));
+
+    // ---- §17602(a)(4): the consent, on the real page ------------------------------------
+    // Step 6. A renewing plan cannot be bought without express affirmative consent to the
+    // renewal terms, so the pay button is disabled until the box is ticked. Proving the
+    // DISABLED state first is the point: a gate that only ticks the box would keep passing on
+    // the day somebody removes the requirement.
+    //
+    // A ONE-TIME JOB TAKES THE OTHER BRANCH, and it is an assertion rather than a skip. It
+    // renews nothing, so §17602 does not reach it, and a renewal checkbox over a single yard
+    // cleanup would be asking the customer to agree to something that was never offered.
+    const payBtn = page.getByRole('button', { name: /(pay .* and book|save my card and book)/i });
+    if (shape === 'onetime') {
+      check('onetime: no renewal consent is demanded for a job that never renews',
+        (await page.locator('[data-consent-block]').count()) === 0);
+      check('onetime: the pay button is live without one', !(await payBtn.isDisabled()));
+    } else {
+      const consentBox = page.locator('[data-consent-block] input[type=checkbox]');
+      check('the renewal terms are shown as their own block, before the button',
+        await page.locator('[data-consent-block]').isVisible());
+      const cites = await page.locator('[data-consent-cite]').evaluateAll((els) => els.map((e) => e.getAttribute('data-consent-cite')));
+      check(`all five §17602(a)(2) disclosures are on the page — ${cites.join(', ')}`,
+        ['a2A', 'a2B', 'a2C', 'a2D', 'a2E'].every((c) => cites.includes(c)));
+      check('the pay button is disabled until the renewal terms are agreed',
+        await payBtn.isDisabled());
+      await consentBox.check();
+      const sentence = (await page.locator('[data-consent-sentence]').innerText()).trim();
+      check(`the sentence names the monthly price — ${sentence.slice(0, 60)}…`,
+        sentence.includes(expectMonthly) && /cancel/i.test(sentence));
+      check('the pay button is enabled once it is', !(await payBtn.isDisabled()));
+      consentSentence = sentence;
+    }
+
+    await payBtn.click();
+    await Promise.race([
+      page.waitForURL(/checkout\.stripe\.com/, { timeout: 25000 }),
+      page.getByRole('heading', { name: /booking received/i }).waitFor({ timeout: 25000 }),
+    ]).catch(() => {});
+
+    if (/checkout\.stripe\.com/.test(page.url())) {
+      outcome = 'paid';
+      /**
+       * CHOOSE CARD FIRST. Stripe Checkout offers Card, Cash App Pay, Klarna and Bank on this
+       * account, and the card fields do not exist in the DOM until Card is the selected method.
+       * This gate went straight for `#cardNumber` and timed out for thirty seconds against a
+       * page that was rendering perfectly — the screenshots in output/ show the full Checkout
+       * with the price, the half-off coupon and the start date all correct.
+       *
+       * It is conditional because a single-method account renders no chooser at all, and a
+       * gate that requires the chooser would then fail on the simpler case.
+       */
+      // SELECT CARD, AND CHECK IT TOOK. Measured 2026-09-30 on live test Checkouts: clicking the item
+      // (data-testid card-accordion-item) or forcing its radio opens the card form; the inner button and
+      // the "Card" label time out. A single click sometimes lands before the page is interactive, so this
+      // clicks, waits for #cardNumber, and tries again up to three times.
+      const selectCard = async () => {
+        for (let i = 0; i < 3; i++) {
+          if (await page.locator('#cardNumber').isVisible().catch(() => false)) return;
+          await page.getByTestId('card-accordion-item').click({ timeout: 5000 }).catch(() => {});
+          if (await page.locator('#cardNumber').waitFor({ timeout: 5000 }).then(() => true, () => false)) return;
+          await page.locator('#payment-method-accordion-item-title-card').click({ force: true, timeout: 5000 }).catch(() => {});
+          if (await page.locator('#cardNumber').waitFor({ timeout: 5000 }).then(() => true, () => false)) return;
+        }
+      };
+      await selectCard();
+      await page.locator('#cardNumber').fill(CARD);
+      await page.locator('#cardExpiry').fill('12 / 34');
+      await page.locator('#cardCvc').fill('123');
+      await page.locator('#billingName').fill(person.name);
+      const zip = page.locator('#billingPostalCode');
+      if (await zip.count()) await zip.fill('93001');
+
+      /**
+       * UNTICK "Save my information for faster checkout".
+       *
+       * Stripe ticks it by default, and with it ticked Link demands a phone number — the
+       * screenshot of the failing run shows a correctly filled card and one red-outlined phone
+       * field. Subscribe silently refuses and the walk waits sixty seconds for a redirect that
+       * was never going to come.
+       *
+       * Unticking is the right fix rather than filling a phone: this gate should exercise a
+       * plain card payment, and a gate that creates Link accounts on every run is doing
+       * something nobody asked it to.
+       */
+      const saveInfo = page.locator('#enableStripePass');
+      if (await saveInfo.count().catch(() => 0)) {
+        await saveInfo.uncheck({ timeout: 5000 }).catch(() => {});
+      }
+      const phone = page.locator('#phoneNumber');
+      if (await phone.isVisible().catch(() => false)) await phone.fill('8055550123').catch(() => {});
+
+      await page.locator('button[type=submit]').click();
+      await page.waitForURL(/\/book\/complete/, { timeout: 60000 });
+      await page.getByRole('heading', { name: /you're booked/i }).waitFor({ timeout: 30000 });
+      check(`${shape}: returned from Stripe to a confirmed booking`, true);
+    } else {
+      outcome = 'request';
+      await page.getByRole('heading', { name: /booking received/i }).waitFor({ timeout: 10000 });
+      check(`${shape}: payments not connected, so the booking is saved as a request — never a dead end`, true);
+    }
+  } catch (e) {
+    check(`${shape}: the journey completed without an exception`, false, String(e.message).split('\n')[0]);
+    await page.screenshot({ path: `output/checkout-e2e-${shape}-failure.png` }).catch(() => {});
+  }
+  outcomes[shape] = outcome;
+  sentences[shape] = consentSentence;
+  await page.close();
+}
+
+for (const shape of ['prepay', 'payafter', 'onetime']) await walk(shape);
+
+// ---- the rows, which are what any of this was for -------------------------------------------
+try {
+  for (const shape of ['prepay', 'payafter', 'onetime']) {
+    const { rows } = await c.query(
+      `select s.state, s.frequency, s.monthly_price_cents, s.price_cents, s.payment_state,
+              s.booking_answers->>'lane' as lane, s.discount->>'first_charge_cents' as first_charge
+         from subscriptions s join customers cu on cu.id = s.customer_id where cu.email = $1`, [people[shape].email]);
+    check(`${shape}: exactly one subscription row`, rows.length === 1, JSON.stringify(rows[0] ?? {}));
+    const r = rows[0] ?? {};
+    if (shape === 'onetime') {
+      check('onetime: frequency is one_time and the price is the tier price',
+        r.frequency === 'one_time' && r.price_cents === oneTime.cents, `${r.frequency} ${r.price_cents}`);
+      // A one-time job renews nothing, so a consent row here would be a record of an agreement
+      // that was never offered. The absence is the assertion (R9 §0).
+      const { rows: none } = await c.query(
+        `select 1 from consents k where k.subscription_id = (
+           select s2.id from subscriptions s2 join customers c2 on c2.id = s2.customer_id where c2.email = $1 limit 1)`,
+        [people[shape].email]);
+      check('onetime: no renewal consent was recorded', none.length === 0, `${none.length} rows`);
+      check('onetime: no consent block was rendered', sentences[shape] === null);
+    } else {
+      check(`${shape}: frozen monthly price equals the resolver`, r.monthly_price_cents === pkg.monthly_price_cents);
+      check(`${shape}: frozen first charge equals the resolver`, Number(r.first_charge) === quote.firstChargeCents);
+      check(`${shape}: the lane is recorded on the row`, r.lane === shape, String(r.lane));
+
+      // ---- §17602(a)(6): the consent record, against what was on the screen --------------
+      // This is the assertion the whole of step 6 exists for, and it is the one a static gate
+      // cannot make: the sentence in the database is compared to the characters a real browser
+      // actually rendered, not to a second copy of the same template.
+      const { rows: cons } = await c.query(
+        `select k.text_shown, k.price_cents, k.lane, k.ip, k.user_agent
+           from consents k where k.subscription_id = (
+             select s2.id from subscriptions s2 join customers c2 on c2.id = s2.customer_id
+              where c2.email = $1 limit 1)`, [people[shape].email]);
+      check(`${shape}: exactly one consent record`, cons.length === 1, `${cons.length} rows`);
+      const k = cons[0] ?? {};
+      check(`${shape}: text_shown matches the rendered sentence byte for byte`,
+        k.text_shown === sentences[shape],
+        k.text_shown === sentences[shape] ? `${String(k.text_shown).length} chars` : `db="${k.text_shown}" screen="${sentences[shape]}"`);
+      check(`${shape}: the consent records the monthly price and the lane`,
+        k.price_cents === pkg.monthly_price_cents && k.lane === shape, `${k.price_cents} ${k.lane}`);
+      check(`${shape}: the consent is verifiable — a user agent was captured`,
+        Boolean(k.user_agent), String(k.user_agent).slice(0, 40));
+    }
+    if (outcomes[shape] === 'paid' && shape === 'payafter') {
+      check('payafter: the subscription is active and trialing, with no money taken',
+        r.state === 'active' && r.payment_state === 'trialing', `${r.state}/${r.payment_state}`);
+    } else if (outcomes[shape] === 'paid') {
+      check(`${shape}: the subscription is active and paid`, r.state === 'active' && r.payment_state === 'ok');
+    }
+  }
+  const { rows: mail } = await c.query(
+    `select payload->'to' as to_list, demo from outbox where created_at > now() - interval '15 minutes'
+       and (payload->>'subject' ilike $1 or payload->'requested_to' ?| $2)`, [`%${stamp}%`, Object.values(people).map((p) => p.email)]);
+  // Demo-addressed means sent ONLY to the demo address in force: the process's SD_DEMO_ADDRESS for a
+  // local server, the demo.address setting (Ben) on a deployed preview — never to a customer or the
+  // owner. Until 2026-10-01 this matched /amtechai/ as a "real inbox", which is the demo address on
+  // every preview, so the check failed on a correct run there.
+  const { rows: [da] } = await c.query(`select value #>> '{}' as v from settings where key = 'demo.address'`);
+  const allowed = (addr) => addr === da?.v || addr === process.env.SD_DEMO_ADDRESS || /@resend\.dev$/.test(addr);
+  const leaked = mail.filter((m) => !m.demo || !(m.to_list ?? []).every(allowed));
+  check('every message these bookings sent went only to the demo address, never to a customer or the owner', leaked.length === 0,
+    `${mail.length} messages${leaked.length ? `; to ${JSON.stringify(leaked[0].to_list)}` : ''}`);
+  check('NEGATIVE CONTROL: the owner\'s own address would count as a leak', !allowed('josue@scoopdogg.net'));
+} catch (e) {
+  check('the rows could be read back', false, String(e.message).split('\n')[0]);
+}
+
+check('no JavaScript errors', errors.length === 0, errors.slice(0, 2).join(' | '));
+
+// LEAVE NOTHING BEHIND. This walk books real subscriptions in the one database, and until
+// 2026-10-01 it never removed them: 20 test visits had filled Tuesday 6 October to
+// schedule.day_capacity, so real customers saw the day as Full. Every DEMO—E2E customer and
+// everything attached to them goes, then the gate counts what is left.
+{
+  const { removeTestCustomers } = await import('../scripts/cleanup-e2e-customers.mjs');
+  const removed = await removeTestCustomers('DEMO—E2E', c).catch((e) => ({ error: e.message }));
+  const { rows: [left] } = await c.query(`select count(*)::int as n from customers where name like 'DEMO—E2E%'`);
+  check('every customer and booking this walk made is removed from the database', !removed.error && left.n === 0,
+    removed.error ?? `${removed.customers ?? 0} customers, ${removed.visits ?? 0} visits removed; ${left.n} left`);
+}
+await c.end();
+await browser.close();
+
+const failed = results.filter((r) => !r.ok).length;
+const distinct = [...new Set(Object.values(outcomes))];
+const verdict = failed === 0 ? `PASS(${distinct.length === 1 ? distinct[0] : distinct.join('+')})` : 'FAIL';
+const { mkdirSync, writeFileSync } = await import('node:fs');
+mkdirSync('output', { recursive: true });
+writeFileSync('output/checkout-e2e-receipt.json', JSON.stringify({ ran_at: new Date().toISOString(), base: BASE, verdict, outcomes, results }, null, 2));
+console.log(`\n${verdict} ${results.length - failed}/${results.length}`);
+process.exit(failed ? 1 : 0);

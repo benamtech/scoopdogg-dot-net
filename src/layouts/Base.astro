@@ -7,9 +7,21 @@
  * 71 URLs served index.html's homepage <title> and no <h1>. Passing meta as props to a
  * layout is what makes "every page has its own title" true by construction instead of
  * true only when JavaScript happens to execute.
+ *
+ * 2026-09-16: fonts are self-hosted (src/index.css), so there is no request to Google
+ * before first paint; icons and the manifest come from public/brand.
  */
 import '../index.css';
 import { SITE_URL, DEFAULT_OG_IMAGE, SITE_NAME } from '../lib/constants';
+// `demo.mode` from the database, read for this render by src/middleware.ts, so the banner and
+// the noindex are in the HTML a crawler receives. A banner added after the page loaded would be
+// invisible to a crawler and to any gate that reads the rendered HTML.
+import { DEMO_MODE, DEMO_BANNER_TEXT } from '../lib/demo';
+// The analytics tag is a ROW, not a constant. See the block below for why that matters.
+import { setting } from '../lib/catalog';
+// Preload the two faces every page paints with, so the headline does not wait on font discovery.
+import outfitUrl from '@fontsource-variable/outfit/files/outfit-latin-wght-normal.woff2?url';
+import serifUrl from '@fontsource/dm-serif-display/files/dm-serif-display-latin-400-normal.woff2?url';
 
 export interface Props {
   title: string;
@@ -18,31 +30,102 @@ export interface Props {
   ogImage?: string;
   jsonLd?: object | object[];
   noindex?: boolean;
+  bodyClass?: string;
 }
 
-const { title, description, canonicalPath, ogImage, jsonLd, noindex = false } = Astro.props;
+const { title, description, canonicalPath, ogImage, jsonLd, noindex = false, bodyClass = '' } = Astro.props;
+/**
+ * The GA4 property, from a row. Empty renders no tag at all.
+ *
+ * THE DEFAULT IS EMPTY, which means this site ships no third-party JavaScript. Measured
+ * 2026-09-19 with `scripts/measure-script-cost.mjs`, five samples per arm, same page and same
+ * minute with the tag's hosts blocked at the network layer so machine noise lands on both:
+ *
+ *     page             script (tag on)   script (tag off)   JS downloaded
+ *     /                     214ms              15ms          172KB -> 0
+ *     /areas/ventura        245ms               5ms          172KB -> 0
+ *     /pricing              252ms               7ms          172KB -> 0
+ *
+ * ~240ms of main-thread script and ONE HUNDRED PER CENT of the JavaScript on a content page.
+ * Total task duration on /areas/ventura halves, 458ms to 232ms. Unthrottled 240ms against
+ * Lighthouse's 4x CPU throttle is ~960ms, which is the 830ms Total Blocking Time measured on
+ * that page by a completely different route — two instruments, one answer.
+ *
+ * It was already deferred to first-interaction-or-idle in September and it is STILL the largest
+ * cost on every page. Deferring it further would move the Lighthouse number without moving
+ * anything a visitor experiences, which is gaming the only instrument this site has (R10 §1).
+ *
+ * P19 §2 decided the scoreboard before this: "net adds, sessions, conversion — the only
+ * scoreboard ... from `events` and the money rows — no analytics vendor, no third-party script,
+ * no cookie banner." Step 5 built that spine (`funnel_sessions`, the funnel events) and the
+ * growth board reads it. GA was inherited from the predecessor site and is now measuring
+ * something we measure ourselves, at the cost of every page's only JavaScript.
+ *
+ * TO PUT IT BACK, one row — and since 2026-09-29 that is true, with no build and no deploy:
+ *
+ *     node scripts/set-setting.mjs analytics.measurement_id '"G-SNLVJNSP05"'
+ *
+ * The pages render from the rows (src/middleware.ts), and the key is in PUBLIC_SETTINGS
+ * (server/lib/public-catalog.ts), which gates/settings-have-readers.mjs resolves this read
+ * against. Until 2026-09-26 the allowlist did not carry the key and until 2026-09-29 the pages
+ * were built from a file, so this comment's earlier advice wrote a row the site could never see.
+ * set-setting.mjs purges the page cache like an admin save does.
+ *
+ * THE ROW IS SET. The live database carries analytics.measurement_id = G-SNLVJNSP05 (read
+ * 2026-10-02), so promoting this branch keeps GA running on the same property, and its history
+ * reads straight across the change of site. Ben, 2026-10-02: the site keeps Google Analytics.
+ * Read the row before believing any sentence about it, this one included.
+ */
+const measurementId = setting<string>('analytics.measurement_id', '');
+// Search Console ownership (scripts/search-console.mjs). A setting, not code: the token is public by design.
+const googleVerification = setting<string>('google.site_verification', '');
+// A demo build is never indexable, whatever the page asked for. A demo booking page in
+// Google's index outlives the demo.
+const isNoindex = noindex || DEMO_MODE;
 const canonical = `${SITE_URL}${canonicalPath}`;
 const image = ogImage || DEFAULT_OG_IMAGE;
-const schema = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : null;
+// EVERY INDEXABLE PAGE CARRIES STRUCTURED DATA, and a page that does not name its own gets a
+// WebPage node built from the props it already passed. Seven pages - /about, /areas, /book,
+// /careers, /commercial, /how-it-works, /services - shipped with none at all, which R8 §F calls
+// the machine-readable layer and Google's AI-features guidance asks for first.
+//
+// It is built from `title`, `description` and `canonical` rather than written per page ON PURPOSE:
+// structured data that is authored separately drifts from the visible text, and the rule this
+// repository holds (STANDARD.md §4.3) is that a page may not claim to a machine what a reader
+// cannot see. These three ARE what the reader sees.
+const defaultSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  name: title,
+  description,
+  url: canonical,
+  inLanguage: 'en-US',
+  isPartOf: { '@type': 'WebSite', name: SITE_NAME, url: SITE_URL },
+};
+const schema = jsonLd
+  ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd])
+  : (isNoindex ? null : [defaultSchema]);
 ---
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" type="image/png" href="/horizontallogo.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#143728" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/brand/mark-32.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/brand/mark-192.png" />
+    <link rel="apple-touch-icon" href="/brand/mark-180.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="preload" href={outfitUrl} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={serifUrl} as="font" type="font/woff2" crossorigin />
 
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
-    <meta name="robots" content={noindex ? 'noindex, nofollow' : 'index, follow'} />
-
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Outfit:wght@300;400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
+    {/* WHY it is noindex, for gates/build-gates.mjs: a page that is private ("page") and a page that is
+        noindex only because this is a demo build ("demo", every preview) must not be confused. */}
+    <meta name="robots" content={isNoindex ? 'noindex, nofollow' : 'index, follow'} data-noindex={noindex ? 'page' : DEMO_MODE ? 'demo' : undefined} />
+    {googleVerification && <meta name="google-site-verification" content={googleVerification} />}
 
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content={SITE_NAME} />
@@ -55,19 +138,134 @@ const schema = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : null;
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={image} />
 
+    <slot name="head" />
+
     {schema && (
       <script type="application/ld+json" set:html={JSON.stringify(schema.length === 1 ? schema[0] : schema)} />
     )}
 
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-SNLVJNSP05"></script>
-    <script is:inline>
+    <!--
+      GA4, loaded after the first interaction or when the browser is idle. Events queue in
+      dataLayer until it arrives, so nothing is lost - including booking_step and purchase.
+
+      IT IS A SETTING NOW, and the reason is a measurement. The deferral above was added on
+      2026-09-16 because the tag cost ~500ms of main-thread time; re-measured on 2026-09-19
+      after the design port, it is STILL the single largest cost on every page. On
+      /areas/ventura it is the ONLY script on the page - this site ships 0KB of its own
+      JavaScript on content pages - and Total Blocking Time is 830ms. The homepage swings
+      between 74 and 89 on identical runs, and the swing tracks TBT exactly.
+
+      Deferring it further would move the Lighthouse number without moving anything a visitor
+      experiences, which is gaming the only instrument we have (R10 §1). So the lever is
+      whether to keep the tag at all - and that is Ben's call, not a code change. P19 §2
+      already decided the scoreboard is our own `events` rows, "no analytics vendor, no
+      third-party script, no cookie banner", and step 5 built that spine. This makes the
+      decision one row:
+
+        node scripts/set-setting.mjs analytics.measurement_id ""
+
+      An empty id renders no tag at all.
+    -->
+    {measurementId && (
+    <script is:inline define:vars={{ measurementId }}>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
+      // define:vars wraps this script in a function, so gtag is published by hand: the
+      // conversion events (the tap listener below, the booking and enquiry forms) call it.
+      window.gtag = gtag;
       gtag('js', new Date());
-      gtag('config', 'G-SNLVJNSP05');
+      gtag('config', measurementId);
+      (function () {
+        var loaded = false;
+        function load() {
+          if (loaded) return; loaded = true;
+          var s = document.createElement('script');
+          s.async = true; s.src = 'https://www.googletagmanager.com/gtag/js?id=' + measurementId;
+          document.head.appendChild(s);
+        }
+        ['pointerdown', 'keydown', 'scroll', 'touchstart'].forEach(function (e) { addEventListener(e, load, { once: true, passive: true }); });
+        addEventListener('load', function () {
+          if (window.requestIdleCallback) requestIdleCallback(load, { timeout: 3500 }); else setTimeout(load, 3500);
+        });
+      })();
+    </script>
+    )}
+
+    <!--
+      WHERE THIS VISIT CAME FROM, captured once and kept for the session (migration 033).
+
+      `document.referrer` is the ONLY place the original referrer survives, and it survives for
+      exactly one page load: click through to a second page of this site and it becomes
+      scoopdogg.net. So the first page of a session writes it down and every later page leaves it
+      alone — which is why this is here, in the layout every page uses, and not in the booking
+      island the visitor may never reach.
+
+      IT IS NOT A COOKIE AND NOT AN IDENTIFIER. One hostname, in sessionStorage, gone when the tab
+      closes, never read by anything but our own /api/booking/track. Same-site referrers are
+      dropped rather than stored, so an internal click reads as direct rather than as a channel.
+      P19 §2's "no analytics vendor, no third-party script, no cookie banner" still holds.
+    -->
+    <script is:inline>
+      try {
+        if (!sessionStorage.getItem('sd_src')) {
+          var ref = document.referrer || '';
+          var host = '';
+          try { host = ref ? new URL(ref).hostname.replace(/^www\./, '') : ''; } catch (e) { host = ''; }
+          // A PAID CLICK IS NOT AN ORGANIC ONE, and from the referrer alone they are the same
+          // site. An ad platform marks its own clicks in the landing URL (gclid and its two
+          // siblings for Google, msclkid for Microsoft), and a tagged campaign says so in
+          // utm_medium. Those sessions are stored as `paid.<site>`, so the growth page can tell
+          // what an advert brought from what a search result did. Only the marker's presence is
+          // read; the click id itself is never stored.
+          var q = new URLSearchParams(location.search);
+          var paid = q.get('gclid') || q.get('gbraid') || q.get('wbraid') ? 'google.com'
+            : q.get('msclkid') ? 'bing.com'
+            : /^(cpc|ppc|paid|paidsearch|paidsocial|paid_social|display)$/i.test(q.get('utm_medium') || '') ? (host || (q.get('utm_source') || 'ad').toLowerCase().replace(/[^a-z0-9.-]/g, ''))
+            : '';
+          // A TAGGED LINK NAMES ITS OWN CHANNEL. The Google Business Profile's website link, a
+          // flyer's QR code and a door hanger all arrive as google.com or as nothing; tagged
+          // ?utm_source=gbp (or flyer, doorhanger, nextdoor) they arrive as themselves.
+          var tagged = (q.get('utm_source') || '').toLowerCase().replace(/[^a-z0-9.-]/g, '').slice(0, 60);
+          if (paid) sessionStorage.setItem('sd_src', 'paid.' + paid);
+          else if (tagged) sessionStorage.setItem('sd_src', tagged);
+          else if (host && host !== location.hostname.replace(/^www\./, '')) sessionStorage.setItem('sd_src', host);
+        }
+      } catch (e) { /* measurement is never load-bearing */ }
+
+      // A TAP ON THE PHONE NUMBER OR THE TEXT LINK IS A LEAD that left no row: the call happens
+      // on the customer's phone, and Josue is paid in cash and Venmo for jobs that start there.
+      // One delegated listener records every tel: and sms: link on every page, once per kind per
+      // tab, as an event (not a funnel session, so booking starts stay booking starts), and
+      // tells Google Analytics the same thing.
+      document.addEventListener('click', function (ev) {
+        try {
+          var a = ev.target && ev.target.closest && ev.target.closest('a[href^="tel:"], a[href^="sms:"]');
+          if (!a || location.pathname.indexOf('/admin') === 0) return;
+          var kind = a.getAttribute('href').indexOf('sms:') === 0 ? 'text' : 'call';
+          if (window.gtag) window.gtag('event', kind === 'call' ? 'phone_call_tap' : 'text_tap', { page: location.pathname });
+          if (sessionStorage.getItem('sd_tap_' + kind)) return;
+          var id = sessionStorage.getItem('sd_tap_id') || (crypto.randomUUID ? crypto.randomUUID() : '');
+          if (!id) return;
+          sessionStorage.setItem('sd_tap_id', id);
+          sessionStorage.setItem('sd_tap_' + kind, '1');
+          fetch('/api/booking/track', {
+            method: 'POST', headers: { 'content-type': 'application/json' }, keepalive: true,
+            body: JSON.stringify({ session_id: id, step: kind, source: sessionStorage.getItem('sd_src'), entry: location.pathname }),
+          }).catch(function () {});
+        } catch (e) { /* never load-bearing */ }
+      }, true);
     </script>
   </head>
-  <body class="bg-cream text-dark font-sans antialiased">
+  <body class={`bg-paper text-ink-900 font-sans antialiased ${bodyClass}`}>
+    {DEMO_MODE && (
+      <div
+        data-demo-banner
+        role="status"
+        class="border-b-2 border-amber-600 bg-amber-100 px-4 py-2.5 text-center text-sm font-medium text-amber-700"
+      >
+        {DEMO_BANNER_TEXT}
+      </div>
+    )}
     <slot />
   </body>
 </html>

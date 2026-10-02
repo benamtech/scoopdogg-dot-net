@@ -1,0 +1,126 @@
+/**
+ * Read the catalog out of the database and write content/catalog.json — FOR THE GATES ONLY.
+ *
+ *   node scripts/pull-catalog.mjs
+ *
+ * NO PAGE READS THIS FILE (2026-09-29). Pages render from the live rows on each request
+ * (src/middleware.ts, server/lib/public-catalog.ts), which is what makes an owner's edit live
+ * with no rebuild. This file survives for one build-time consumer, named here so it is not
+ * mistaken for a source: the gates that check a rendered page against the rows
+ * (question-pages, price-clears-the-floor, no-price-in-prose, review-count, zip-coverage, ...).
+ * They read THIS copy on purpose — its own SQL, not the server's loader — because a verifier
+ * that shares the producer's code agrees with it, wrong and all.
+ *
+ * If DATABASE_URL is set and the read fails, it stops: a gate comparing pages with a stale file
+ * would report a disagreement that is not there, or miss one that is.
+ */
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import pg from 'pg';
+import { loadEnv } from './_env.mjs';
+// The environment is this script's own dependency. `--env-file=.env.local` still works and
+// is still the documented way for a human; a bare `node scripts/<this>` now works too, which
+// is the only shape an agent session can run (scripts/_env.mjs says why). Nothing is printed.
+loadEnv();
+
+
+const OUT = path.resolve('content/catalog.json');
+const url = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+
+if (!url) {
+  if (!existsSync(OUT)) {
+    console.error('[catalog] no DATABASE_URL and no content/catalog.json - nothing to build pages from');
+    process.exit(1);
+  }
+  const cur = JSON.parse(readFileSync(OUT, 'utf8'));
+  console.log(`[catalog] no DATABASE_URL - keeping content/catalog.json pulled ${cur.pulled_at}`);
+  process.exit(0);
+}
+
+// Only what a public page may show. No customer, lead, session or team row is read here.
+// Kept in step with server/lib/public-catalog.ts by gates/settings-have-readers.mjs.
+const PUBLIC_SETTINGS = [
+  'business.name', 'business.phone', 'business.email', 'business.region_label', 'business.brand_region', 'business.timezone',
+  'pricing.quote_required_message', 'pricing.currency',
+  // The custom-quote lane (migration 042): what the request page promises, and the licence number
+  // §7030.5 puts on every advert once it is known.
+  'google.site_verification',
+  'quote.reply_promise', 'quote.typical_range', 'quote.photos_max', 'business.license_number', 'business.license_class',
+  'schedule.service_days', 'schedule.day_start', 'schedule.day_end', 'schedule.new_customer_start_days',
+  'schedule.visit_window_hours', 'schedule.day_capacity',
+  'booking.start_window_days', 'booking.initial_cleanup_policy', 'booking.card_required',
+  // Added with the two payment lanes (P16 §5) and the one-time path (P16 §3). A key the funnel
+  // reads and this list does not publish is a feature that silently does not exist on the built
+  // site - which is exactly what happened to lane B until gates/funnel-events.mjs walked it.
+  'booking.lanes_enabled', 'booking.payafter_charge_offset_days', 'booking.onetime_enabled',
+  'growth.review_request_after_visits',
+  'billing.monthly_factor', 'billing.package_prices_confirmed',
+  'subscription.cancel_notice_hours', 'subscription.pause_max_weeks', 'subscription.auto_resume_after_pause', 'visit.skip_charge_policy',
+  'visit.require_completion_photo', 'service_area.outside_area_behaviour',
+  'reviews.google_rating', 'reviews.google_count', 'reviews.google_profile_url', 'reviews.google_checked_on',
+  'trust.insured_confirmed', 'trust.background_checked_confirmed', 'trust.guarantee_text',
+  'growth.careers_enabled', 'growth.commercial_enabled',
+  // THE SITE READS THESE AND THIS LIST DID NOT CARRY THEM, which is the same defect as
+  // booking.lanes_enabled above and was found the same way — by teaching
+  // gates/settings-have-readers.mjs to see `setting()` and not only `settings.get()`.
+  // src/layouts/Base.astro reads analytics.measurement_id, and Base.astro's own comment claimed
+  // a set-setting.mjs call would turn Google Analytics back on with no deploy. It could not:
+  // the row was never published here, so the built site never saw it whatever the row said.
+  // The other two serve hard-coded defaults in src/lib/catalog.ts until a row exists.
+  'analytics.measurement_id', 'business.service_region', 'business.region_sentence',
+];
+
+const c = new pg.Client({ connectionString: url, ssl: { rejectUnauthorized: true } });
+let catalog;
+try {
+  await c.connect();
+  const q = async (sql, params) => (await c.query(sql, params)).rows;
+  // Sequential on purpose: one pg client runs one query at a time (pg 9 removes queueing).
+  const services = await     q(`select slug, name, short_name, kind, price_basis, basis_label, pricing_note, sort_order,
+              meta_title, meta_description, h1, intro, what_includes, who_its_for, faqs, related_slugs
+         from services where status = 'active' order by sort_order`);
+  const tiers = await q(`select id, service_slug, label, min_qty, max_qty, price_cents, price_suffix, requires_quote,
+              price_is_from, est_minutes, sort_order,
+              -- Migration 026: which "when was the yard last cleaned" answer this catch-up
+              -- tier covers. A column the site reads and this script does not ship is a
+              -- feature that silently does not exist (the same way booking.lanes_enabled was).
+              covers_last_cleaned
+         from service_tiers where status = 'active' order by service_slug, sort_order`);
+  const packages = await q(`select id, slug, service_slug, tier_id, name, short_label, frequency, visits_per_month::float as visits_per_month,
+              monthly_price_cents, derivation, source, confirmed_at, badge, version, featured, sort_order
+         from packages where status = 'active' order by sort_order`);
+  const offers = await q(`select id, name, description, kind, value, applies_to_slugs, requires_slugs, status
+         from offers where status = 'active' order by name`);
+  const areas = await q(`select slug, name, county, state, tier, bookable, market, market_label, neighborhoods, nearby_slugs,
+              service_weekdays, meta_title, meta_description, intro, local_context, faqs, sort_order
+         from service_areas where status = 'active' order by sort_order`);
+  const reviews = await q(`select id, author_name, author_badge, quote, rating, source, source_url, reviewed_on, featured, sort_order
+         from reviews order by sort_order`);
+  // THE ZIP MAP IS GENERATED, NEVER TYPED. It replaces ZIP_CITY in BookingFlow.tsx, which was 30
+  // pairs from memory with no provenance and no server reader (P16 §2). One writer - migration
+  // 020, from the Census file - and one reader, this build step, so the browser's map and the
+  // server's answer cannot disagree. Only SERVED codes ship: a ZIP we know and do not serve is a
+  // sentence the server says, not a row a page needs.
+  const postal_codes = await q(`select z.postal_code, z.area_slug from area_postal_codes z
+         join service_areas a on a.slug = z.area_slug
+        where a.bookable and a.status = 'active' order by z.postal_code`);
+  const settings = await q(`select key, value from settings where key = any($1::text[])`, [PUBLIC_SETTINGS]);
+  catalog = {
+    pulled_at: new Date().toISOString(),
+    source: 'database',
+    services, tiers, packages, offers, areas, reviews,
+    postal_codes: Object.fromEntries(postal_codes.map((r) => [r.postal_code, r.area_slug])),
+    settings: Object.fromEntries(settings.map((r) => [r.key, r.value])),
+  };
+} catch (e) {
+  console.error(`[catalog] FAILED to read the catalog: ${e.message}`);
+  console.error('[catalog] refusing to build from a stale file: a page and the checkout would disagree on price.');
+  try { await c.end(); } catch {}
+  process.exit(1);
+}
+await c.end();
+
+writeFileSync(OUT, JSON.stringify(catalog, null, 2) + '\n');
+console.log(`[catalog] ${catalog.services.length} services, ${catalog.tiers.length} tiers, ${catalog.packages.length} packages, ` +
+  `${catalog.offers.length} offers, ${catalog.areas.length} areas, ${catalog.reviews.length} reviews, ` +
+  `${Object.keys(catalog.postal_codes).length} served ZIPs -> content/catalog.json`);

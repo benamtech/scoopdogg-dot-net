@@ -1,10 +1,11 @@
+import type { MessageStatus } from './types';
 /**
  * The admin's only way to reach data. Every call goes to /api/admin/*, which runs on the
  * server and holds the sole database credential. The browser has none — that is the
  * whole point, and it is what the old admin got wrong: it queried the database directly
  * with a key that shipped in the bundle and could read every customer record.
  */
-export type AdminRole = 'superadmin' | 'admin';
+export type AdminRole = 'superadmin' | 'admin' | 'crew';
 export interface AdminUser { id: string; teamId: string; name: string; email: string; role: AdminRole }
 
 export interface Lead {
@@ -12,9 +13,59 @@ export interface Lead {
   service_slug: string; yard_size: string | null; num_dogs: number | null; notes: string;
   source_page: string; status: string; created_at: string; updated_at: string;
 }
+/** A custom request's extra fields (migration 042). Null on a lead that was never a custom request. */
+export interface CustomLead extends Lead {
+  kind?: 'standard' | 'custom'; job_kinds?: string[]; timing?: string | null; contact_pref?: string | null;
+  postal_code?: string | null; request_token?: string | null; first_response_at?: string | null;
+}
+export interface RequestPhoto { id: string; url: string; bytes: number }
+export interface QuoteSummary {
+  id: string; number: number; state: string; title: string; sent_at: string | null; view_count: number;
+  accepted_at: string | null; total_cents: number | null;
+}
+export interface QuoteLineRow { id: string; description: string; detail: string; amount_cents: number; optional: boolean; chosen: boolean | null }
+export interface DepositPreview { cents: number; asked: number; capCents: number | null; capped: boolean; balance: number }
+export interface QuoteOwnerView {
+  quote: {
+    id: string; number: number; state: string; title: string; message: string; is_improvement: boolean;
+    deposit_mode: 'percent' | 'fixed' | 'none'; deposit_percent: number | null; deposit_fixed_cents: number | null;
+    approx_start: string; approx_completion: string; valid_until: string | null; sent_at: string | null;
+    first_viewed_at: string | null; last_viewed_at: string | null; view_count: number;
+    accepted_at: string | null; accepted_name: string | null; total_cents: number | null; deposit_cents: number | null;
+    deposit_paid_at: string | null; payment_method_id: string | null; completed_at: string | null; balance_paid_at: string | null;
+    declined_at: string | null; decline_reason: string | null; created_at: string;
+  };
+  lines: QuoteLineRow[];
+  lead: CustomLead;
+  photos: RequestPhoto[];
+  road: { place: string | null; miles: number; minutes: number } | null;
+  numbers: { required: number; optionalAvailable: number; depositOnRequired: DepositPreview; depositWithAll: DepositPreview };
+  contract: { writtenContract: boolean; licenceNeeded: boolean; gaps: string[] };
+  events: { event_type: string; created_at: string; payload: Record<string, unknown> }[];
+  link: string | null;
+}
+export type QuotePatch = {
+  title?: string; message?: string; is_improvement?: boolean; deposit_mode?: 'percent' | 'fixed' | 'none';
+  deposit_percent?: number | null; deposit_fixed_cents?: number | null; approx_start?: string; approx_completion?: string;
+  lines?: { description: string; detail?: string; amount_cents: number; optional?: boolean }[];
+};
+export interface QuoteListRow {
+  id: string; number: number; state: string; title: string; sent_at: string | null; first_viewed_at: string | null;
+  view_count: number; accepted_at: string | null; total_cents: number | null; deposit_cents: number | null;
+  deposit_paid_at: string | null; completed_at: string | null; balance_paid_at: string | null; valid_until: string | null;
+  is_improvement: boolean; lead_id: string; name: string; city: string; phone: string; required_cents: number;
+}
+
 export interface Message {
   id: string; name: string; email: string; phone: string; subject: string;
-  message: string; status: string; created_at: string;
+  message: string; status: MessageStatus; created_at: string;
+}
+
+/** A service area as the admin sees it (api/admin.ts `areas`). */
+export interface AdminArea {
+  slug: string; name: string; bookable: boolean; market: string; market_label: string | null;
+  service_weekdays: number[]; status: 'active' | 'retired' | string; sort_order: number;
+  customers: number; visits_next_14: number;
 }
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
@@ -28,11 +79,70 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   return body as T;
 }
 
+/** An offer as the owner edits it (server/lib/offers.ts). A first-month percentage, never deleted. */
+export interface AdminOffer {
+  id: string; name: string; description: string; kind: string; value: number;
+  applies_to_slugs: string[]; requires_slugs: string[]; status: 'active' | 'paused' | 'draft';
+  redeemed: number; customers_on_it: number; updated_at: string;
+}
+export interface OfferInput { name?: string; description?: string; value?: number; applies_to_slugs?: string[]; requires_slugs?: string[]; status?: 'active' | 'paused' }
+
+/** A service as the owner edits it (server/lib/services.ts). Retired, never deleted. */
+export interface AdminService {
+  slug: string; name: string; short_name: string; kind: string; price_basis: string | null; basis_label: string;
+  pricing_note: string; sort_order: number; status: 'draft' | 'active' | 'retired';
+  meta_title: string | null; meta_description: string | null; h1: string | null; intro: string | null;
+  what_includes: string[]; who_its_for: string; faqs: { q: string; a: string }[]; related_slugs: string[];
+  live_tiers: number; customers: number; updated_at: string; updated_by: string | null;
+}
+export type ServiceInput = Partial<Pick<AdminService, 'name' | 'short_name' | 'h1' | 'intro' | 'what_includes' | 'who_its_for' | 'faqs' | 'pricing_note' | 'meta_title' | 'meta_description' | 'related_slugs' | 'sort_order' | 'status'>>;
+
+/** A custom job, and the stage derived from its dates (server/lib/business.ts). */
+export type JobStage = 'deposit_due' | 'to_schedule' | 'scheduled' | 'balance_owed' | 'done';
+export interface AdminJob {
+  id: string; number: number; title: string; total_cents: number; deposit_cents: number | null; deposit_paid_at: string | null;
+  accepted_at: string; scheduled_for: string | null; completed_at: string | null; balance_paid_at: string | null; approx_start: string;
+  customer_id: string | null; name: string; phone: string; city: string; address: string; owed_cents: number; manual_paid_cents: number; stage: JobStage;
+}
+export interface WeekVisit { id: string; day: string; state: string; customer_id: string; name: string; address: string; city: string; service_name: string; area_name: string | null; photos: number; charge_cents: number | null }
+export interface AdminInvoice { id: string; state: string; total_cents: number; issued_at: string | null; paid_at: string | null; customer_id: string; name: string; lines: string | null; hosted_invoice_url: string | null; collection_method: string | null }
+export type ManualMethod = 'cash' | 'venmo' | 'zelle' | 'check' | 'other';
+
+export interface Nudge { id: string; number: number; title: string; total_cents: number; name: string; phone: string; view_count: number; first_viewed_at: string; text: string; sms_href: string }
+
 export const adminApi = {
+  daily:       () => call<{ last_run: { at: string; by: string; results: Record<string, unknown> } | null }>('daily'),
+  runDaily:    () => call<{ at: string; results: Record<string, unknown> }>('daily', { method: 'POST' }),
+  nudges:      () => call<{ nudges: Nudge[] }>('nudges'),
+  nudged:      (id: string) => call<{ ok: true }>('nudges/done', { method: 'POST', body: JSON.stringify({ id }) }),
+  jobs:        () => call<{ jobs: AdminJob[]; counts: Record<JobStage, number> }>('jobs'),
+  scheduleJob: (id: string, date: string | null) => call<{ job: AdminJob }>('jobs/schedule', { method: 'PATCH', body: JSON.stringify({ id, date }) }),
+  customer:    (id: string) => call<any>(`customer/${id}`),
+  recordPayment: (p: { customer_id: string; amount_cents: number; method: ManualMethod; note?: string; quote_id?: string | null; invoice_id?: string | null; paid_on?: string | null }) =>
+    call<{ payment: { id: string } }>('payments/manual', { method: 'POST', body: JSON.stringify(p) }),
+  week:        (from?: string) => call<{ from: string; days: { day: string; visits: WeekVisit[]; jobs: AdminJob[] }[] }>(`week${from ? `?from=${from}` : ''}`),
+  visit:       (id: string) => call<any>(`visit/${id}`),
+  invoices:    () => call<{ invoices: AdminInvoice[]; counts: Record<string, number>; owed_cents: number }>('invoices'),
+  setAreaDays: (slug: string, weekdays: number[]) => call<{ area: { slug: string; service_weekdays: number[] } }>('areas/days', { method: 'PATCH', body: JSON.stringify({ slug, weekdays }) }),
+  offers:      () => call<{ offers: AdminOffer[]; services: { slug: string; name: string; monthly: boolean }[] }>('offers'),
+  saveOffer:   (id: string, patch: OfferInput) => call<{ offer: AdminOffer; effective_now: string[] }>('offers', { method: 'PATCH', body: JSON.stringify({ id, ...patch }) }),
+  addOffer:    (o: OfferInput) => call<{ offer: AdminOffer; effective_now: string[] }>('offers/new', { method: 'POST', body: JSON.stringify(o) }),
+  services:    () => call<{ services: AdminService[] }>('services'),
+  saveService: (slug: string, patch: ServiceInput) => call<{ service: AdminService; effective_now: string[] }>('services', { method: 'PATCH', body: JSON.stringify({ slug, ...patch }) }),
+  addService:  (s: { name: string; kind: string; price_basis: string; basis_label?: string }) => call<{ service: AdminService }>('services/new', { method: 'POST', body: JSON.stringify(s) }),
+  setBands:    (service_slug: string, bands: { id: string; min_qty: number | null; max_qty: number | null }[]) =>
+    call<{ changed: string[]; effective_now: string[] }>('rate-card/bands', { method: 'PATCH', body: JSON.stringify({ service_slug, bands }) }),
+  areas:       () => call<{ areas: AdminArea[] }>('areas'),
   startLogin:  (email: string) => call<{ ok: true; message: string }>('login/start', { method: 'POST', body: JSON.stringify({ email }) }),
   verifyLogin: (email: string, code: string) => call<{ ok: true; user: AdminUser }>('login/verify', { method: 'POST', body: JSON.stringify({ email, code }) }),
-  session:     () => call<{ user: AdminUser }>('session'),
+  session:     () => call<{ user: AdminUser; demo_mode: boolean; demo_address: string | null }>('session'),
   logout:      () => call<{ ok: true }>('logout', { method: 'POST' }),
+
+  // Demo mode. The response names every surface the switch changed.
+  demo:        () => call<{ demo_mode: boolean; demo_address: string | null }>('demo'),
+  setDemo:     (mode: boolean) => call<{
+    demo_mode: boolean; was: boolean; effective_now: string[];
+  }>('demo', { method: 'POST', body: JSON.stringify({ mode }) }),
 
   summary:     () => call<{
     leads_by_status: Record<string, number>; total_leads: number;
@@ -46,7 +156,7 @@ export const adminApi = {
     const qs = p.toString();
     return call<{ leads: Lead[] }>(`leads${qs ? '&' + qs : ''}`);
   },
-  lead:        (id: string) => call<{ lead: Lead }>(`lead/${id}`),
+  lead:        (id: string) => call<{ lead: Lead; photos?: RequestPhoto[]; quotes?: QuoteSummary[] }>(`lead/${id}`),
   updateLead:  (id: string, patch: { status?: string; notes?: string }) =>
     call<{ lead: Lead }>(`lead/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
 
@@ -55,8 +165,249 @@ export const adminApi = {
   updateMessage: (id: string, status: string) =>
     call<{ message: Message }>(`message/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
 
-  team:          () => call<{ team: Array<{ id: string; name: string; email: string | null; phone: string | null; role: string; status: string; last_login_at: string | null }> }>('team'),
   settings:      () => call<{ settings: Array<{ key: string; value: unknown; updated_at: string; updated_by: string | null }> }>('settings'),
   setSetting:    (key: string, value: unknown) =>
     call<{ setting: { key: string; value: unknown } }>('settings', { method: 'PATCH', body: JSON.stringify({ key, value }) }),
+
+  // ---- the onboarding checklist (P18 §2). `done: null` means NOT MEASURABLE, never "no". ----
+  checklist:   () => call<{ items: ChecklistItem[]; done: number; measurable: number; areas: ChecklistArea[]; facts: Record<string, unknown> }>('checklist'),
+  setRouteDays:(slug: string, weekdays: number[]) =>
+    call<{ area: { slug: string; name: string; service_weekdays: number[] } }>('checklist/route-days', { method: 'PATCH', body: JSON.stringify({ slug, weekdays }) }),
+  setBusinessFact: (key: string, value: unknown) =>
+    call<{ setting: { key: string; value: unknown } }>('checklist/business', { method: 'PATCH', body: JSON.stringify({ key, value }) }),
+  setAreaBookable: (slug: string, bookable: boolean) =>
+    call<{ area: { slug: string; name: string; bookable: boolean } }>('checklist/area', { method: 'PATCH', body: JSON.stringify({ slug, bookable }) }),
+  confirmPrices: () => call<{ confirmed: number }>('checklist/prices/confirm', { method: 'POST', body: JSON.stringify({}) }),
+
+  // ---- the growth board, and the hour ----
+  growth:     () => call<GrowthBoard>('growth'),
+  unfinished: () => call<{ measured: boolean; note?: string; rows: UnfinishedRow[] }>('unfinished'),
+
+  // ---- customers and invites (P18 §3) ----
+  customers:  () => call<{ customers: CustomerRow[] }>('customers'),
+  invite:     (body: InviteBody) => call<{ invite_id: string; subscription_id: string; link_sent: boolean; email_state: string }>('customers/invite', { method: 'POST', body: JSON.stringify(body) }),
+
+  // ---- the team (server/lib/team.ts) ----
+  team:       () => call<{ team: TeamMember[]; me: string }>('team'),
+  addTeamMember: (body: { name: string; email: string; phone?: string; role: 'crew' | 'admin' }) =>
+    call<{ member: TeamMember }>('team/add', { method: 'POST', body: JSON.stringify(body) }),
+  setTeamStatus: (id: string, status: 'active' | 'inactive') =>
+    call<{ member: TeamMember }>('team/status', { method: 'POST', body: JSON.stringify({ id, status }) }),
+
+  // ---- payments ----
+  payments:   () => call<PaymentsData>('payments'),
+  disconnect: (mode: 'test' | 'live') => call<{ cleared: number; message: string }>('payments/disconnect', { method: 'POST', body: JSON.stringify({ mode }) }),
+
+  // ---- today, the crew screen ----
+  today:      () => call<{ date: string; stops: Stop[]; completion: CompletionReadiness; durations: StopDurations }>('today'),
+  // The stop clock (migration 035). Neither is required to close a visit — a stop with no clock
+  // is one we learn nothing from, not one that cannot be done — but together they are the only
+  // measurement that can replace the estimate the whole price ladder was derived from.
+  markEnRoute: (visitId: string) =>
+    call<{ visit: StopClock }>('visits/en-route', { method: 'POST', body: JSON.stringify({ visit_id: visitId }) }),
+  markArrived: (visitId: string) =>
+    call<{ visit: StopClock }>('visits/arrived', { method: 'POST', body: JSON.stringify({ visit_id: visitId }) }),
+  // Marking a stop done is the one write a crew session may make. `told` reports what happened
+  // to the customer message afterwards - it is not an error if that half did not go out.
+  completeVisit: (visitId: string, body: { crew_notes?: string; photo_urls?: string[] } = {}) =>
+    call<{ visit: { id: string; state: string; completed_at: string; photos: number };
+           told: { sent: boolean; channel: string; reason?: string } }>(
+      'visits/complete', { method: 'POST', body: JSON.stringify({ visit_id: visitId, ...body }) }),
+  // The photo goes up BEFORE the completion, as its own request, and the completion is given the
+  // URL it returns. Two requests rather than one because the upload is the part that fails on a
+  // yard's worth of signal, and a failed upload must not also lose the crew notes or leave the
+  // caller guessing whether the visit was completed.
+  uploadVisitPhoto: (visitId: string, dataUrl: string) =>
+    call<{ photo: { id: string; url: string; bytes: number; deduped: boolean } }>(
+      'visits/photo', { method: 'POST', body: JSON.stringify({ visit_id: visitId, data_url: dataUrl }) }),
+
+  // The rate card. Every write returns `effective_now`: the server names what changed.
+  rateCard:    () => call<RateCard>('rate-card'),
+  addTier:     (t: { service_slug: string; label: string; price_cents: number | null; price_suffix?: string; requires_quote?: boolean; price_is_from?: boolean; min_qty?: number | null; max_qty?: number | null }) =>
+    call<{ tier: RateCardTier; changed: string[]; effective_now: string[] }>('rate-card/tier-new', { method: 'POST', body: JSON.stringify(t) }),
+
+  // Custom quotes (server/lib/quotes.ts). Every number the builder shows comes back from the server.
+  quotes:      () => call<{ quotes: QuoteListRow[] }>('quotes'),
+  quoteNew:    (leadId: string) => call<QuoteOwnerView>('quote-new', { method: 'POST', body: JSON.stringify({ lead_id: leadId }) }),
+  quote:       (id: string) => call<QuoteOwnerView>(`quote/${id}`),
+  saveQuote:   (id: string, patch: QuotePatch) => call<QuoteOwnerView>(`quote/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  sendQuote:   (id: string) => call<{ url: string; sms_href: string | null; email: string; number: number }>(`quote/${id}/send`, { method: 'POST' }),
+  completeQuote: (id: string, method: 'card' | 'link') =>
+    call<{ balance: number; paid: boolean; checkout_url?: string; sms_href?: string | null }>(`quote/${id}/complete`, { method: 'POST', body: JSON.stringify({ method }) }),
+  withdrawQuote: (id: string) => call<{ state: string }>(`quote/${id}/withdraw`, { method: 'POST' }),
+  reviseQuote: (id: string) => call<QuoteOwnerView>(`quote/${id}/revise`, { method: 'POST' }),
+  refundQuote: (id: string) => call<{ refunded: number; refund: string }>(`quote/${id}/refund`, { method: 'POST' }),
+  saveContractFacts: (patch: {
+    license_number?: string; license_class?: string; legal_name?: string; mailing_address?: string;
+    cgl?: { mode: 'none' | 'self' } | { mode: 'carries' | 'llc'; insurer: string; phone: string } | null; workers_comp?: 'exempt' | 'carries' | null;
+  }) => call<{ facts: Record<string, unknown> }>('quote-facts', { method: 'PATCH', body: JSON.stringify(patch) }),
+  setTier:     (id: string, patch: Partial<Pick<RateCardTier, 'price_cents' | 'price_suffix' | 'price_is_from' | 'requires_quote' | 'label' | 'status'>>) =>
+    call<{ tier: RateCardTier; changed: string[] } & CatalogEffect>(
+      'rate-card/tier', { method: 'PATCH', body: JSON.stringify({ id, ...patch }) }),
+  setPackagePrice: (id: string, monthly_price_cents: number) =>
+    call<{ package: RateCardPackage; changed: string[]; was_version: number;
+           published: Record<string, { attempted: boolean; created: number; already: number; reason: string | null }> } & CatalogEffect>(
+      'rate-card/package', { method: 'PATCH', body: JSON.stringify({ id, monthly_price_cents }) }),
 };
+
+/** What a save changes and when. Never inferred by a component — the server says. */
+export interface CatalogEffect { effective_now: string[] }
+
+export interface RateCardTier {
+  id: string; service_slug: string; service_name: string; label: string; status: string;
+  min_qty: number | null; max_qty: number | null; price_cents: number | null;
+  price_suffix: string | null; requires_quote: boolean; price_is_from: boolean;
+  est_minutes: number | null; covers_last_cleaned: string[] | null; sort_order: number;
+  /** Arrangements that still stand and were sold through a package on this tier. */
+  live_customers: number;
+}
+
+export interface RateCardPackage {
+  id: string; slug: string; service_slug: string; name: string; monthly_price_cents: number;
+  version: number; status: string; featured: boolean; sort_order: number;
+  published_test: boolean; published_live: boolean;
+  live_customers: number;
+  /** What those customers are ACTUALLY paying. The proof that raising a price left them alone. */
+  frozen_prices: number[];
+}
+
+export interface CatalogChange {
+  entity: string; entity_id: string; entity_label: string; field: string;
+  old_value: string | null; new_value: string | null; changed_by: string; changed_at: string;
+}
+
+export interface RateCard extends CatalogEffect {
+  services: { slug: string; name: string; kind: string; status: string; sort_order: number; price_basis: string | null }[];
+  tiers: RateCardTier[];
+  packages: RateCardPackage[];
+  changes: CatalogChange[];
+}
+
+export interface ChecklistItem {
+  key: 'stripe' | 'route_days' | 'business_facts' | 'prices' | 'where_you_work' | 'photos';
+  title: string; what_it_changes: string;
+  done: boolean | null; measurable: boolean; detail: string; blocked_reason?: string;
+}
+export interface ChecklistArea { slug: string; name: string; bookable: boolean; service_weekdays: number[] }
+/** `measured: false` and `value: 0` are different answers and the screen must never merge them. */
+/** `assumed`: printed on a stated basis rather than measured, and `note` is that basis. */
+export interface Metric { value: number | null; measured: boolean; assumed?: boolean; note?: string }
+export interface FeeRow { period: string; collected_cents: number; fee_cents: number; payments: number }
+export interface AreaDensity {
+  slug: string; name: string; bookable: boolean; zips: number;
+  depot_miles: number; area_sq_mi: number; customers_now: number;
+  /** Driving minutes one more customer here adds. The acquisition number. */
+  marginal_drive_minutes: number;
+  /** That, over the reference service time. At or below 1.0 the stop is worth the drive. */
+  marginal_ratio: number;
+  /** null means "more customers than a day holds", which is not the same as a big number. */
+  customers_for_parity: number | null;
+  drive_minutes_per_visit_now: number | null;
+  margin_per_visit: Metric;
+}
+
+export interface GrowthBoard {
+  instrumented: boolean; month: string;
+  /** What is taking the owner's time (server/lib/growth.ts whereTimeGoes). Null if it could not be read. */
+  time?: {
+    first_response: { measured: boolean; median_minutes: number | null; answered: number; unanswered: number };
+    quotes_to_nudge: number; balances_owed: { jobs: number; cents: number };
+    route_days: { cities_with_days: number; cities_any_day: number; weekdays_in_use: number };
+    daily_last_run: { at: string; by: string } | null;
+  } | null;
+  metrics: Record<'booking_intent_starts' | 'price_step_reached' | 'booked' | 'conversion_pct'
+    | 'new_customers_this_month' | 'customers_now' | 'mrr_cents' | 'platform_fee_this_month_cents'
+    | 'calls_tapped' | 'texts_tapped', Metric>;
+  fees_by_month: FeeRow[]; fees_by_year: FeeRow[];
+  /**
+   * Where the next customer should come from (server/lib/density.ts). `measured: false` when
+   * migration 031 has not been applied to this database — the same rule as every Metric above:
+   * a board that cannot compute this says so instead of printing a plausible order.
+   */
+  where_next?: {
+    measured: boolean; note?: string; day_capacity?: number;
+    /** `population` once migration 032 is applied; `polygon` means 93001 is still in the ocean. */
+    geo_basis?: 'population' | 'polygon';
+    /** How many active subscriptions the order rests on. One is enough to move a town to the top. */
+    total_customers?: number;
+    /** `referenceBasis` says whether the minutes are timed stops or the estimate. */
+    parameters?: { referenceServiceMinutes: number; referenceTier: string; referenceBasis?: string; costPerHourCents?: number | null; costBasis?: string | null };
+    areas: AreaDensity[];
+  };
+  waitlist?: {
+    measured: boolean; note?: string; geo_basis?: 'population' | 'polygon';
+    zips: {
+      postal_code: string; city_name: string; depot_miles: number; area_sq_mi: number;
+      /** Where the ZIP's LAND is. 93042's is an island; its people are at Point Mugu. */
+      polygon_miles?: number;
+      customers_for_parity: number | null;
+    }[];
+  };
+  /** False before migration 033: the counts above then include AMTECH's own gate runs. */
+  attributed?: boolean;
+  /** Sessions this month that were ours and are NOT in the counts above. Said, never silent. */
+  verifier_sessions_excluded?: number | null;
+  /** Where this month's real sessions came from. 'direct' is a real answer, not a gap. */
+  by_source?: { source: string; sessions: number; priced: number }[];
+  by_entry?: { entry: string | null; control: string | null; sessions: number; priced: number }[];
+}
+export interface UnfinishedRow {
+  id: string; postal_code: string | null; step: string | null; price_cents_seen: number | null;
+  name: string | null; phone: string | null; email: string | null; area: string; plan: string | null;
+  started_at: string; last_seen_at: string; sms_href: string | null; sms_body: string;
+}
+export interface CustomerRow {
+  id: string; name: string; email: string | null; phone: string; created_at: string;
+  subscription_id: string | null; state: string | null; payment_state: string | null;
+  monthly_price_cents: number | null; starts_on: string | null; service_weekday: number | null;
+  source: string | null; address: string | null; area_name: string | null;
+  invite_id: string | null; sent_at: string | null; accepted_at: string | null;
+}
+export interface InviteBody {
+  name: string; email: string; phone: string; address: string; area_slug: string;
+  price_cents: number; starts_on?: string | null; num_dogs?: number | null; notes?: string;
+}
+export interface ModeStatus {
+  account_id: string | null; display_name: string | null; ready: boolean;
+  card_payments: string | null; requirements: string | null; probed_at: string | null;
+  revoked_at: string | null; platform_fee_bps: number | null; requirement_entries?: string[] | null;
+}
+/** What opening the Payments screen did about prices. Never a person's job (stripe.ts). */
+export interface PricePublishResult { attempted: boolean; created: number; already: number; reason: string | null }
+export interface PaymentsData {
+  status: { live: ModeStatus; test: ModeStatus };
+  published?: { live: PricePublishResult; test: PricePublishResult };
+  packages: Array<{ slug: string; name: string; monthly_price_cents: number; source: string; derivation: string; version: number; published_test: boolean; published_live: boolean }>;
+}
+/**
+ * Whether the Mark-done action can be offered at all, and why not when it cannot. The server
+ * ASKS whether photo storage exists (migration 029) rather than asserting it, and the screen
+ * prints its reason rather than showing a button that always fails.
+ */
+export interface TeamMember {
+  id: string; name: string; email: string | null; phone: string | null;
+  role: 'superadmin' | 'admin' | 'crew'; status: 'active' | 'inactive' | 'invited';
+  started_at: string | null; ended_at: string | null; last_login_at: string | null;
+}
+export interface CompletionReadiness {
+  ready: boolean; requiresPhoto: boolean; reason: string | null;
+}
+
+export interface Stop {
+  id: string; scheduled_for: string; state: string; crew_notes: string;
+  customer_name: string; phone: string; address: string; city: string;
+  gate_code: string | null; access_notes: string;
+  /** The stop clock. Null means not tapped, which is allowed — never a zero. */
+  en_route_at: string | null; arrived_at: string | null; completed_at: string | null;
+}
+export interface StopClock {
+  id: string; state: string;
+  en_route_at: string | null; arrived_at: string | null; completed_at: string | null;
+  drive_minutes: number | null; service_minutes: number | null;
+}
+/** Medians over timed stops, with how many each rests on. `measured` is part of the answer. */
+export interface StopDurations {
+  service_minutes: number | null; service_measured: number;
+  drive_minutes: number | null; drive_measured: number;
+  by_tier: { service_slug: string; label: string; est_minutes: number | null; median_minutes: number; measured: number }[];
+}
