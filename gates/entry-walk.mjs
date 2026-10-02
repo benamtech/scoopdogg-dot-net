@@ -17,6 +17,7 @@
  *   a service page                 -> no link to /contact?service= (nothing reads it)
  *   any entry                      -> the first track call names the page and the control
  *   an advert click (gclid)        -> the session is recorded as paid.google.com
+ *   a size that needs a quote      -> the quote form names the service and size, with the ZIP in
  *
  * MEASURED BEFORE THIS EXISTED (2026-10-02, on the preview): all eleven `?service=` entries
  * landed on an eleven-item picker with nothing chosen. It submits nothing past the size step and
@@ -99,6 +100,17 @@ const fresh = async () => { const ctx = await browser.newContext({ viewport: { w
   await page.waitForURL(/\/book\?/); await page.waitForTimeout(1500);
   const j = body ? JSON.parse(body) : {};
   check(j.source === 'paid.google.com' && !/PLANTED/.test(body || ''), 'an advert click is recorded as paid.google.com, without its click id', JSON.stringify({ source: j.source, entry: j.entry }));
+  await ctx.close(); }
+
+// 8. a size that needs a quote hands over everything the visitor already said
+{ const [ctx, page] = await fresh();
+  await page.goto(base + '/book?service=pressure-washing&address=93003', { waitUntil: 'networkidle' });
+  await page.getByRole('button', { name: /Get a quote/ }).first().click();
+  await page.waitForURL(/\/custom-quote\?/); await page.waitForTimeout(900);
+  const said = await page.locator('[data-context-text]').innerText().catch(() => '');
+  const zip = await page.locator('#cq-city').inputValue().catch(() => '');
+  check(/Pressure/i.test(said) && /Large/i.test(said) && zip === '93003', 'the quote form names the service and size, and has the ZIP filled in', `"${said}", ZIP ${zip || 'empty'}`);
+  check(!(await page.locator('[data-kinds]').evaluate((d) => d.open)), 'and it does not ask again what kind of job it is');
   await ctx.close(); }
 
 await browser.close();

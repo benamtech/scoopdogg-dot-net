@@ -36,7 +36,7 @@ const readsOf = (files) => {
   const names = new Set();
   for (const f of files) {
     const src = readFileSync(f, 'utf8');
-    for (const m of src.matchAll(/(?:searchParams|URLSearchParams\([^)]*\))\s*\.get\(\s*['"]([\w-]+)['"]\s*\)/g)) names.add(m[1]);
+    for (const m of src.matchAll(/(?:searchParams|\bparams|URLSearchParams\([^)]*\))\s*\.get\(\s*['"]([\w-]+)['"]\s*\)/g)) names.add(m[1]);
   }
   return names;
 };

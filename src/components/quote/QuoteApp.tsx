@@ -133,11 +133,13 @@ export default function QuoteApp({ phone, phoneHref }: { phone: string; phoneHre
       <Card>
         <p className="eyebrow">Your request</p>
         <h1 className="mt-2 text-h2 text-forest-900">Josue has it, {view.request.first_name}</h1>
-        <p className="mt-3 text-statement text-ink-700">He reads every request himself and will reply {b.reply_promise}, usually by text{b.phone ? ` from ${b.phone}` : ''}.</p>
-        <ol className="mt-6 space-y-2 text-base text-ink-700">
-          <li><strong>1.</strong> He looks at what you sent, and may ask a question or stop by.</li>
-          <li><strong>2.</strong> He sends a quote to this page: every line itemised, and any extras you can add.</li>
-          <li><strong>3.</strong> You approve it here and pay a deposit to book. The rest is paid when the work is done.</li>
+        <p className="mt-3 text-lg text-ink-700">He replies {b.reply_promise}, usually by text{b.phone ? ` from ${b.phone}` : ''}. Your quote will appear on this page.</p>
+        <ol className="mt-6 space-y-3 text-base text-ink-700">
+          {['He looks at what you sent.', 'Your itemised quote lands here.', 'You approve it and a deposit books the job.'].map((t, i) => (
+            <li key={t} className="flex items-center gap-3">
+              <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-bold ${i === 0 ? 'bg-forest-700 text-white' : 'bg-forest-100 text-forest-800'}`} aria-hidden="true">{i + 1}</span>{t}
+            </li>
+          ))}
         </ol>
         <Sent view={view} />
         <a className="btn-ghost mt-6" href={text(`Hi Josue, about my request on scoopdogg.net: `)}>Text Josue</a>
@@ -153,7 +155,7 @@ export default function QuoteApp({ phone, phoneHref }: { phone: string; phoneHre
         <h1 className="mt-2 text-h2 text-forest-900">
           {view.stage === 'expired' ? 'This quote has expired' : view.stage === 'declined' ? 'You passed on this quote' : 'Josue has withdrawn this quote'}
         </h1>
-        <p className="mt-3 text-base text-ink-700">{view.stage === 'expired' ? 'Prices on materials move, so quotes have a date. Text Josue and he will refresh it.' : 'If anything changes, Josue is a text away.'}</p>
+        <p className="mt-3 text-base text-ink-700">{view.stage === 'expired' ? 'Text Josue and he will refresh it.' : 'If anything changes, Josue is a text away.'}</p>
         <a className="btn-primary mt-6" href={text(`Hi Josue, about quote #${q.number}: `)}>Text Josue</a>
       </Card>
     );
@@ -207,8 +209,6 @@ export default function QuoteApp({ phone, phoneHref }: { phone: string; phoneHre
         {open && q.valid_until && <p className="mt-4 text-sm text-ink-500">This price is good until {day(q.valid_until)}.</p>}
       </Card>
 
-      {view.request.photos.length > 0 && <Card><Sent view={view} /></Card>}
-
       {contract && <Contract view={view} facts={facts} total={total} deposit={deposit} senior={senior} />}
 
       {open && (
@@ -229,7 +229,7 @@ export default function QuoteApp({ phone, phoneHref }: { phone: string; phoneHre
           <button className="btn-primary mt-5 w-full sm:w-auto" disabled={busy || name.trim().length < 2} onClick={approve} data-approve>
             {deposit > 0 ? `Approve and pay the ${money(deposit)} deposit` : 'Approve'}
           </button>
-          {deposit > 0 && <p className="mt-3 text-sm text-ink-500">You pay the deposit on the next page, through Stripe.{total - deposit > 0 ? ' Your card is kept for the balance, which is charged only when the work is done.' : ''}</p>}
+          {deposit > 0 && <p className="mt-3 text-sm text-ink-500">Secure payment by Stripe.{total - deposit > 0 ? ' Your card is saved, and the balance is charged only when the work is done.' : ''}</p>}
           <div className="mt-6 flex flex-wrap gap-4 text-base">
             <a className="link" href={text(`Hi Josue, a question about quote #${q.number}: `)}>Ask Josue a question</a>
             {!declining && <button className="link" onClick={() => setDeclining(true)}>This isn't for me</button>}
@@ -272,6 +272,9 @@ export default function QuoteApp({ phone, phoneHref }: { phone: string; phoneHre
           <a className="btn-ghost mt-4" href={text(`Hi Josue, about quote #${q.number}: `)}>Text Josue</a>
         </Card>
       )}
+
+      {/* Their own photos, last: by now they are a record, not the reason for the visit. */}
+      {view.request.photos.length > 0 && <Card><Sent view={view} /></Card>}
     </div>
   );
 }
@@ -286,7 +289,7 @@ function Sent({ view }: { view: View }) {
   const r = view.request;
   if (!r.photos.length && !r.description) return null;
   return (
-    <div className="mt-6">
+    <div className="mt-6 first:mt-0">
       <p className="text-sm font-semibold uppercase tracking-[0.1em] text-ink-500">What you sent</p>
       {r.job_kinds.length > 0 && <p className="mt-2 text-base text-ink-700">{r.job_kinds.join(' · ')}</p>}
       {r.description && <p className="mt-2 whitespace-pre-wrap text-base text-ink-700">{r.description}</p>}

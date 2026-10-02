@@ -110,7 +110,7 @@ const jsonLd = [
             <div class="flex items-center justify-between gap-6 py-5" data-tier={t.id} data-price-cents={t.price_cents ?? undefined}>
               <dt class="text-lg text-ink-700">{t.label}</dt>
               <dd class="shrink-0 font-serif text-h3 text-forest-900">{t.requires_quote || t.price_cents === null
-                ? <a class="link" href={`/custom-quote?service=${s.slug}`}>Custom quote</a>
+                ? <a class="link" href={`/custom-quote?service=${s.slug}&size=${encodeURIComponent(t.label)}`}>Get a quote</a>
                 : formatTierPrice(t, 'Custom quote')}</dd>
             </div>
           ))}

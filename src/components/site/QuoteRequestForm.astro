@@ -1,102 +1,107 @@
 ---
 /**
- * "Tell Josue about the job" — the custom-quote request (server/lib/quotes.ts, R21).
+ * The quote request (server/lib/quotes.ts, R21), built around what the visitor already said.
  *
- * THE ORDER IS THE DESIGN. The problem first (Rackham: the questions that win bigger work are about
- * the customer's problem, not their budget), then photos (they let him price without a visit), then
- * when, then who. About seven fields a person types; the rest are taps. No ZIP gate — a particular
- * job is worth hearing about from anywhere.
+ * WHO ARRIVES HERE. Almost nobody starts on this page. They come from a service page's "Custom
+ * quote" row, or from the booking flow after picking a size that needs a look — so they have
+ * already told us the service, often the size, and sometimes their ZIP. The form used to ask all
+ * of it again: eight kinds of job to tick, a long prompt, and a street address, under two
+ * paragraphs of explanation. Now what they chose is stated at the top, the list of job kinds is
+ * folded away unless they came with nothing, and the ZIP is filled in.
  *
- * WHAT HAPPENS AFTER SEND IS THE OTHER HALF (Maister: an explained, finite wait is a short one). The
- * confirmation says who reads it, by when, what happens next, and gives them a link that shows
- * where it is.
+ * WHAT IT ASKS: a note, photos, when, and how to reach them (name, mobile, email, city or ZIP).
+ * The street address and "best way to reach you" are gone. Josue replies by text and asks for the
+ * address when he needs it; a request is worth having before either is known.
  *
- * PROGRESSIVE. Without JavaScript the form cannot submit (photos need resizing in the browser), so
+ * WHAT HAPPENS AFTER SEND is one sentence and a link that shows where the request is (Maister: an
+ * explained, finite wait is a short one).
+ *
+ * PROGRESSIVE. Without JavaScript the form cannot submit (photos are resized in the browser), so
  * it says so and gives the phone number. Plain inputs read at submit time, so nothing typed before
  * the script runs is lost.
  */
-import { business, setting } from '../../lib/catalog';
+import { business, setting, services } from '../../lib/catalog';
 import { JOB_KINDS } from '../../shared/quote-contract';
-export interface Props { service?: string }
 const reply = setting<string>('quote.reply_promise', 'within one business day');
 const maxPhotos = setting<number>('quote.photos_max', 6);
+/** Short names for the chips. The ids, and the full labels the owner sees, are unchanged. */
+const SHORT: Record<string, string> = {
+  yard_cleanup: 'Yard clean-up', haul_away: 'Haul-away', turf: 'Artificial turf', landscaping: 'Landscaping',
+  pressure_washing: 'Pressure washing', property: 'Move-out clean-up', pet_waste: 'Large pet-waste job', other: 'Something else',
+};
+/** The job kind a service implies, where one clearly does. Otherwise the service name is the context. */
+const KIND_FOR: Record<string, string> = {
+  'pressure-washing': 'pressure_washing', 'one-time-dog-poop-cleanup': 'pet_waste', 'dog-run-cleanups': 'pet_waste',
+};
+const names = Object.fromEntries(services.map((s) => [s.slug, s.short_name || s.name]));
+const chip = 'flex cursor-pointer items-center gap-2 rounded-full border border-line-strong px-4 py-2.5 text-base text-ink-700 transition duration-fast has-[:checked]:border-forest-600 has-[:checked]:bg-forest-50 has-[:checked]:font-semibold has-[:checked]:text-forest-900';
 ---
-<form id="custom-quote" class="tone-white rounded-xl bg-paper p-6 shadow-lg ring-1 ring-black/5 sm:p-8" data-quote-request data-max-photos={maxPhotos} novalidate>
-  <h2 class="text-h3 text-forest-900">Tell Josue about the job</h2>
-  <p class="mt-2 text-base text-ink-500">Free, and no obligation. He reads every request himself and replies {reply}.</p>
+<form id="custom-quote" class="tone-white rounded-card bg-paper p-6 shadow-lg ring-1 ring-black/5 sm:p-8" data-quote-request data-max-photos={maxPhotos}
+  data-service-names={JSON.stringify(names)} data-kind-for={JSON.stringify(KIND_FOR)} novalidate>
 
-  <fieldset class="mt-7">
-    <legend class="field-label">What needs doing? Tick any that fit.</legend>
-    <div class="mt-3 grid gap-2 sm:grid-cols-2">
+  {/* What they already chose, said back to them. Filled in by the script from the link. */}
+  <p class="mb-5 hidden items-center gap-2 rounded-full bg-forest-100 px-4 py-2 text-base font-semibold text-forest-900" data-context>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>
+    <span data-context-text></span>
+  </p>
+
+  <details class="group" open data-kinds>
+    <summary class="field-label cursor-pointer list-none [&::-webkit-details-marker]:hidden" data-kinds-summary>What do you need done?</summary>
+    <div class="mt-3 flex flex-wrap gap-2">
       {JOB_KINDS.map((k) => (
-        <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-line p-3 text-base text-ink-700 has-[:checked]:border-forest-600 has-[:checked]:bg-forest-50">
-          <input type="checkbox" name="job_kinds" value={k.id} class="mt-1 h-5 w-5 accent-forest-700" />
-          <span>{k.label}</span>
+        <label class={chip}>
+          <input type="checkbox" name="job_kinds" value={k.id} class="sr-only" />
+          {SHORT[k.id] ?? k.label}
         </label>
       ))}
     </div>
-  </fieldset>
+  </details>
 
   <div class="mt-6">
-    <label class="field-label" for="cq-description">Tell him about it</label>
-    <textarea id="cq-description" name="description" class="field min-h-[140px]" placeholder="For example: the back yard is about 1,500 sq ft and overgrown. I'd like it cleared, weeded and the green waste hauled away. What would 'done' look like for you?"></textarea>
+    <label class="field-label" for="cq-description">Anything Josue should know? <span class="font-normal text-ink-500" data-optional></span></label>
+    <textarea id="cq-description" name="description" class="field min-h-[96px]" placeholder="Rough size, access, and what done looks like."></textarea>
   </div>
 
-  <div class="mt-6">
-    <p class="field-label">Photos <span class="font-normal text-ink-500">(they let Josue price it without a visit)</span></p>
-    <label class="mt-2 flex cursor-pointer items-center justify-center gap-3 rounded-lg border-2 border-dashed border-line-strong p-5 text-base font-medium text-forest-800 hover:border-forest-400">
+  <div class="mt-5">
+    <label class="flex cursor-pointer items-center justify-center gap-3 rounded-lg border-2 border-dashed border-line-strong p-4 text-base font-semibold text-forest-800 hover:border-forest-400">
       <input type="file" name="photos" accept="image/*" multiple class="sr-only" data-photo-input />
-      <span>Add photos (up to {maxPhotos})</span>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z" /><circle cx="12" cy="13" r="3.5" /></svg>
+      <span>Add photos</span>
     </label>
+    <p class="mt-2 text-sm text-ink-500">Photos usually get you a price without a visit.</p>
     <div class="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-6" data-photo-previews></div>
   </div>
 
-  <fieldset class="mt-6">
+  <fieldset class="mt-5">
     <legend class="field-label">When?</legend>
     <div class="mt-2 flex flex-wrap gap-2">
-      {[['asap', 'As soon as possible'], ['month', 'Within a month'], ['flexible', "I'm flexible"]].map(([v, l]) => (
-        <label class="flex cursor-pointer items-center gap-2 rounded-lg border border-line px-4 py-3 text-base has-[:checked]:border-forest-600 has-[:checked]:bg-forest-50">
-          <input type="radio" name="timing" value={v} class="h-5 w-5 accent-forest-700" /> {l}
-        </label>
+      {[['asap', 'As soon as possible'], ['month', 'This month'], ['flexible', 'Flexible']].map(([v, l]) => (
+        <label class={chip}><input type="radio" name="timing" value={v} class="sr-only" />{l}</label>
       ))}
     </div>
   </fieldset>
 
-  <div class="mt-7 grid gap-5 sm:grid-cols-2">
-    <div><label class="field-label" for="cq-name">Your name</label><input class="field" id="cq-name" name="name" autocomplete="name" required /></div>
-    <div><label class="field-label" for="cq-phone">Mobile</label><input class="field" id="cq-phone" name="phone" type="tel" autocomplete="tel" required /></div>
-    <div class="sm:col-span-2"><label class="field-label" for="cq-email">Email</label><input class="field" id="cq-email" name="email" type="email" autocomplete="email" required /></div>
-    <div><label class="field-label" for="cq-address">Street address of the job</label><input class="field" id="cq-address" name="address" autocomplete="street-address" /></div>
-    <div><label class="field-label" for="cq-city">City or ZIP</label><input class="field" id="cq-city" name="city" autocomplete="address-level2" required /></div>
+  <div class="mt-6 grid gap-4 sm:grid-cols-2">
+    <div><label class="field-label" for="cq-name">Name</label><input class="field" id="cq-name" name="name" autocomplete="name" required /></div>
+    <div><label class="field-label" for="cq-phone">Mobile</label><input class="field" id="cq-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" required /></div>
+    <div><label class="field-label" for="cq-email">Email</label><input class="field" id="cq-email" name="email" type="email" inputmode="email" autocomplete="email" required /></div>
+    <div><label class="field-label" for="cq-city">City or ZIP</label><input class="field" id="cq-city" name="city" autocomplete="postal-code" required /></div>
   </div>
 
-  <fieldset class="mt-6">
-    <legend class="field-label">Best way to reach you</legend>
-    <div class="mt-2 flex flex-wrap gap-2">
-      {[['text', 'Text'], ['call', 'Call'], ['email', 'Email']].map(([v, l], i) => (
-        <label class="flex cursor-pointer items-center gap-2 rounded-lg border border-line px-4 py-3 text-base has-[:checked]:border-forest-600 has-[:checked]:bg-forest-50">
-          <input type="radio" name="contact_pref" value={v} checked={i === 0} class="h-5 w-5 accent-forest-700" /> {l}
-        </label>
-      ))}
-    </div>
-  </fieldset>
-
-  <input type="hidden" name="service_slug" value={Astro.props.service ?? ''} data-service />
+  <input type="hidden" name="service_slug" value="" data-service />
+  <input type="hidden" name="contact_pref" value="text" />
   <p class="mt-5 hidden rounded-md bg-danger-100 px-3 py-2 text-sm text-danger" data-error role="alert"></p>
   <p class="mt-5 hidden text-base text-ink-700" data-progress aria-live="polite"></p>
-  <button type="submit" class="btn-primary mt-6 w-full sm:w-auto" data-submit>Send to Josue</button>
+  <button type="submit" class="btn-primary btn-lg mt-6 w-full" data-submit>Get my quote</button>
+  <p class="mt-3 text-center text-sm text-ink-500">Free, no obligation. Josue replies {reply}.</p>
   <noscript><p class="mt-3 text-sm text-ink-700">This form needs JavaScript for the photos. Call or text <a class="link" href={business.phoneHref}>{business.phone}</a> instead.</p></noscript>
 </form>
 
-<div class="tone-white hidden rounded-xl bg-paper p-8 shadow-lg ring-1 ring-black/5" data-quote-request-done>
-  <p class="text-h3 text-forest-900">Josue has it.</p>
-  <p class="mt-3 text-base text-ink-700">He reads every request himself and will reply {reply}, usually by text from {business.phone}. A copy is on its way to your email.</p>
-  <ol class="mt-5 space-y-2 text-base text-ink-700">
-    <li><strong>1.</strong> He looks at your photos, and may ask a question or stop by for a quick look.</li>
-    <li><strong>2.</strong> He sends you a quote: every line itemised, and any extras you can add.</li>
-    <li><strong>3.</strong> You approve it online and pay a deposit to book. The rest is paid when the work is done.</li>
-  </ol>
-  <p class="mt-6 text-base text-ink-700">See where it is any time: <a class="link break-all" href="#" data-status-link></a></p>
+<div class="tone-white hidden rounded-card bg-paper p-8 text-center shadow-lg ring-1 ring-black/5" data-quote-request-done>
+  <p class="text-h2 text-forest-900">Josue has it.</p>
+  <p class="mx-auto mt-3 max-w-md text-lg text-ink-700">He replies {reply}, usually by text from {business.phone}. You approve the quote online; nothing is charged until you do.</p>
+  <a class="btn-primary mt-6" href="#" data-status-link>Track your request</a>
+  <p class="mt-4 text-sm text-ink-500">We emailed you the same link.</p>
 </div>
 
 <script>
@@ -108,9 +113,40 @@ const maxPhotos = setting<number>('quote.photos_max', 6);
     const err = form.querySelector<HTMLElement>('[data-error]')!;
     const progress = form.querySelector<HTMLElement>('[data-progress]')!;
     const submit = form.querySelector<HTMLButtonElement>('[data-submit]')!;
-    const service = new URLSearchParams(location.search).get('service');
-    if (service) form.querySelector<HTMLInputElement>('[data-service]')!.value = service;
     let photos: File[] = [];
+
+    /**
+     * WHAT THE VISITOR ALREADY TOLD US, read from the link: the service, the size they picked and
+     * their ZIP. It is said back to them at the top, the matching job kind is ticked, the list of
+     * kinds folds away, and the ZIP is filled in. The page's heading follows too. Every one of
+     * these parameters has this reader (gates/entry-params.mjs).
+     */
+    const params = new URLSearchParams(location.search);
+    const service = params.get('service') ?? '';
+    const size = (params.get('size') ?? '').slice(0, 80);
+    const zip = (/\b\d{5}\b/.exec(params.get('zip') ?? '') ?? [''])[0];
+    const serviceNames = JSON.parse(form.dataset.serviceNames || '{}') as Record<string, string>;
+    const kindFor = JSON.parse(form.dataset.kindFor || '{}') as Record<string, string>;
+    const serviceName = serviceNames[service] ?? '';
+    let context = '';
+    if (serviceName) {
+      form.querySelector<HTMLInputElement>('[data-service]')!.value = service;
+      context = size ? `${serviceName} · ${size}` : serviceName;
+      const box = form.querySelector<HTMLElement>('[data-context]')!;
+      box.querySelector('[data-context-text]')!.textContent = context;
+      box.classList.remove('hidden'); box.classList.add('inline-flex');
+      const kind = kindFor[service];
+      if (kind) form.querySelector<HTMLInputElement>(`input[name=job_kinds][value=${kind}]`)!.checked = true;
+      const kinds = form.querySelector<HTMLDetailsElement>('[data-kinds]')!;
+      kinds.open = false;
+      form.querySelector('[data-kinds-summary]')!.innerHTML = '<span class="link text-base font-medium">Need something else as well?</span>';
+      form.querySelector('[data-optional]')!.textContent = '(optional)';
+      const h1 = document.querySelector('[data-quote-title]');
+      if (h1) h1.textContent = `${serviceName}: get a quote`;
+      // The typical range is about big custom jobs; it is the wrong number beside a named service.
+      document.querySelector('[data-quote-range]')?.remove();
+    }
+    if (zip) form.querySelector<HTMLInputElement>('#cq-city')!.value = zip;
 
     const draw = () => {
       previews.replaceChildren(...photos.map((f, i) => {
@@ -163,13 +199,14 @@ const maxPhotos = setting<number>('quote.photos_max', 6);
       const fd = new FormData(form);
       const body = {
         name: String(fd.get('name') ?? ''), phone: String(fd.get('phone') ?? ''), email: String(fd.get('email') ?? ''),
-        address: String(fd.get('address') ?? ''), city: String(fd.get('city') ?? ''),
-        description: String(fd.get('description') ?? ''), job_kinds: fd.getAll('job_kinds').map(String),
+        address: '', city: String(fd.get('city') ?? ''),
+        // What they chose on the way here leads the note, so Josue reads it first.
+        description: [context, String(fd.get('description') ?? '').trim()].filter(Boolean).join('\n'), job_kinds: fd.getAll('job_kinds').map(String),
         timing: fd.get('timing'), contact_pref: fd.get('contact_pref'), service_slug: String(fd.get('service_slug') ?? ''),
         source_page: location.pathname + location.search, photos_expected: photos.length,
       };
       if (!body.name || !body.phone || !body.email) { err.textContent = 'Please give your name, mobile and email so Josue can reach you.'; err.classList.remove('hidden'); return; }
-      if (!body.description && body.job_kinds.length === 0) { err.textContent = 'Tick what needs doing, or tell Josue about it in a sentence.'; err.classList.remove('hidden'); return; }
+      if (!body.description && body.job_kinds.length === 0) { err.textContent = 'Pick what you need done, or tell Josue in a sentence.'; err.classList.remove('hidden'); return; }
       submit.disabled = true;
       try {
         progress.textContent = 'Sending…';
@@ -184,7 +221,6 @@ const maxPhotos = setting<number>('quote.photos_max', 6);
         const done = document.querySelector<HTMLElement>('[data-quote-request-done]')!;
         const link = done.querySelector<HTMLAnchorElement>('[data-status-link]')!;
         link.href = `/quote/${token}`;
-        link.textContent = `${location.origin}/quote/${token}`;
         if (failed) done.insertAdjacentHTML('beforeend', `<p class="mt-4 text-base text-ink-700">${failed} photo${failed === 1 ? '' : 's'} did not upload. You can text them to Josue instead.</p>`);
         form.classList.add('hidden');
         done.classList.remove('hidden');

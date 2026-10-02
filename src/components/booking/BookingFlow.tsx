@@ -577,7 +577,7 @@ export default function BookingFlow(props: Props) {
                   return (
                     <Choice key={t.id} selected={tierId === t.id}
                       onClick={() => {
-                        if (quoteOnly) { window.location.href = `/custom-quote?service=${service}`; return; }
+                        if (quoteOnly) { window.location.href = `/custom-quote?service=${service}&size=${encodeURIComponent(t.label)}${zip ? `&zip=${zip}` : ''}`; return; }
                         setTierId(t.id); setPackageId(''); go('price');
                       }}>
                       <span className="block text-lg font-semibold text-forest-900">{t.label}</span>
@@ -586,7 +586,7 @@ export default function BookingFlow(props: Props) {
                   );
                 })}
                 {shapeOf(service) === 'recurring' && catalog.tiers.filter((t) => t.service_slug === service && t.requires_quote).map((t) => (
-                  <Choice key={t.id} onClick={() => { window.location.href = `/custom-quote?service=${service}`; }}>
+                  <Choice key={t.id} onClick={() => { window.location.href = `/custom-quote?service=${service}&size=${encodeURIComponent(t.label)}${zip ? `&zip=${zip}` : ''}`; }}>
                     <span className="block text-lg font-semibold text-forest-900">{t.label}</span>
                     <span className="mt-1 block text-base text-ink-500">Get a custom quote</span>
                   </Choice>

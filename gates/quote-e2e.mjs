@@ -106,18 +106,23 @@ try {
   // ── 1. the request
   console.log('1. somebody describes a job on a phone');
   await page.goto(`${base}/custom-quote?service=yard-deep-clean`, { waitUntil: 'networkidle' });
-  check(/quoted by Josue himself/i.test(await text()), 'the page says what it is', 'hero');
-  await page.locator('input[name=job_kinds][value=yard_cleanup]').check();
-  await page.locator('input[name=job_kinds][value=haul_away]').check();
+  // With a service in the link the heading names that service; without one it is the page's own.
+  const h1 = (await page.locator('h1').first().innerText()).replace(/\s+/g, ' ');
+  check(/Deep Clean.*get a quote/i.test(h1), 'the page says what it is, for the service the link carried', h1);
+  // The link names the service, so the form says it back and folds the list of kinds away.
+  check(/Deep Clean/i.test(await page.locator('[data-context-text]').innerText()), 'the form names the service the link carried', await page.locator('[data-context-text]').innerText());
+  await page.locator('[data-kinds-summary]').click();
+  await page.locator('label:has(input[name=job_kinds][value=yard_cleanup])').click();
+  await page.locator('label:has(input[name=job_kinds][value=haul_away])').click();
+  check(await page.locator('input[name=job_kinds]:checked').count() === 2, 'two kinds of job are chosen by tapping their chips');
   await page.fill('#cq-description', 'Automated walk. The back yard is overgrown; clear it and haul the green waste. Not a real customer.');
   await page.locator('[data-photo-input]').setInputFiles('public/brand/mark-512.png');
   await page.locator('[data-photo-previews] img').first().waitFor({ timeout: 10000 });
   check(await page.locator('[data-photo-previews] img').count() === 1, 'the photo shows as a preview before sending');
-  await page.locator('input[name=timing][value=month]').check();
+  await page.locator('label:has(input[name=timing][value=month])').click();
   await page.fill('#cq-name', NAME);
   await page.fill('#cq-phone', PHONE);
   await page.fill('#cq-email', EMAIL);
-  await page.fill('#cq-address', '1 Walk St');
   await page.fill('#cq-city', 'Ventura 93001');
   await page.screenshot({ path: `${SHOTS}/1-request.png`, fullPage: true });
   await page.locator('[data-submit]').click();
