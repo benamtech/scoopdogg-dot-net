@@ -13,7 +13,6 @@ export interface Props {
   size?: 'lg' | 'md';
   dark?: boolean;
   service?: string;
-  city?: string;
   label?: string;
   cta?: string;
   heroAnchor?: boolean;
@@ -27,12 +26,12 @@ export interface Props {
   /** Always one field above one button: for sidebars too narrow for a row. */
   stack?: boolean;
 }
-const { size = 'lg', service, city, label = "Where's your yard?", cta = 'See my price', heroAnchor = false, source = 'address-form', hideLabel = false, note, flat = false, stack = false } = Astro.props;
+const { size = 'lg', service, label = "Where's your yard?", cta = 'See my price', heroAnchor = false, source = 'address-form', hideLabel = false, note, flat = false, stack = false } = Astro.props;
 const uid = `addr-${Math.random().toString(36).slice(2, 8)}`;
 ---
 <form action="/book" method="get" class="w-full max-w-xl" data-address-form data-source={source} {...(heroAnchor ? { 'data-hero-cta': '' } : {})}>
   <label for={uid} class={hideLabel ? 'sr-only' : 'mb-2.5 block text-sm font-semibold text-tone-heading'}>{label}</label>
-  <div class={`flex flex-col gap-2 rounded-lg bg-paper p-2 ${flat ? 'ring-1 ring-line-strong' : 'shadow-lg ring-1 ring-black/5'} ${stack ? '' : 'sm:flex-row sm:items-center'} ${size === 'lg' ? 'sm:p-2.5' : ''}`}>
+  <div class={`flex flex-col gap-2 ${stack ? 'rounded-xl' : 'rounded-xl sm:rounded-full'} bg-paper p-2 ${flat ? 'ring-1 ring-line-strong' : 'shadow-lg ring-1 ring-black/5'} ${stack ? '' : 'sm:flex-row sm:items-center'} ${size === 'lg' ? 'sm:p-2.5' : ''}`}>
     <div class="relative flex-1">
       <svg class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-forest-400" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21Z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
       <input
@@ -44,11 +43,10 @@ const uid = `addr-${Math.random().toString(36).slice(2, 8)}`;
         placeholder="ZIP code"
         required
         minlength="5"
-        class={`w-full rounded-md border-0 bg-transparent py-3.5 pl-11 pr-3 text-ink-900 placeholder:text-ink-400 focus:outline-none focus:ring-0 ${size === 'lg' ? 'text-lg' : 'text-base'}`}
+        class={`w-full rounded-md border-0 bg-transparent py-3.5 pl-11 pr-3 text-ink-900 sm:pl-12 placeholder:text-ink-400 focus:outline-none focus:ring-0 ${size === 'lg' ? 'text-lg' : 'text-base'}`}
       />
     </div>
     {service && <input type="hidden" name="service" value={service} />}
-    {city && <input type="hidden" name="city" value={city} />}
     <input type="hidden" name="from" value={source} />
     <button type="submit" class={`btn-primary ${size === 'lg' ? 'btn-lg' : ''} shrink-0`}>
       {cta}

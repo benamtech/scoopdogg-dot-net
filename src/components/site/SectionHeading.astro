@@ -5,9 +5,6 @@
  *
  * Plain `title` is text; a title with markup (a line break, an accent) goes in the `title` slot,
  * so nothing from the catalog is ever rendered as HTML.
- *
- * On an orange band the lede is set at `statement` size (never below 24px), because white
- * body-size text on the band orange is 3.15:1 and fails; large text passes.
  */
 export interface Props {
   eyebrow?: string;
@@ -17,10 +14,9 @@ export interface Props {
   id?: string;
   level?: 'h1' | 'h2';
   size?: 'hero' | 'h1' | 'h2' | 'h3';
-  onOrange?: boolean;
   class?: string;
 }
-const { eyebrow, title, lede, align = 'left', id, level = 'h2', size, onOrange = false, class: extra = '' } = Astro.props;
+const { eyebrow, title, lede, align = 'left', id, level = 'h2', size, class: extra = '' } = Astro.props;
 const H = level;
 const sizes = { hero: 'text-hero', h1: 'text-h1', h2: 'text-h2', h3: 'text-h3' } as const;
 const titleSize = sizes[size ?? (level === 'h1' ? 'h1' : 'h2')];
@@ -32,7 +28,7 @@ const hasAction = Astro.slots.has('action');
     {eyebrow && <p class={`eyebrow mb-4 ${center ? 'justify-center' : ''}`}>{eyebrow}</p>}
     <H id={id} class={`${titleSize} text-tone-heading`}>{Astro.slots.has('title') ? <slot name="title" /> : title}</H>
     {lede && (
-      <p class={`mt-4 max-w-prose ${onOrange ? 'text-statement text-white' : 'text-lg text-tone-muted'} ${center ? 'mx-auto' : ''}`}>{lede}</p>
+      <p class={`mt-4 max-w-prose text-lg text-tone-muted ${center ? 'mx-auto' : ''}`}>{lede}</p>
     )}
     <slot />
   </div>

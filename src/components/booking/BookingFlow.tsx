@@ -14,6 +14,14 @@
  *  - ALL ELEVEN SERVICES BOOK (P16 §3), in three shapes: a recurring plan, a one-time job, or a
  *    quote. It booked four. The two biggest tickets in the catalog were a link to /contact.
  *
+ *  - A SERVICE THAT ARRIVES IN THE URL IS HONOURED (2026-10-02). Every service card, every
+ *    service page's ZIP card and the closing band send `?service=<slug>`, and until this date
+ *    nothing read it: the visitor who pressed "Book pressure washing" was shown the ZIP step and
+ *    then a list of eleven services with nothing chosen. It was a writer with no reader, measured
+ *    on the preview across all eleven. Now the service is chosen on arrival, the ZIP step says
+ *    which service it is for, and the picker is skipped — Back still reaches it.
+ *    `gates/entry-params.mjs` holds every parameter a page writes to a reader here.
+ *
  *  - TWO LANES AT THE PRICE STEP (P16 §5). Prepay is the default; pay-after-the-first-visit is
  *    what keeps faith with the "No credit card required" the live site has promised for years.
  *    Lane B prints the ACTUAL DATE of the first charge, never "later".
@@ -138,6 +146,14 @@ export default function BookingFlow(props: Props) {
   const zipRef = useRef<HTMLInputElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const restored = useRef(false);
+  /**
+   * The page of this site the visitor came from, and the control they used there: the `from`
+   * label a ZIP box carries, or nothing for a button. Sent once, with the first step, and read
+   * by the growth board (`by_entry`). A path only — never a query string.
+   */
+  const cameFrom = useRef<{ entry: string | null; control: string | null }>({ entry: null, control: null });
+  /** The service named in the URL the visitor arrived on. Not restored from a previous tab. */
+  const [entryService, setEntryService] = useState('');
 
   const payAfterOffered = props.lanesEnabled.includes('payafter');
 
@@ -165,6 +181,13 @@ export default function BookingFlow(props: Props) {
     let saved: Record<string, string> = {};
     try { saved = JSON.parse(sessionStorage.getItem(STORE) || '{}'); } catch { /* fresh */ }
     idem.current = saved.idem || crypto.randomUUID();
+    try {
+      const ref = document.referrer ? new URL(document.referrer) : null;
+      cameFrom.current = {
+        entry: ref && ref.host === location.host && ref.pathname !== location.pathname ? ref.pathname : null,
+        control: url.searchParams.get('from'),
+      };
+    } catch { /* measurement is never load-bearing */ }
     const typed = zipRef.current?.value ?? '';
     const fromUrl = url.searchParams.get('zip') || url.searchParams.get('address') || '';
     const z = zipIn(fromUrl) || zipIn(typed) || saved.zip || '';
@@ -180,15 +203,32 @@ export default function BookingFlow(props: Props) {
     const pkg = pkgSlug ? catalog.packages.find((p) => p.slug === pkgSlug) : undefined;
     if (pkg) { setService(pkg.service_slug); setPackageId(pkg.id); }
 
+    // The service the visitor pressed a button for. A package outranks it (it names a service
+    // already); an unknown slug is ignored and the picker is shown as before.
+    const svcSlug = pkg ? '' : (url.searchParams.get('service') || '');
+    const entry = svcSlug ? bookableServices(catalog).find((x) => x.service.slug === svcSlug) : undefined;
+    if (entry) {
+      if (entry.shape === 'quote') { window.location.replace(`/custom-quote?service=${entry.service.slug}`); return; }
+      setEntryService(entry.service.slug);
+      // Anything saved for a different service belongs to an earlier visit.
+      if (saved.service !== entry.service.slug) { setPackageId(''); setTierId(''); }
+      setService(entry.service.slug);
+    }
+
     // A ZIP that arrived with the visitor is answered immediately from the generated map, and
     // the server re-answers it at the price step anyway.
     if (z && zipMap[z]) {
       const slug = zipMap[z];
       setCity(slug);
       setCityName(areas.find((a) => a.slug === slug)?.name ?? '');
-      setHistory(['zip']);
-      setStep(pkg ? 'price' : 'service');
+      setHistory(entry ? ['zip', 'service'] : ['zip']);
+      setStep(pkg ? 'price' : entry ? 'size' : 'service');
       trackOnce('zip', { postal_code: z, area_slug: slug });
+    } else if (zipIn(fromUrl)) {
+      // A ZIP typed into a ZIP box on another page that is NOT on the map. It used to land here
+      // on the same question it had just answered, with the answer filled in and nothing said.
+      // Ask the server now, so the visitor gets the honest sentence and the waitlist at once.
+      void resolveZip(z);
     } else if (saved.city) {
       setCity(saved.city); setCityName(saved.cityName || '');
     }
@@ -200,7 +240,7 @@ export default function BookingFlow(props: Props) {
     try {
       fetch('/api/booking/track', {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ session_id: idem.current, step: stepName, source: sessionSource(), ...extra }),
+        body: JSON.stringify({ session_id: idem.current, step: stepName, source: sessionSource(), ...cameFrom.current, ...extra }),
       }).catch(() => {});
     } catch { /* never load-bearing */ }
   };
@@ -326,7 +366,9 @@ export default function BookingFlow(props: Props) {
       if (j.served) {
         setCity(j.area_slug); setCityName(j.area_name);
         trackOnce('zip', { postal_code: z, area_slug: j.area_slug, city_name: j.area_name });
-        go(packageId ? 'price' : 'service');
+        if (packageId) go('price');
+        else if (entryService) { setError(''); setHistory((h) => [...h, step, 'service']); setStep('size'); }
+        else go('service');
         return;
       }
       // Known and not served, or never heard of. Both end somewhere, neither pretends.
@@ -471,6 +513,11 @@ export default function BookingFlow(props: Props) {
         <div key={step} className="animate-fade-up">
           {step === 'zip' && (
             <form onSubmit={(e) => { e.preventDefault(); resolveZip(zip); }}>
+              {entryService && (
+                <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-forest-100 px-4 py-1.5 text-sm font-semibold text-forest-800" data-entry-service={entryService}>
+                  {props.services.find((x) => x.slug === entryService)?.name ?? 'Your service'}
+                </p>
+              )}
               <Heading sub="We'll show your price in about a minute.">Where's your yard?</Heading>
               <label htmlFor="bk-zip" className="field-label">ZIP code</label>
               <input id="bk-zip" ref={zipRef} className="field max-w-[220px] text-lg" inputMode="numeric" autoComplete="postal-code"
@@ -530,7 +577,7 @@ export default function BookingFlow(props: Props) {
                   return (
                     <Choice key={t.id} selected={tierId === t.id}
                       onClick={() => {
-                        if (quoteOnly) { window.location.href = `/contact?service=${service}&tier=${encodeURIComponent(t.label)}`; return; }
+                        if (quoteOnly) { window.location.href = `/custom-quote?service=${service}`; return; }
                         setTierId(t.id); setPackageId(''); go('price');
                       }}>
                       <span className="block text-lg font-semibold text-forest-900">{t.label}</span>
@@ -539,7 +586,7 @@ export default function BookingFlow(props: Props) {
                   );
                 })}
                 {shapeOf(service) === 'recurring' && catalog.tiers.filter((t) => t.service_slug === service && t.requires_quote).map((t) => (
-                  <Choice key={t.id} onClick={() => { window.location.href = `/contact?service=${service}&tier=${encodeURIComponent(t.label)}`; }}>
+                  <Choice key={t.id} onClick={() => { window.location.href = `/custom-quote?service=${service}`; }}>
                     <span className="block text-lg font-semibold text-forest-900">{t.label}</span>
                     <span className="mt-1 block text-base text-ink-500">Get a custom quote</span>
                   </Choice>

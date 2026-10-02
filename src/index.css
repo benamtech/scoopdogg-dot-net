@@ -75,6 +75,34 @@
   --tone-rule: 255 255 255;
 }
 /*
+ * `amber` IS THE LIVE SITE'S BAND, and the answer to "white on orange only at large sizes".
+ * scoopdogg.net sets its Our Services intro on the brand amber with dark-green type, and that
+ * pairing is 7.22:1 — any size, no white card needed to carry the small text. The deeper
+ * `orange` above was invented to make WHITE text pass; it reads darker than the site Josue
+ * knows and still only reaches 3.15:1. Bands use `amber` now; `orange` stays defined for the
+ * few accents that reference it.
+ */
+.tone-amber {
+  --tone-bg: 244 160 36;         /* amber-500, the live band */
+  --tone-fg: 15 42 31;           /* forest-900, 7.22:1 */
+  --tone-heading: 15 42 31;
+  --tone-muted: 20 55 40;        /* forest-800, 6.2:1 */
+  --tone-accent: 11 31 22;       /* forest-950 */
+  --tone-rule: 15 42 31;         /* use at /15 */
+}
+/*
+ * `sage` is the live site's `sage-light` (#E8F0EB): the green-grey its service groups
+ * alternate with white. Stronger than `tint`, which stays for app surfaces.
+ */
+.tone-sage {
+  --tone-bg: 232 240 235;        /* forest-100 */
+  --tone-fg: 58 66 62;
+  --tone-heading: 15 42 31;
+  --tone-muted: 80 91 85;        /* 5.5:1 on sage */
+  --tone-accent: 36 89 63;
+  --tone-rule: 201 221 208;
+}
+/*
  * `photo` is the hero and any band whose background is a graded photograph or a video frame
  * under the forest duotone. It is a separate tone from `forest` for one practical reason and
  * one honest one: two adjacent bands may not share a tone (`gates/surface-rhythm.mjs`), and
@@ -139,7 +167,7 @@
     outline-offset: 2px;
     border-radius: 4px;
   }
-  .tone-orange :focus-visible { outline-color: theme('colors.forest.950'); }
+  .tone-orange :focus-visible, .tone-amber :focus-visible { outline-color: theme('colors.forest.950'); }
 
   * { -webkit-tap-highlight-color: transparent; }
 
@@ -162,15 +190,16 @@
   .eyebrow {
     @apply inline-flex items-center gap-3 text-micro font-semibold uppercase text-tone-accent;
   }
-  .eyebrow::before { content: ''; @apply h-0.5 w-6 shrink-0 rounded-full bg-orange-600; }
-  .tone-orange .eyebrow::before { @apply bg-forest-950; }
-  .tone-forest .eyebrow::before, .tone-deep .eyebrow::before { @apply bg-amber-400; }
+  /* The live site's centred bands open with a small pill ("CUSTOMER REVIEWS", "SERVICE AREA"). */
+  .eyebrow-chip {
+    @apply inline-flex items-center rounded-full border border-tone-heading/15 bg-tone-heading/5 px-4 py-1.5 text-micro font-semibold uppercase text-tone-accent;
+  }
   .eyebrow-plain::before { display: none; }
   /* Kept for the admin and the React islands that still pass it. */
   .eyebrow-on-dark { @apply text-micro font-semibold uppercase text-amber-400; }
 
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-md px-6 py-3.5 text-base font-semibold
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3.5 text-base font-semibold
       transition duration-fast ease-brand focus-visible:shadow-focus disabled:cursor-not-allowed disabled:opacity-60;
   }
   /* The one action colour. Amber with dark green text: 7.22:1. */

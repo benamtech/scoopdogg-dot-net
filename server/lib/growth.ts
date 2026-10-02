@@ -75,6 +75,7 @@ export async function growthBoard(q: Queryable = db()) {
   let priced: Metric = metric(null, false, note);
   let ours = 0;
   let bySource: { source: string; sessions: number; priced: number }[] = [];
+  let byEntry: { entry: string | null; control: string | null; sessions: number; priced: number }[] = [];
   if (funnel) {
     const { rows } = await q.query(`
       select count(*)::int as starts,
@@ -105,6 +106,25 @@ export async function growthBoard(q: Queryable = db()) {
          where started_at >= date_trunc('month', now()) ${notOurs(true)}
          group by 1 order by 2 desc, 1`);
       bySource = src;
+
+      /**
+       * WHICH PAGE OF THE SITE STARTED IT. `by_source` answers "which site sent them"; this
+       * answers "which of our pages turned them into somebody asking for a price", which is the
+       * only honest way to tell whether a city page, a service page or the homepage is earning
+       * its place. Read from the `booking.started` event's payload (written once per session by
+       * `track()`), joined to the session for the same month and the same exclusion of our own
+       * checks. A null entry is a visitor who opened the booking page directly.
+       */
+      const { rows: ent } = await q.query(`
+        select e.payload->>'entry' as entry, e.payload->>'control' as control,
+               count(*)::int as sessions,
+               count(*) filter (where fs.price_cents_seen is not null)::int as priced
+          from events e
+          join funnel_sessions fs on fs.id = e.subject_id
+         where e.subject_kind = 'booking' and e.event_type = 'booking.started'
+           and fs.started_at >= date_trunc('month', now()) ${notOurs(true, 'fs')}
+         group by 1, 2 order by 3 desc, 1 nulls last limit 40`);
+      byEntry = ent;
     }
   }
 
@@ -160,6 +180,7 @@ export async function growthBoard(q: Queryable = db()) {
     /** How many sessions this month were ours and are NOT in the counts above. */
     verifier_sessions_excluded: attributedNow ? ours : null,
     by_source: bySource,
+    by_entry: byEntry,
     month: new Date().toISOString().slice(0, 7),
     metrics: {
       booking_intent_starts: starts,

@@ -209,7 +209,19 @@ const schema = jsonLd
           var ref = document.referrer || '';
           var host = '';
           try { host = ref ? new URL(ref).hostname.replace(/^www\./, '') : ''; } catch (e) { host = ''; }
-          if (host && host !== location.hostname.replace(/^www\./, '')) sessionStorage.setItem('sd_src', host);
+          // A PAID CLICK IS NOT AN ORGANIC ONE, and from the referrer alone they are the same
+          // site. An ad platform marks its own clicks in the landing URL (gclid and its two
+          // siblings for Google, msclkid for Microsoft), and a tagged campaign says so in
+          // utm_medium. Those sessions are stored as `paid.<site>`, so the growth page can tell
+          // what an advert brought from what a search result did. Only the marker's presence is
+          // read; the click id itself is never stored.
+          var q = new URLSearchParams(location.search);
+          var paid = q.get('gclid') || q.get('gbraid') || q.get('wbraid') ? 'google.com'
+            : q.get('msclkid') ? 'bing.com'
+            : /^(cpc|ppc|paid|paidsearch|paidsocial|paid_social|display)$/i.test(q.get('utm_medium') || '') ? (host || (q.get('utm_source') || 'ad').toLowerCase().replace(/[^a-z0-9.-]/g, ''))
+            : '';
+          if (paid) sessionStorage.setItem('sd_src', 'paid.' + paid);
+          else if (host && host !== location.hostname.replace(/^www\./, '')) sessionStorage.setItem('sd_src', host);
         }
       } catch (e) { /* measurement is never load-bearing */ }
     </script>

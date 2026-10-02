@@ -43,7 +43,12 @@ const SOURCE_NAMES: Record<string, string> = {
   'yelp.com': 'Yelp',
   'chatgpt.com': 'ChatGPT', 'perplexity.ai': 'Perplexity',
 };
-const sourceName = (s: string) => SOURCE_NAMES[s] ?? s;
+/** `paid.<site>` is a click on an advert there (the layout marks it from the ad platform's own URL marker). */
+const sourceName = (s: string) => (s.startsWith('paid.') ? `${SOURCE_NAMES[s.slice(5)] ?? s.slice(5)} — paid ad` : SOURCE_NAMES[s] ?? s);
+/** The control a visitor used, in the owner's words. A ZIP box carries a label; a button does not. */
+const entryControl = (control: string | null, entry: string | null) =>
+  control ? (control.endsWith('-close') ? 'ZIP box at the bottom of the page' : control === 'contact-aside' ? 'ZIP box beside the form' : 'ZIP box at the top of the page')
+    : entry ? 'A button' : '—';
 
 function Tile({ label, metric, format = (n: number) => String(n), hint }: {
   label: string; metric: Metric; format?: (n: number) => string; hint?: string;
@@ -123,6 +128,32 @@ export default function AdminGrowthPage() {
                         {board.by_source!.map((r) => (
                           <tr key={r.source}>
                             <td className="px-4 py-3 font-medium text-forest-900">{sourceName(r.source)}</td>
+                            <td className="px-4 py-3 tabular-nums">{r.sessions}</td>
+                            <td className="px-4 py-3 tabular-nums">{r.priced}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                <h2 className="mt-12 text-lg font-semibold text-forest-900">Which page they started from</h2>
+                <p className="mt-1 text-sm text-ink-500">This month. The page of your website a visitor was on when they asked for a price.</p>
+                {(board.by_entry ?? []).length === 0 ? (
+                  <p className="mt-4 rounded-lg border border-line bg-paper p-5 text-base text-ink-700">
+                    Nobody has started a price this month yet, so there is nothing to show here.
+                  </p>
+                ) : (
+                  <div className="mt-4 overflow-x-auto rounded-lg border border-line bg-paper">
+                    <table className="w-full text-left text-sm">
+                      <thead className="border-b border-line bg-cream text-ink-500">
+                        <tr><th className="px-4 py-3">Page</th><th className="px-4 py-3">How</th><th className="px-4 py-3">Started a price</th><th className="px-4 py-3">Saw a price</th></tr>
+                      </thead>
+                      <tbody className="divide-y divide-line">
+                        {board.by_entry!.map((r) => (
+                          <tr key={`${r.entry}|${r.control}`}>
+                            <td className="px-4 py-3 font-medium text-forest-900">{r.entry ?? 'Opened the booking page directly'}</td>
+                            <td className="px-4 py-3 text-ink-700">{entryControl(r.control, r.entry)}</td>
                             <td className="px-4 py-3 tabular-nums">{r.sessions}</td>
                             <td className="px-4 py-3 tabular-nums">{r.priced}</td>
                           </tr>

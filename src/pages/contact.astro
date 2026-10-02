@@ -22,7 +22,7 @@ const jsonLd = {
 };
 ---
 <Site jsonLd={jsonLd} title="Contact Scoop Dogg | Dog Poop Cleanup in Ventura & Santa Barbara Counties" description={`Call or text ${business.phone}, email, or send a message. Or see your monthly price online in about a minute.`} canonicalPath="/contact">
-  <PageHero tone="forest" eyebrow="Contact" title="Talk to Josue" lede={`Questions about your yard, your plan or a one-time job. We serve ${regionSentence()}.`}>
+  <PageHero eyebrow="Contact" title="Talk to Josue" lede={`Questions about your yard, your plan or a one-time job. We serve ${regionSentence()}.`}>
     <div slot="aside" class="tone-white rounded-xl bg-paper p-7 shadow-lg sm:p-8">
       <p class="text-sm font-semibold uppercase tracking-[0.1em] text-ink-500">Call or text</p>
       <a href={business.phoneHref} class="mt-1 block font-serif text-h2 text-forest-900 hover:text-forest-600">{business.phone}</a>
@@ -46,9 +46,9 @@ const jsonLd = {
         />
       </div>
       <aside class="lg:col-span-5">
-        <div class="tone-orange rounded-xl bg-tone-bg p-7 sm:p-9">
-          <h2 class="text-h2 text-white">Faster: see your price now</h2>
-          <p class="mt-3 text-statement text-white">About a minute, no waiting for a reply.{headlineOffer ? ` ${headlineOffer.name}.` : ''}</p>
+        <div class="tone-amber rounded-card bg-tone-bg p-7 sm:p-9">
+          <h2 class="text-h3 text-tone-heading">Faster: see your price now</h2>
+          <p class="mt-3 text-lg text-tone-fg">About a minute, no waiting for a reply.{headlineOffer ? ` ${headlineOffer.name}.` : ''}</p>
           <div class="mt-7"><AddressForm size="md" stack hideLabel label="Your street address" source="contact-aside" /></div>
         </div>
         <div class="mt-5 rounded-xl border border-line p-7">

@@ -1,18 +1,28 @@
 ---
-/** The mark and the wordmark. `tone` flips the wordmark for dark surfaces. */
+/**
+ * The mark and the wordmark; `tone` flips the wordmark for dark surfaces. `emblem` is Josue's
+ * own logo — the dog, the sign, "Pooper Scoopers and Turf Maintenance" — which is what the
+ * header of scoopdogg.net has always carried.
+ */
 export interface Props {
   tone?: 'light' | 'dark';
   size?: 'sm' | 'md' | 'lg';
   tagline?: boolean;
   href?: string | null;
+  emblem?: boolean;
 }
-const { tone = 'light', size = 'md', tagline = false, href = '/' } = Astro.props;
+const { tone = 'light', size = 'md', tagline = false, href = '/', emblem = false } = Astro.props;
 const mark = { sm: 'h-9 w-9', md: 'h-11 w-11', lg: 'h-16 w-16' }[size];
 const word = { sm: 'text-xl', md: 'text-logo', lg: 'text-logo-lg' }[size];
 const color = tone === 'dark' ? 'text-white' : 'text-forest-800';
 const sub = tone === 'dark' ? 'text-forest-300' : 'text-ink-500';
 const Tag = href ? 'a' : 'span';
 ---
+{emblem ? (
+  <Tag href={href ?? undefined} class="inline-flex shrink-0 items-center" aria-label="Scoop Dogg home">
+    <img src="/horizontallogo.png" alt="Scoop Dogg — Pooper Scoopers and Turf Maintenance" width="277" height="200" class="h-14 w-auto sm:h-16" decoding="async" />
+  </Tag>
+) : (
 <Tag href={href ?? undefined} class="group inline-flex items-center gap-2.5">
   <img src="/brand/mark-96.webp" alt="" width="96" height="96" class={`${mark} shrink-0 rounded-full shadow-xs`} decoding="async" />
   <span class="flex flex-col leading-none">
@@ -20,3 +30,4 @@ const Tag = href ? 'a' : 'span';
     {tagline && <span class={`mt-1 text-micro font-semibold uppercase ${sub}`}>Pooper scoopers · turf care</span>}
   </span>
 </Tag>
+)}

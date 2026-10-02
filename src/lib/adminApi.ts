@@ -124,7 +124,6 @@ export const adminApi = {
   visit:       (id: string) => call<any>(`visit/${id}`),
   invoices:    () => call<{ invoices: AdminInvoice[]; counts: Record<string, number>; owed_cents: number }>('invoices'),
   setAreaDays: (slug: string, weekdays: number[]) => call<{ area: { slug: string; service_weekdays: number[] } }>('areas/days', { method: 'PATCH', body: JSON.stringify({ slug, weekdays }) }),
-  setAreaBookable: (slug: string, bookable: boolean) => call<{ area: { slug: string; bookable: boolean } }>('areas/bookable', { method: 'PATCH', body: JSON.stringify({ slug, bookable }) }),
   offers:      () => call<{ offers: AdminOffer[]; services: { slug: string; name: string; monthly: boolean }[] }>('offers'),
   saveOffer:   (id: string, patch: OfferInput) => call<{ offer: AdminOffer; effective_now: string[] }>('offers', { method: 'PATCH', body: JSON.stringify({ id, ...patch }) }),
   addOffer:    (o: OfferInput) => call<{ offer: AdminOffer; effective_now: string[] }>('offers/new', { method: 'POST', body: JSON.stringify(o) }),
@@ -349,6 +348,7 @@ export interface GrowthBoard {
   verifier_sessions_excluded?: number | null;
   /** Where this month's real sessions came from. 'direct' is a real answer, not a gap. */
   by_source?: { source: string; sessions: number; priced: number }[];
+  by_entry?: { entry: string | null; control: string | null; sessions: number; priced: number }[];
 }
 export interface UnfinishedRow {
   id: string; postal_code: string | null; step: string | null; price_cents_seen: number | null;

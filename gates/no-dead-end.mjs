@@ -66,10 +66,18 @@ const contact = readFileSync('api/contact.ts', 'utf8');
 }
 
 // 4. a quote tier leaves the funnel toward something that records a lead.
+//
+// THE DESTINATION MOVED ON 2026-10-02, the invariant did not. A tier that needs a look used to
+// go to `/contact?service=...&tier=...`, and the contact form read neither parameter: the
+// visitor arrived at a blank general message form. It goes to the custom-quote lane now, which
+// reads `service`, takes photos and writes a lead with the service on it. What this check holds
+// is unchanged: the funnel hands the visitor to something that records them.
 {
-  const toContact = /window\.location\.href = `\/contact\?service=/.test(flow);
-  toContact ? ok('a quote tier goes to the contact form rather than nowhere')
-            : no('a quote tier goes to the contact form rather than nowhere');
+  const toQuote = /window\.location\.href = `\/custom-quote\?service=/.test(flow);
+  toQuote ? ok('a quote tier goes to the quote lane rather than nowhere')
+          : no('a quote tier goes to the quote lane rather than nowhere');
+  /insert into leads/.test(readFileSync('server/lib/quotes.ts', 'utf8'))
+    ? ok('the quote lane writes a lead row') : no('the quote lane writes a lead row');
   /insert into contact_messages/.test(contact)
     ? ok('the contact form writes a row') : no('the contact form writes a row');
 }

@@ -88,6 +88,10 @@ export type TrackInput = {
   source?: string | null;
   /** True only for server-side callers. A browser never sets this. */
   trusted?: boolean;
+  /** The page of this site the visitor was on when they entered the funnel. See `normaliseEntry`. */
+  entry?: string | null;
+  /** Which control on that page: the `from` label a ZIP box carries, or nothing for a button. */
+  control?: string | null;
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -134,6 +138,22 @@ export function normaliseSource(raw: unknown, { trusted = false } = {}): string 
   v = v.replace(/^www\./, '');
   // The column's own check constraint, applied before the insert rather than caught after it.
   return /^[a-z0-9][a-z0-9.-]{0,79}$/.test(v) ? v : null;
+}
+
+/**
+ * WHICH PAGE STARTED IT (2026-10-02). `source` says which site a visitor came from; this says
+ * which page of OURS they were on when they started a price, and which control they used. It is
+ * the number that tells a city page from a service page from the homepage, and before it nothing
+ * recorded that: every ZIP box wrote a `from` field and nothing read it.
+ *
+ * A path on this site, or a short label. Anything else is dropped rather than stored, so a query
+ * string never lands in the event log. It rides in the `booking.started` event's payload, which
+ * is written once per session — no new column, and the first page wins by construction.
+ */
+export function normaliseEntry(raw: unknown): string | null {
+  const v = String(raw ?? '').trim().toLowerCase().split('?')[0].split('#')[0].replace(/\/+$/, '');
+  if (!v) return raw != null && String(raw).trim().startsWith('/') ? '/' : null;
+  return /^\/?[a-z0-9][a-z0-9/_-]{0,95}$/.test(v) ? v : null;
 }
 
 /**
@@ -201,6 +221,7 @@ export async function track(input: TrackInput, q?: Queryable): Promise<{ recorde
             postal_code: input.postal_code ?? null, area: input.area_slug ?? null,
             package: input.package_id ?? null, price_cents: input.price_cents_seen ?? null,
             lane: input.lane ?? null,
+            ...(step === 'zip' ? { entry: normaliseEntry(input.entry), control: normaliseEntry(input.control) } : {}),
           },
         });
         recorded = true;

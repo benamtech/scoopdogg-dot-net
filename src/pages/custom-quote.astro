@@ -64,11 +64,10 @@ const jsonLd = {
   canonicalPath="/custom-quote"
 >
   <PageHero
-    tone="cream"
     eyebrow="Custom jobs"
     title="Yard and property work, quoted by Josue himself"
     lede={`Overgrown yards, haul-away, turf and landscaping, big pressure-washing jobs — anything that does not fit a price list. Send a few photos and he will quote it ${reply}.${range ? ` ${range}` : ''}`}
-    crumbs={[{ href: '/', label: 'Home' }, { href: '/services', label: 'Services' }, { href: '/custom-quote', label: 'Custom jobs' }]}
+    crumbs={[{ href: '/services', label: 'Services' }]}
   />
 
   <Section tone="white">
@@ -90,8 +89,8 @@ const jsonLd = {
     </div>
   </Section>
 
-  <Section tone="orange" labelledby="how-title">
-    <SectionHeading id="how-title" eyebrow="How it works" title="From photos to a finished job" onOrange />
+  <Section tone="amber" labelledby="how-title">
+    <SectionHeading id="how-title" eyebrow="How it works" title="From photos to a finished job" />
     <div class="mt-10"><Steps steps={steps} cols={4} /></div>
   </Section>
 

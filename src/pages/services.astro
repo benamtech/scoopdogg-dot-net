@@ -15,7 +15,7 @@ const oneTime = services.filter((s) => packagesForService(s.slug).length === 0);
 const Card = (s: (typeof services)[number]) => ({ s, p: headlinePrice(s.slug) });
 ---
 <Site title="Services | Dog Poop Cleanup, Turf Care & More | Scoop Dogg" description="Weekly dog poop scooping, turf maintenance, yard care, litter box service and one-time cleanups across Ventura and Santa Barbara counties." canonicalPath="/services">
-  <PageHero tone="cream" eyebrow="Services" title="Everything your yard and your pets need" lede="Monthly plans that run themselves, and one-time jobs when you need a reset.">
+  <PageHero eyebrow="Services" title="Everything your yard and your pets need" lede="Monthly plans that run themselves, and one-time jobs when you need a reset.">
     <div slot="aside" class="hidden justify-center lg:flex" aria-hidden="true">
       <Image src={mowing} alt="" widths={[260, 438]} sizes="260px" class="h-auto w-60" loading="eager" />
     </div>
@@ -37,10 +37,10 @@ const Card = (s: (typeof services)[number]) => ({ s, p: headlinePrice(s.slug) })
       ))}
     </ul>
   </Section>
-  <Section tone="orange" labelledby="onetime">
+  <Section tone="amber" labelledby="onetime">
     <p class="eyebrow mb-4">Book once</p>
-    <h2 id="onetime" class="text-h1 text-white">One-time services</h2>
-    <p class="mt-4 text-statement text-white">A reset, a deep clean, or a job you only need now and then.</p>
+    <h2 id="onetime" class="text-h2 text-tone-heading">One-time services</h2>
+    <p class="mt-4 text-xl text-tone-fg">A reset, a deep clean, or a job you only need now and then.</p>
     <ul class="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
       {oneTime.map(Card).map(({ s, p }) => (
         <li><a href={`/services/${s.slug}`} class="tone-white group flex h-full flex-col rounded-xl bg-paper p-6 shadow-md transition duration-base ease-brand hover:-translate-y-0.5 hover:shadow-lg">

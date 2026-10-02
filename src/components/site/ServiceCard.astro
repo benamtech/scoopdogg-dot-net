@@ -1,24 +1,23 @@
 ---
 /**
- * One service card, in the shape Josue's customers comment on.
+ * One service card, in the shape scoopdogg.net has always drawn it.
  *
- * P15 §2 row 3 — the Our Services band "carries over whole; this is the part that gets the
- * comments". The live card is a cartoon, an `Includes:` list, a price and its own CTA, and all
- * four come across. Three things change, and each of them is a defect being removed:
+ * The card is the live site's: a white rounded card, the cartoon rising out of its top-right
+ * corner, an icon tile, the name in the serif, a small uppercase line, the description, the
+ * `Includes:` list in a sage box, the price in bold and a full-width pill button — amber on the
+ * one card per group that carries the weight, forest on the rest — with a quiet "Learn more"
+ * under it. Three things differ from the live card, and each is a defect being removed:
  *
- *  1. THE PRICE RESOLVES FROM A ROW. The live cards type their prices into the markup —
- *     "1 dog · $15/week", "Starting at $99" — and the ladder moved to $100/$120/$130/$160 in
- *     migration 016, so every one of those strings is now wrong as well as unmaintainable.
+ *  1. THE PRICE RESOLVES FROM A ROW. The live cards type their prices into the markup.
  *     `gates/no-price-in-prose.mjs` and `gates/price-four-places.mjs` are what keep them out.
- *  2. THE CTA ENTERS THE FUNNEL AT THIS SERVICE, not `/contact`. The two biggest tickets in
- *     the catalog used to be a contact link (P16 §3).
+ *  2. THE CTA ENTERS THE FUNNEL AT THIS SERVICE (`/book?service=`), and the funnel reads it.
  *  3. THE CARTOON GOES THROUGH `astro:assets`, so it is resized and served as WebP. The live
  *     site serves the full PNGs, which is most of its 5.7MB.
  *
- * ONE CARD RENDERER, and the comment on the live component says why: there used to be two —
- * `ServiceCard` and an inline block for the pet add-ons — so a prop added to the component
- * reached half the cards, and the Litter-Robot artwork sat over its own heading for two
- * reports running. There is one here, and the add-ons use it.
+ * THE FLOAT. A transparent cut-out rises above the card by FLOAT_RISE and the wrapper reserves
+ * exactly that much room, so cards in a row still start level. The two constants are a pair. A
+ * `framed` artwork is a complete scene with its own border; floated it reads as a rectangle
+ * pasted on the card, so it sits in the flow instead (the live component learned this).
  */
 import { Image } from 'astro:assets';
 import type { ImageMetadata } from 'astro';
@@ -36,81 +35,116 @@ export interface Props {
   price: { text: string; per: string; cents: number } | null;
   priceNote?: string | null;
   cta: string;
+  /** Where the button goes. Defaults to the funnel, at this service. */
+  href?: string;
   /** The cartoon. Optional: a service without one renders without one. */
   art?: ImageMetadata;
   artAlt?: string;
+  /** A bordered scene rather than a cut-out: placed in the flow, never floated. */
+  framed?: boolean;
   badge?: string | null;
-  /** The one card per group that carries the brand's weight. */
+  /** The one card per group that carries the brand's weight: amber border, amber button. */
   featured?: boolean;
+  /** The service's own page. Rendered as "Learn more" under the button. */
+  learnHref?: string | null;
 }
 const {
   slug, name, sub, description, includes, includesLabel = 'Includes:',
-  price, priceNote = null, cta, art, artAlt = '', badge = null, featured = false,
+  price, priceNote = null, cta, art, artAlt = '', framed = false, badge = null, featured = false,
+  href = `/book?service=${encodeURIComponent(slug)}`,
+  learnHref = `/services/${slug}`,
 } = Astro.props;
 
-// Straight into the funnel at this service. `/book?service=` is what BookingFlow reads on load.
-const href = `/book?service=${encodeURIComponent(slug)}`;
+const floating = Boolean(art) && !framed;
+// The cut-out is 176px and rises 112px, so 64px of it sits inside the card — beside the icon
+// tile (32px padding + 44px tile), never over the title under it.
+const FLOAT_RISE = 'sm:-top-28';
+const FLOAT_ROOM = 'sm:pt-28';
 ---
-<article
-  class={`group relative flex h-full flex-col overflow-hidden rounded-xl border bg-paper transition duration-base ease-brand hover:-translate-y-0.5 hover:shadow-md ${
-    featured ? 'border-forest-500 ring-1 ring-forest-500' : 'border-line-strong'
-  }`}
-  data-service-card={slug}
->
-  {badge && (
-    <span class="absolute right-4 top-4 z-10 rounded-full bg-amber-500 px-3 py-1 text-micro font-semibold uppercase tracking-wide text-forest-900">
-      {badge}
-    </span>
-  )}
-
+<div class={`flex h-full flex-col ${floating ? FLOAT_ROOM : ''}`}>
   {art && (
-    // The artwork is a framed scene in the flow, never floated over the heading. The live
-    // site's `framedMascot` note is the same rule and it was learned the hard way.
-    <div class="aspect-[16/10] w-full overflow-hidden bg-forest-50">
+    // On a phone the cartoon sits above its card, centred, as it does on the live site.
+    <div class="mb-3 flex justify-center sm:hidden">
       <Image
         src={art}
         alt={artAlt}
-        widths={[320, 480, 640]}
-        sizes="(min-width: 1024px) 380px, (min-width: 640px) 45vw, 92vw"
+        widths={[160, 320]}
+        sizes="160px"
         loading="lazy"
         decoding="async"
-        class="h-full w-full object-contain p-4 transition duration-base group-hover:scale-[1.02]"
+        class={framed
+          ? 'pointer-events-none h-44 w-auto select-none rounded-lg bg-paper object-contain p-1.5 shadow-sm ring-1 ring-ink-900/10'
+          : 'pointer-events-none h-36 w-auto select-none object-contain drop-shadow-md'}
       />
     </div>
   )}
 
-  <div class="flex flex-1 flex-col p-6">
-    <h3 class="font-serif text-h4 text-forest-900">{name}</h3>
-    <p class="mt-1 text-sm font-medium uppercase tracking-wide text-ink-500">{sub}</p>
-    <p class="mt-3 text-base leading-relaxed text-ink-700">{description}</p>
+  <article
+    class={`relative flex flex-1 flex-col rounded-card bg-paper p-7 transition duration-base ease-brand hover:-translate-y-1 sm:p-8 ${
+      featured ? 'border-2 border-amber-500 shadow-md hover:shadow-lg' : 'border border-line shadow-card hover:shadow-card-hover'
+    }`}
+    data-service-card={slug}
+  >
+    {badge && (
+      <span class={`absolute -top-3.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full px-5 py-1.5 text-sm font-bold shadow-sm ${featured ? 'bg-amber-500 text-forest-900' : 'bg-forest-700 text-white'}`}>
+        {badge}
+      </span>
+    )}
+
+    {art && (framed ? (
+      <div class="-mt-2 mb-6 hidden justify-center sm:flex">
+        <Image src={art} alt={artAlt} widths={[200, 400]} sizes="200px" loading="lazy" decoding="async"
+          class="pointer-events-none h-52 w-auto select-none rounded-lg bg-paper object-contain p-2 shadow-sm ring-1 ring-ink-900/10" />
+      </div>
+    ) : (
+      <Image src={art} alt={artAlt} widths={[176, 352]} sizes="176px" loading="lazy" decoding="async"
+        class={`pointer-events-none absolute -right-3 hidden h-44 w-44 select-none object-contain drop-shadow-md sm:block ${FLOAT_RISE}`} />
+    ))}
+
+    <span class="mb-5 flex h-11 w-11 items-center justify-center rounded-md bg-forest-100 text-forest-700" aria-hidden="true">
+      <slot name="icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10" /></svg>
+      </slot>
+    </span>
+
+    <h3 class="font-serif text-h3 text-ink-900">{name}</h3>
+    <p class="mt-1.5 text-micro font-bold uppercase text-forest-700">{sub}</p>
+    <p class="mt-4 text-base leading-relaxed text-ink-500">{description}</p>
 
     {includes.length > 0 && (
-      <>
-        <p class="mt-5 text-sm font-semibold text-forest-900">{includesLabel}</p>
-        <ul class="mt-2 space-y-1.5">
-          {includes.slice(0, 5).map((line) => (
-            <li class="flex gap-2 text-base text-ink-700">
-              <svg class="mt-1.5 shrink-0 text-forest-500" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>
+      <div class="mt-5 rounded-md bg-forest-100/70 px-4 py-3.5">
+        <p class="text-micro font-bold uppercase text-forest-700">{includesLabel}</p>
+        <ul class="mt-2 flex flex-col gap-1.5">
+          {includes.slice(0, 4).map((line) => (
+            <li class="flex items-start gap-2 text-sm text-ink-700">
+              <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-forest-300" aria-hidden="true"></span>
               <span>{line}</span>
             </li>
           ))}
         </ul>
-      </>
+      </div>
     )}
 
     <div class="mt-auto pt-6">
       {price ? (
         // `data-price-cents` is how gates/price-four-places.mjs finds a price on a page. A
         // dollar sign outside one of these is what no-price-in-prose fails on.
-        <p class="flex items-baseline gap-1.5" data-price-cents={price.cents}>
-          <span class="font-serif text-h3 text-forest-900">{price.text}</span>
-          {price.per && <span class="text-base text-ink-500">{price.per}</span>}
+        <p class="text-xl font-bold text-ink-900" data-price-cents={price.cents}>
+          {price.text}{price.per && <span class="font-semibold">{price.per}</span>}
         </p>
       ) : (
-        <p class="text-base font-medium text-forest-800">Priced after a quick look at your yard</p>
+        <p class="text-xl font-bold text-ink-900">Custom quote</p>
       )}
-      {priceNote && <p class="mt-1 text-sm text-ink-500">{priceNote}</p>}
-      <a href={href} class="btn-primary btn-md mt-4 w-full justify-center" data-cta={`service-${slug}`}>{cta}</a>
+      {priceNote && <p class="mt-0.5 text-sm font-semibold text-forest-700">{priceNote}</p>}
+      <a href={href} class={`${featured ? 'btn-primary' : 'btn-forest'} mt-4 w-full`} data-cta={`service-${slug}`}>
+        {cta}
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+      </a>
+      {learnHref && (
+        <a href={learnHref} class="mt-2 flex w-full items-center justify-center py-2 text-sm font-medium text-ink-500 transition duration-fast hover:text-forest-700">
+          Learn more<span class="sr-only"> about {name}</span>
+        </a>
+      )}
     </div>
-  </div>
-</article>
+  </article>
+</div>

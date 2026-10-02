@@ -376,7 +376,12 @@ function serviceCostQuestions(): Question[] {
           rows: tiers.map((t) => { const p = pk.find((x) => x.tier_id === t.id); return pk.length ? [t.label, formatTierPrice(t, 'Custom quote'), p ? formatCents(p.monthly_price_cents) : '—'] : [t.label, formatTierPrice(t, 'Custom quote')]; }) },
         ...((s.what_includes ?? []).length ? [{ kind: 'list' as const, title: 'What is included', items: s.what_includes ?? [] }] : []),
       ],
-      action: pk.length ? { href: `/book?service=${s.slug}`, label: 'See my price', service: s.slug } : { href: `/contact?service=${s.slug}`, label: 'Request this service', service: s.slug },
+      // One door per service (2026-10-02): the funnel books a one-time service online, so the
+      // answer page sends there too. Only a service with nothing but quoted tiers goes to the
+      // quote lane. `/contact?service=` had no reader.
+      action: pk.length ? { href: `/book?service=${s.slug}`, label: 'See my price', service: s.slug }
+        : priced.length ? { href: `/book?service=${s.slug}`, label: 'Book this service', service: s.slug }
+        : { href: `/custom-quote?service=${s.slug}`, label: 'Get a quote', service: s.slug },
       service: s.slug,
       reviewWords: ph.words,
     });

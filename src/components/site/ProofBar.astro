@@ -5,6 +5,10 @@
  * conditional on the row or setting that makes it true (S19, S20).
  */
 import { reviewSummary, trust } from '../../lib/catalog';
+/** `sage` under a page header that is already the brand green, so two greens never stack. */
+export interface Props { tone?: 'forest' | 'sage' }
+const { tone = 'forest' } = Astro.props;
+const dark = tone === 'forest';
 const items = [
   reviewSummary.rating ? { icon: 'star', strong: `${reviewSummary.rating.toFixed(1)} on Google`, rest: reviewSummary.label } : null,
   trust.insured && trust.backgroundChecked ? { icon: 'shield', strong: 'Insured', rest: 'and background-checked' } : trust.insured ? { icon: 'shield', strong: 'Fully insured', rest: '' } : null,
@@ -18,14 +22,14 @@ const paths: Record<string, string> = {
   x: 'M5 12l5 5 9-10',
 };
 ---
-<section class="tone-forest bg-tone-bg" aria-label="Why customers choose Scoop Dogg">
+<section class={`tone-${tone} bg-tone-bg`} aria-label="Why customers choose Scoop Dogg">
   <ul class="container-site grid grid-cols-2 gap-x-4 gap-y-4 py-6 lg:grid-cols-4 lg:py-7">
     {items.map((it) => (
       <li class="flex items-center gap-3 text-sm leading-snug text-tone-fg sm:text-base">
-        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-amber-400" aria-hidden="true">
+        <span class={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${dark ? 'bg-white/10 text-amber-400' : 'bg-paper text-forest-700'}`} aria-hidden="true">
           <svg width="18" height="18" viewBox="0 0 24 24" fill={it.icon === 'star' ? 'currentColor' : 'none'} stroke="currentColor" stroke-width={it.icon === 'star' ? 0 : 2.25} stroke-linecap="round" stroke-linejoin="round"><path d={paths[it.icon]} /></svg>
         </span>
-        <span><strong class="font-semibold text-white">{it.strong}</strong>{it.rest ? ` ${it.rest}` : ''}</span>
+        <span><strong class="font-semibold text-tone-heading">{it.strong}</strong>{it.rest ? ` ${it.rest}` : ''}</span>
       </li>
     ))}
   </ul>

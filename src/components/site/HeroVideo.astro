@@ -114,8 +114,9 @@ const money = (c: number) => `$${(c / 100).toFixed(c % 100 ? 2 : 0)}`;
   {/* The live site's two overlays, which are what makes white type legible over a moving image. */}
   <div class="absolute inset-0 -z-10 bg-gradient-to-b from-forest-900/70 via-forest-900/55 to-forest-900/75" aria-hidden="true"></div>
 
-  <div class="container-site relative grid items-center gap-10 pb-16 pt-14 lg:min-h-[78vh] lg:grid-cols-12 lg:pb-24 lg:pt-20">
-    <div class="lg:col-span-7">
+  {/* Centred, as the live hero is. */}
+  <div class="container-site relative flex items-center justify-center pb-16 pt-14 text-center lg:min-h-[78vh] lg:pb-24 lg:pt-20">
+    <div class="flex max-w-4xl flex-col items-center">
       <p class="mb-5 text-sm font-semibold uppercase tracking-[0.14em] text-amber-400">Pooper scoopers · {serviceRegion}</p>
 
       {/* Josue's headline, verbatim, with his orange accent. */}
@@ -126,16 +127,16 @@ const money = (c: number) => `$${(c / 100).toFixed(c % 100 ? 2 : 0)}`;
         Dog Poop Cleaning Services in <em class="not-italic text-amber-400">Ventura County</em>
       </h1>
 
-      <p class="mt-6 max-w-xl text-lg leading-relaxed text-forest-100 sm:text-xl">
+      <p class="mt-6 max-w-2xl text-lg leading-relaxed text-forest-100 sm:text-xl">
         Same day every week. Scooped, bagged and hauled away{fromCents && <> — from <strong class="font-semibold text-white">{money(fromCents)} a month</strong></>}{perVisitCents && <>, about {money(perVisitCents)} a visit</>}.
         {offer && <> {offer}.</>} No contract.
       </p>
 
       {/* THE SECOND CTA BECOMES THE FUNNEL (P15 §2 row 1). One field, a plain GET to /book, so
           it answers before any JavaScript has loaded. The phone is the secondary action. */}
-      <div class="mt-9"><AddressForm heroAnchor source="home-hero" label="Where's your yard?" /></div>
+      <div class="mt-9 flex w-full max-w-xl justify-center text-left"><AddressForm heroAnchor source="home-hero" label="Where's your yard?" hideLabel /></div>
 
-      <div class="mt-7 flex flex-wrap items-center gap-x-6 gap-y-3 text-base text-forest-100">
+      <div class="mt-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-base text-forest-100">
         {rating && (
           <a href="/reviews" class="inline-flex items-center gap-2 text-forest-100 hover:text-white">
             <Stars rating={rating} size={16} />

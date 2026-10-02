@@ -25,8 +25,8 @@ const faqs = [
 ];
 ---
 <Site title="Pricing | Monthly Dog Poop Cleanup Plans | Scoop Dogg" description={`Simple monthly plans for weekly dog poop scooping, turf maintenance, yard care and litter boxes, plus one-time cleanups.${offer ? ` ${offer}.` : ''}`} canonicalPath="/pricing" jsonLd={{ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faqs.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) }}>
-  <PageHero tone="cream" eyebrow="Pricing" title="Simple monthly plans. No surprises." lede={`Every plan covers a visit every week, priced up front.${offer ? ` ${offer} on weekly scooping.` : ''} Cancel anytime.`} form source="pricing-hero" />
-  <ProofBar />
+  <PageHero eyebrow="Pricing" title="Simple monthly plans. No surprises." lede={`Every plan covers a visit every week, priced up front.${offer ? ` ${offer} on weekly scooping.` : ''} Cancel anytime.`} form source="pricing-hero" />
+  <ProofBar tone="sage" />
   {plans.map((s, i) => (
     <Section tone={(["white", "sand", "cream"] as const)[i % 3]} labelledby={`p-${s.slug}`}>
       <div class="flex flex-col justify-between gap-4 md:flex-row md:items-end">

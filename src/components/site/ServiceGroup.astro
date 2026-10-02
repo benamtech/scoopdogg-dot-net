@@ -1,30 +1,37 @@
 ---
 /**
- * One of the five groups the live Our Services band is divided into: Yard Cleaning, Turf
- * Maintenance, Landscaping, Pressure Washing and Extra Pet Services.
+ * One of the groups the live Our Services section is divided into — Yard Cleaning, Turf
+ * Maintenance, Landscaping, Extra Pet Services — as scoopdogg.net draws it: A BAND OF ITS OWN,
+ * alternating sage and white, opening with a small uppercase label, a serif title and a
+ * paragraph, then the cards.
  *
- * P15 §2 row 3. The grouping is the part of the page people actually navigate by — a visitor
- * with a cat reads two headings and stops — so it carries over as it is. The heading level is
- * h3 because the band's own "Our Services" is the h2, and `gates/build-gates.mjs` checks a page
- * has exactly one h1.
+ * The grouping is the part of the page people navigate by — a visitor with a cat reads two
+ * headings and stops — and on the live site each group is a different colour, which is what
+ * makes the long section readable at a scroll. The heading is an h3 because the section's own
+ * "Our Services" is the h2, and `gates/build-gates.mjs` checks a page has exactly one h1.
  */
+import Section from './Section.astro';
 export interface Props {
+  label: string;
   title: string;
   lede?: string;
-  /** Three across on a wide screen unless the group is small enough to look sparse. */
+  tone?: 'sage' | 'white' | 'cream';
+  /** Two wide cards (the live turf and landscaping rows) or three. */
   cols?: 2 | 3;
 }
-const { title, lede, cols = 3 } = Astro.props;
-const grid = cols === 2
-  ? 'sm:grid-cols-2'
-  : 'sm:grid-cols-2 lg:grid-cols-3';
+const { label, title, lede, tone = 'white', cols = 3 } = Astro.props;
+const grid = cols === 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-2 lg:grid-cols-3';
 ---
-<div class="mt-14 first:mt-0" data-service-group={title}>
-  <div class="flex flex-col gap-1 border-b border-tone-rule pb-4">
-    <h3 class="font-serif text-h4 text-tone-heading">{title}</h3>
-    {lede && <p class="text-base text-tone-muted">{lede}</p>}
+<Section tone={tone} class="overflow-visible">
+  <div data-service-group={label}>
+    <div class="mb-10 max-w-2xl md:mb-14">
+      <p class="text-micro font-bold uppercase text-tone-accent">{label}</p>
+      <h3 class="mt-2 font-serif text-h2 text-tone-heading">{title}</h3>
+      {lede && <p class="mt-4 text-lg text-tone-muted">{lede}</p>}
+    </div>
+    <div class={`grid gap-10 sm:gap-6 ${grid}`}>
+      <slot />
+    </div>
+    <slot name="after" />
   </div>
-  <div class={`mt-7 grid gap-5 ${grid}`}>
-    <slot />
-  </div>
-</div>
+</Section>

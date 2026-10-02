@@ -74,6 +74,8 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
             ? 'gate'
             : (body.source ? String(body.source) : null),
           trusted: String(req.headers['x-scoopdogg-verifier'] ?? '') === 'gate',
+          entry: body.entry ? String(body.entry) : null,
+          control: body.control ? String(body.control) : null,
         });
         return sendJson(res, 200, r);
       } catch (e) {

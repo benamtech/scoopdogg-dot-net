@@ -3,9 +3,9 @@
  * A city page: local, specific, and one step from a price. The city rides along into booking
  * (the address form carries it), and the service days show when Josue has set them (P6).
  *
- * Bands (design pass 2): hero (white, form card) -> proof (green) -> plans (white) -> how it
- * works here (orange, white cards) -> yards in the city (white) -> reviews (green) -> questions
- * (white) -> close (orange).
+ * Bands: header (brand green, the ZIP card) -> proof (sage) -> plans (white) -> how it works
+ * here (amber) -> yards in the city (white) -> reviews (green) -> also available (white) ->
+ * questions (sand) -> read up (white) -> close (green).
  */
 import Site from '../../layouts/Site.astro';
 import PageHero from '../../components/site/PageHero.astro';
@@ -67,37 +67,36 @@ const cityGuides = articlesMentioning(a.name);
 const cityQuestions = questions().filter((q) => q.service === 'weekly-pooper-scooper-service').slice(0, 6);
 ---
 <Site title={title} description={description} canonicalPath={`/areas/${a.slug}`} jsonLd={jsonLd}>
-  <PageHero tone="cream"
+  <PageHero
     eyebrow={market?.label ? `${a.name} · ${market.label.replace(/^the /, 'the ')}` : a.name}
     title={`Dog poop cleanup in ${a.name}`}
     lede={a.intro ?? description}
     crumbs={[{ href: '/areas', label: 'Areas' }]}
     form
-    formCity={a.slug}
     formTitle={`See your ${a.name} price`}
     source={`area-${a.slug}`}
   >
-    <ul class="mt-7 flex flex-wrap gap-x-6 gap-y-2 text-base font-medium text-forest-800">
+    <ul class="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-base font-medium text-tone-heading">
       {[days.length ? `In ${a.name} on ${days.join(' & ')}` : 'Same day every week', headlineOffer?.name, 'No contract'].filter(Boolean).map((t) => (
-        <li class="inline-flex items-center gap-2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-orange-600" aria-hidden="true"><path d={check} /></svg>{t}</li>
+        <li class="inline-flex items-center gap-2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-tone-accent" aria-hidden="true"><path d={check} /></svg>{t}</li>
       ))}
     </ul>
   </PageHero>
 
-  <ProofBar />
+  <ProofBar tone="sage" />
 
   <Section tone="white" labelledby="city-plans">
     <SectionHeading id="city-plans" eyebrow={`Plans in ${a.name}`} title={`Weekly scooping in ${a.name}`} lede="One monthly price by how many dogs you have. Every visit covers the whole yard." />
     <div class="mt-12"><PackageCards service="weekly-pooper-scooper-service" /></div>
   </Section>
 
-  <Section tone="orange" labelledby="city-how">
+  <Section tone="amber" labelledby="city-how">
     <div class="grid gap-8 lg:grid-cols-12 lg:items-end">
       <div class="lg:col-span-7">
         <p class="eyebrow mb-4">How it works in {a.name}</p>
-        <h2 id="city-how" class="text-h1 text-white">Your {a.name} day, every week.</h2>
+        <h2 id="city-how" class="text-h2 text-tone-heading">Your {a.name} day, every week.</h2>
       </div>
-      <p class="text-statement text-white lg:col-span-5">You never need to be home. We close the gate behind us.</p>
+      <p class="text-xl text-tone-fg lg:col-span-5">You never need to be home. We close the gate behind us.</p>
     </div>
     <div class="mt-12"><Steps steps={steps} /></div>
   </Section>
@@ -193,5 +192,5 @@ const cityQuestions = questions().filter((q) => q.service === 'weekly-pooper-sco
       </div>
     </div>
   </Section>
-  <CloseCta source={`area-${a.slug}-close`} city={a.slug} title={`Clean yards in ${a.name}, every week.`} />
+  <CloseCta source={`area-${a.slug}-close`} above="white" title={`Clean yards in ${a.name}, every week.`} />
 </Site>

@@ -38,7 +38,9 @@ const LARGE = 3;
 // `Section.astro` quietly mapped them onto white and tint, so no page ever rendered them and
 // no test ever measured them. A surface that is only a name needs no contrast; a surface that
 // paints does.
-for (const name of ['white', 'cream', 'sand', 'tint', 'forest', 'deep']) {
+// `amber` and `sage` joined on 2026-10-02: the live site's two band colours. Amber carries
+// dark-green text, which is why it needs no "large text only" rule.
+for (const name of ['white', 'cream', 'sand', 'tint', 'sage', 'amber', 'forest', 'deep']) {
   test(`${name} surface: every text colour passes as normal text`, () => {
     const s = surface(name);
     for (const k of ['fg', 'heading', 'muted', 'accent'] as const) {
@@ -79,6 +81,8 @@ test('photo surface: the overlay floor carries large text, and the heading carri
 test('the band orange in the CSS is the orange in the config', () => {
   const s = surface('orange');
   assert.deepEqual(s.bg, hex(colors.orange[600]));
+  assert.deepEqual(surface('amber').bg, hex(colors.amber[500]));
+  assert.deepEqual(surface('sage').bg, hex(colors.forest[100]));
   assert.deepEqual(surface('forest').bg, hex(colors.forest[700]));
 });
 

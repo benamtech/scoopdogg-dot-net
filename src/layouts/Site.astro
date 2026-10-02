@@ -17,8 +17,11 @@ export interface Props {
   jsonLd?: object | object[];
   noindex?: boolean;
   mobileCta?: boolean;
+  /** Where the phone price bar goes. A service page sends it into the funnel at that service. */
+  mobileCtaHref?: string;
+  mobileCtaLabel?: string;
 }
-const { mobileCta = true, ...base } = Astro.props;
+const { mobileCta = true, mobileCtaHref = '/book', mobileCtaLabel = 'See my price', ...base } = Astro.props;
 ---
 <Base {...base}>
   <slot name="head" slot="head" />
@@ -30,9 +33,9 @@ const { mobileCta = true, ...base } = Astro.props;
   <Footer />
   {mobileCta && (
     <div class="pointer-events-none fixed inset-x-0 bottom-0 z-30 translate-y-full p-3 transition duration-base ease-brand sm:hidden" data-mobile-cta aria-hidden="true">
-      <div class="tone-forest pointer-events-auto flex items-center gap-3 rounded-lg bg-tone-bg p-2 pl-4 shadow-lg">
+      <div class="tone-forest pointer-events-auto flex items-center gap-3 rounded-full bg-tone-bg p-2 pl-5 shadow-lg">
         <p class="flex-1 text-sm leading-tight text-white">{headlineOffer && <span class="font-semibold text-amber-400">{headlineOffer.name}.</span>} No contract.</p>
-        <a href="/book" class="btn-primary btn-sm" tabindex="-1" data-cta="mobile-bar">See my price</a>
+        <a href={mobileCtaHref} class="btn-primary btn-sm" tabindex="-1" data-cta="mobile-bar">{mobileCtaLabel}</a>
       </div>
     </div>
   )}
