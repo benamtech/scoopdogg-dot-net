@@ -374,23 +374,26 @@ export async function eligibleForReviewRequest(after: number, q: Queryable = db(
   const { rows } = await q.query(`
     with completions as (
       select c.id as customer_id, c.name, c.email, v.completed_at,
-             p.city as city, s.service_slug as service_slug,
+             p.city as city, s.service_slug as service_slug, s.frequency as frequency,
              row_number() over (partition by c.id order by v.completed_at) as rn
         from customers c
         join subscriptions s on s.customer_id = c.id
         join visits v on v.subscription_id = s.id and v.state = 'completed' and v.completed_at is not null
         join properties p on p.id = v.property_id
     )
+    -- A ONE-TIME CLEANUP QUALIFIES ON ITS ONE VISIT. It can never reach the weekly threshold, so
+    -- until 2026-10-02 every one-time customer was never asked; their clock starts on that visit.
     select customer_id, name, email, count(*) as done,
-           max(completed_at) filter (where rn = $1) as qualified_at,
+           coalesce(max(completed_at) filter (where rn = $1),
+                    min(completed_at) filter (where frequency = 'one_time')) as qualified_at,
            -- The city and service the ASK will mention. min() rather than a second query: a
            -- customer with two properties gets one of their own cities, which is true, and
            -- inventing a "primary property" concept to pick between them is not worth a table.
            min(city) as city, min(service_slug) as service_slug
       from completions
      group by customer_id, name, email
-    having count(*) >= $1
-       and max(completed_at) filter (where rn = $1) <= now() - ($2 || ' days')::interval`,
+    having coalesce(max(completed_at) filter (where rn = $1),
+                    min(completed_at) filter (where frequency = 'one_time')) <= now() - ($2 || ' days')::interval`,
     [after, String(delayDays)]);
   return rows;
 }
@@ -437,7 +440,7 @@ export async function sendReviewRequests(): Promise<{ eligible: number; sent: nu
        * Josue rather than about compliance: a customer with a problem should reach a person.
        */
       html: shell(`${first(c.name) ? `${first(c.name)}, ` : ''}would you write us a line?`, `
-        <p style="font-size:16px;line-height:1.6">We have been out to your yard ${Number(c.done)} times now. If it has been going well, a short review on Google helps other dog owners nearby find us — it is how most of them do.</p>
+        <p style="font-size:16px;line-height:1.6">${Number(c.done) > 1 ? `We have been out to your yard ${Number(c.done)} times now.` : 'Thank you for having us out to your yard.'} If it has been going well, a short review on Google helps other dog owners nearby find us — it is how most of them do.</p>
         <p style="font-size:16px;line-height:1.6">If you mention what we actually do for you${c.city ? ` and that you are in ${esc(c.city)}` : ''}, it helps the right neighbours find us — that is the part Google reads.</p>
         <p style="font-size:16px;line-height:1.6"><a href="${esc(b.reviewUrl)}" style="color:#24593F"><strong>Leave a review</strong></a></p>
         <p style="font-size:15px;line-height:1.6;color:#5B6660">And if something has not been right, reply to this email instead and Josue will sort it.</p>

@@ -138,6 +138,15 @@ export async function growthBoard(q: Queryable = db()) {
       from subscriptions
      where customer_id not in (select id from customers where name like 'DEMO—%')`);
 
+  // TAPS ON THE PHONE NUMBER AND TEXT LINK (funnel.ts CONTACT_EVENT_FOR). Calls and texts are
+  // where cash and Venmo jobs start, and until these events existed they left no row at all.
+  const { rows: [taps] } = await q.query(`
+    select count(*) filter (where event_type = 'contact.call_tapped')::int as calls,
+           count(*) filter (where event_type = 'contact.text_tapped')::int as texts
+      from events
+     where subject_kind = 'contact' and created_at >= date_trunc('month', now())
+       and coalesce(payload->>'source', '') <> all ('{${VERIFIER_SOURCES.join(',')}}'::text[])`);
+
   const conversion = funnel && starts.value
     ? metric(Math.round((m.booked_this_month / (starts.value || 1)) * 1000) / 10, true)
     : metric(null, false, funnel ? 'No booking-intent sessions this month yet.' : note);
@@ -186,6 +195,8 @@ export async function growthBoard(q: Queryable = db()) {
       booking_intent_starts: starts,
       price_step_reached: priced,
       booked: metric(m.booked_this_month, true),
+      calls_tapped: metric(taps.calls, true),
+      texts_tapped: metric(taps.texts, true),
       conversion_pct: conversion,
       new_customers_this_month: metric(m.new_this_month, true),
       customers_now: metric(m.customers_now, true),

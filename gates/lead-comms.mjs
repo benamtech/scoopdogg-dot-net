@@ -204,6 +204,26 @@ console.log('\nD. the shipped eligibility query, against planted rows');
     check((await mine(3)).length === 1, 'and with both fields right, they are eligible again',
       'or the two checks above would pass by breaking the query for everybody');
 
+    /**
+     * A ONE-TIME CLEANUP IS ASKED AFTER ITS ONE VISIT. It can never reach the weekly threshold,
+     * and until 2026-10-02 no one-time customer was ever asked. One completed visit on a
+     * one_time subscription qualifies; the same visit on a weekly plan does not.
+     */
+    const { rows: [cust2] } = await c.query(
+      `insert into customers (name, email, phone) values ('GATE lead-comms once', 'gate+leadcomms-once@example.invalid', '8055550001') returning id`);
+    const { rows: [prop2] } = await c.query(
+      `insert into properties (customer_id, address, city, postal_code) values ($1, '2 Gate Way', 'Camarillo', '93010') returning id`, [cust2.id]);
+    const { rows: [sub2] } = await c.query(
+      `insert into subscriptions (customer_id, property_id, service_slug, state, monthly_price_cents, source, frequency)
+       values ($1, $2, 'one-time-dog-poop-cleanup', 'active', 15000, 'online', 'weekly') returning id`, [cust2.id, prop2.id]);
+    await c.query(
+      `insert into visits (subscription_id, property_id, scheduled_for, state, completed_at)
+       values ($1, $2, current_date - 1, 'completed', now())`, [sub2.id, prop2.id]);
+    const once = async () => (await eligibleForReviewRequest(3, c)).filter((r) => r.customer_id === cust2.id);
+    check((await once()).length === 0, 'one completed visit on a weekly plan is not eligible');
+    await c.query(`update subscriptions set frequency = 'one_time' where id = $1`, [sub2.id]);
+    check((await once()).length === 1, 'the same visit on a one-time cleanup is', 'one-time customers were never asked before');
+
     // The card sweep, same treatment: a card expiring next month is found, one expiring in a
     // year is not. `detached_at` must exclude a removed card.
     const soon = new Date(); soon.setMonth(soon.getMonth() + 1);

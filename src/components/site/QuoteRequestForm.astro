@@ -105,6 +105,7 @@ const chip = 'flex cursor-pointer items-center gap-2 rounded-full border border-
 </div>
 
 <script>
+  import { gaLead } from '../../lib/ga';
   const form = document.querySelector<HTMLFormElement>('form[data-quote-request]');
   if (form) {
     const max = Number(form.dataset.maxPhotos || 6);
@@ -212,6 +213,7 @@ const chip = 'flex cursor-pointer items-center gap-2 rounded-full border border-
         progress.textContent = 'Sending…';
         progress.classList.remove('hidden');
         const { token } = await post('request', body);
+        gaLead('quote_request');
         let sent = 0; let failed = 0;
         for (const f of photos) {
           progress.textContent = `Uploading photo ${sent + failed + 1} of ${photos.length}…`;

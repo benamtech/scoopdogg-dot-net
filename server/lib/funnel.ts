@@ -71,6 +71,12 @@ const EVENT_FOR: Record<string, string> = {
   texted: 'lead.texted',           // Josue tapped the SMS link in the admin
 };
 
+/** A visitor tapped the public phone number or text link. Recorded apart from the funnel. */
+export const CONTACT_EVENT_FOR: Record<string, string> = {
+  call: 'contact.call_tapped',
+  text: 'contact.text_tapped',
+};
+
 export type TrackInput = {
   session_id: string;
   step: keyof typeof EVENT_FOR | string;
@@ -176,6 +182,22 @@ export async function track(input: TrackInput, q?: Queryable): Promise<{ recorde
   const source = normaliseSource(input.source, { trusted: input.trusted === true });
 
   const run = async (client: Queryable) => {
+    // A TAP ON THE PHONE OR TEXT LINK (Base.astro) is a contact, not a funnel session: it writes
+    // one event and no funnel_sessions row, so the growth board's starts and priced counts keep
+    // meaning what they say. Once per tab per kind.
+    const contact = CONTACT_EVENT_FOR[step];
+    if (contact) {
+      const { rows: seen } = await client.query(
+        `select 1 from events where subject_kind = 'contact' and subject_id = $1 and event_type = $2 limit 1`,
+        [id, contact]);
+      if (seen.length) return { recorded: false, event: contact };
+      await appendEvent(client as never, {
+        subjectKind: 'contact', subjectId: id, type: contact, to: step, actorKind: 'customer',
+        payload: { source, entry: normaliseEntry(input.entry) },
+      });
+      return { recorded: true, event: contact };
+    }
+
     // The row is upserted with COALESCE so a later step never erases what an earlier one learned:
     // the price seen at the price step must survive the customer walking back and forward.
     await client.query(

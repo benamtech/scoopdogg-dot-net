@@ -97,6 +97,8 @@ export default function AdminGrowthPage() {
               <Tile label="Saw a price" metric={m.price_step_reached} />
               <Tile label="Booked" metric={m.booked} />
               <Tile label="Conversion" metric={m.conversion_pct} format={(n) => `${n}%`} />
+              <Tile label="Tapped to call" metric={m.calls_tapped} hint="The phone number on the website" />
+              <Tile label="Tapped to text" metric={m.texts_tapped} hint="The text link on the website" />
             </div>
             {board.attributed === false ? (
               <p className="mt-3 rounded-md bg-amber-100 px-4 py-2.5 text-sm text-amber-700">

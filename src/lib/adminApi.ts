@@ -316,7 +316,8 @@ export interface GrowthBoard {
     daily_last_run: { at: string; by: string } | null;
   } | null;
   metrics: Record<'booking_intent_starts' | 'price_step_reached' | 'booked' | 'conversion_pct'
-    | 'new_customers_this_month' | 'customers_now' | 'mrr_cents' | 'platform_fee_this_month_cents', Metric>;
+    | 'new_customers_this_month' | 'customers_now' | 'mrr_cents' | 'platform_fee_this_month_cents'
+    | 'calls_tapped' | 'texts_tapped', Metric>;
   fees_by_month: FeeRow[]; fees_by_year: FeeRow[];
   /**
    * Where the next customer should come from (server/lib/density.ts). `measured: false` when

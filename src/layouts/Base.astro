@@ -171,6 +171,9 @@ const schema = jsonLd
     <script is:inline define:vars={{ measurementId }}>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
+      // define:vars wraps this script in a function, so gtag is published by hand: the
+      // conversion events (the tap listener below, the booking and enquiry forms) call it.
+      window.gtag = gtag;
       gtag('js', new Date());
       gtag('config', measurementId);
       (function () {
@@ -220,10 +223,38 @@ const schema = jsonLd
             : q.get('msclkid') ? 'bing.com'
             : /^(cpc|ppc|paid|paidsearch|paidsocial|paid_social|display)$/i.test(q.get('utm_medium') || '') ? (host || (q.get('utm_source') || 'ad').toLowerCase().replace(/[^a-z0-9.-]/g, ''))
             : '';
+          // A TAGGED LINK NAMES ITS OWN CHANNEL. The Google Business Profile's website link, a
+          // flyer's QR code and a door hanger all arrive as google.com or as nothing; tagged
+          // ?utm_source=gbp (or flyer, doorhanger, nextdoor) they arrive as themselves.
+          var tagged = (q.get('utm_source') || '').toLowerCase().replace(/[^a-z0-9.-]/g, '').slice(0, 60);
           if (paid) sessionStorage.setItem('sd_src', 'paid.' + paid);
+          else if (tagged) sessionStorage.setItem('sd_src', tagged);
           else if (host && host !== location.hostname.replace(/^www\./, '')) sessionStorage.setItem('sd_src', host);
         }
       } catch (e) { /* measurement is never load-bearing */ }
+
+      // A TAP ON THE PHONE NUMBER OR THE TEXT LINK IS A LEAD that left no row: the call happens
+      // on the customer's phone, and Josue is paid in cash and Venmo for jobs that start there.
+      // One delegated listener records every tel: and sms: link on every page, once per kind per
+      // tab, as an event (not a funnel session, so booking starts stay booking starts), and
+      // tells Google Analytics the same thing.
+      document.addEventListener('click', function (ev) {
+        try {
+          var a = ev.target && ev.target.closest && ev.target.closest('a[href^="tel:"], a[href^="sms:"]');
+          if (!a || location.pathname.indexOf('/admin') === 0) return;
+          var kind = a.getAttribute('href').indexOf('sms:') === 0 ? 'text' : 'call';
+          if (window.gtag) window.gtag('event', kind === 'call' ? 'phone_call_tap' : 'text_tap', { page: location.pathname });
+          if (sessionStorage.getItem('sd_tap_' + kind)) return;
+          var id = sessionStorage.getItem('sd_tap_id') || (crypto.randomUUID ? crypto.randomUUID() : '');
+          if (!id) return;
+          sessionStorage.setItem('sd_tap_id', id);
+          sessionStorage.setItem('sd_tap_' + kind, '1');
+          fetch('/api/booking/track', {
+            method: 'POST', headers: { 'content-type': 'application/json' }, keepalive: true,
+            body: JSON.stringify({ session_id: id, step: kind, source: sessionStorage.getItem('sd_src'), entry: location.pathname }),
+          }).catch(function () {});
+        } catch (e) { /* never load-bearing */ }
+      }, true);
     </script>
   </head>
   <body class={`bg-paper text-ink-900 font-sans antialiased ${bodyClass}`}>

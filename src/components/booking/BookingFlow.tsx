@@ -36,6 +36,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { quoteBooking, quoteOneTime, bookableServices, formatCents, tierPrice, catchUpFor, LAST_CLEANED, type Catalog, type Tier } from '../../shared/pricing';
 import { renewalTerms } from '../../shared/consent';
+import { gaLead } from '../../lib/ga';
 
 type Area = { slug: string; name: string; market: string; bookable: boolean };
 type ServiceInfo = { slug: string; name: string; what_includes: string[] };
@@ -446,6 +447,7 @@ export default function BookingFlow(props: Props) {
       });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || 'Something went wrong. Please try again.');
+      gaLead(j.mode === 'checkout' ? 'booking' : 'booking_request');
       if (j.mode === 'checkout' && j.url) { window.location.href = j.url; return; }
       if (j.mode === 'request') { setRequestInfo({ start: j.start_label }); sessionStorage.removeItem(STORE); go('request'); }
     } catch (e) {
@@ -464,6 +466,7 @@ export default function BookingFlow(props: Props) {
       });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || 'Please try again.');
+      gaLead('waitlist');
       go('waitlisted');
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }
