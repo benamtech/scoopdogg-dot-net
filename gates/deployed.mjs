@@ -34,6 +34,7 @@ if (!/^https:\/\/[^/]+\./.test(url)) {
 const GATES = [
   ['admin-e2e.mjs', 'the sign-in path and the role boundary, over HTTP'],
   ['admin-browser.mjs', 'every admin screen rendered in a real browser, pageerror listener attached first'],
+  ['mcp-contract.mjs', 'the ChatGPT plugin at /mcp: tools, annotations, the booking card, prices that match llms.txt, no checkout link'],
 ];
 
 let failed = 0;
