@@ -14,6 +14,7 @@
  */
 import { createHmac, randomInt, randomBytes, timingSafeEqual } from 'node:crypto';
 import { db } from './db.js';
+import { sendEmail } from './notify.js';
 import type { ApiRequest, ApiResponse } from './http.js';
 
 const COOKIE = 'sd_admin';
@@ -21,7 +22,14 @@ const TTL_SECONDS = 60 * 60 * 8;         // eight hours, like McGrath's admin
 const CODE_TTL_MINUTES = 10;
 const MAX_CODE_ATTEMPTS = 5;
 
-export type AdminRole = 'superadmin' | 'admin';
+/**
+ * Three roles, and the third one is the reason `crew` exists at all (P18 §4): the person in the
+ * truck needs today's stops and must never see money, customers or settings. The refusal is
+ * STRUCTURAL - api/admin.ts allows a crew session onto a named list of paths and refuses
+ * everything else - rather than a check remembered on each new route, because the route somebody
+ * adds next month is the one that would forget. gates/admin-roles.mjs is what keeps it true.
+ */
+export type AdminRole = 'superadmin' | 'admin' | 'crew';
 export type AdminSession = { id: string; teamId: string; name: string; email: string; role: AdminRole };
 
 function secret() {
@@ -51,6 +59,11 @@ export function clearSessionCookie(res: ApiResponse) {
 }
 
 /** Rate limit by key. Cheap, in the database, so it survives a cold start. */
+/** True only when rateLimit refused because the caller is over the limit, not because the
+ *  database was unreachable. A connection failure that reads as "too many attempts" sends the
+ *  user away to wait for a limit that was never hit (Ben, locked out of admin 2026-09-18). */
+export const isOverLimit = (e: unknown) => (e as Error)?.message === 'rate_limited';
+
 export async function rateLimit(key: string, limit: number, windowSeconds: number) {
   const { rows } = await db().query(
     `insert into rate_limits (key, count, reset_at)
@@ -71,7 +84,7 @@ export async function startLogin(emailRaw: string): Promise<{ sent: boolean; nam
   const email = normalizeEmail(emailRaw);
   const { rows } = await db().query(
     `select id, name, role from team_members
-      where lower(email) = $1 and status = 'active' and role in ('superadmin','admin')`,
+      where lower(email) = $1 and status = 'active' and role in ('superadmin','admin','crew')`,
     [email]);
   if (!rows.length) return { sent: false };
 
@@ -81,28 +94,24 @@ export async function startLogin(emailRaw: string): Promise<{ sent: boolean; nam
      values ($1, $2, 'admin_login', now() + ($3 || ' minutes')::interval)`,
     [hmac(email), hmac(`${email}:${code}`), String(CODE_TTL_MINUTES)]);
 
-  const key = process.env.RESEND_API_KEY;
-  if (!key) throw new Error('RESEND_API_KEY is not configured.');
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${key}`,
-      'Content-Type': 'application/json',
-      // Resend is behind Cloudflare, which 403s a bare user agent with "error code: 1010".
-      'User-Agent': 'ScoopDogg-Site/1.0 (+https://scoopdogg.net)',
-    },
-    body: JSON.stringify({
-      from: `Scoop Dogg <${process.env.ADMIN_FROM || 'leads@mail.amtechleads.com'}>`,
-      to: [email],
-      subject: `Your Scoop Dogg admin code: ${code}`,
-      html: `<div style="font-family:system-ui,sans-serif">
-        <p style="font-size:15px;color:#444">Your sign-in code for the Scoop Dogg admin:</p>
-        <p style="font-size:34px;font-weight:700;letter-spacing:6px;color:#1B4332">${code}</p>
-        <p style="font-size:13px;color:#888">It expires in ${CODE_TTL_MINUTES} minutes and works once.
-        If you did not ask for it, you can ignore this email.</p></div>`,
-    }),
+  // Through the one send function. The code goes to the person who asked for it even in demo
+  // mode (toRequesterInDemo): every preview forces demo mode, and the owner has to be able to sign
+  // in to one. Only this call sets the flag, and only after the address was found above as an
+  // active team member. The gates sign in by minting a code in the database, not by email.
+  const sent = await sendEmail({
+    purpose: 'admin_login',
+    recipients: { explicit: [email] },
+    toRequesterInDemo: true,
+    subject: `Your Scoop Dogg admin code: ${code}`,
+    html: `<div style="font-family:system-ui,sans-serif">
+      <p style="font-size:15px;color:#444">Your sign-in code for the Scoop Dogg admin:</p>
+      <p style="font-size:34px;font-weight:700;letter-spacing:6px;color:#1B4332">${code}</p>
+      <p style="font-size:13px;color:#888">It expires in ${CODE_TTL_MINUTES} minutes and works once.
+      If you did not ask for it, you can ignore this email.</p></div>`,
   });
-  if (!res.ok) throw new Error(`resend_failed_${res.status}`);
+  // A code nobody can receive must not read as "wrong email" on the login screen -
+  // api/admin.ts turns this into a 503.
+  if (sent.state === 'failed') throw new Error(`resend_failed_${sent.error ?? 'unknown'}`);
   return { sent: true, name: rows[0].name };
 }
 
@@ -129,7 +138,7 @@ export async function verifyLogin(res: ApiResponse, emailRaw: string, code: stri
 
   const { rows: people } = await db().query(
     `select id, name, email, role from team_members
-      where lower(email) = $1 and status = 'active' and role in ('superadmin','admin')`,
+      where lower(email) = $1 and status = 'active' and role in ('superadmin','admin','crew')`,
     [email]);
   if (!people.length) return null;
   const person = people[0];
@@ -138,7 +147,10 @@ export async function verifyLogin(res: ApiResponse, emailRaw: string, code: stri
   const { rows: sessions } = await db().query(
     `insert into sessions (actor_kind, team_id, token_hash, expires_at)
      values ($1, $2, $3, now() + ($4 || ' seconds')::interval) returning id`,
-    [person.role === 'superadmin' ? 'superadmin' : 'admin', person.id, hmac(token), String(TTL_SECONDS)]);
+    // sessions.actor_kind has admitted 'team' since 001 and nothing wrote it; a crew session is
+    // that row. The role on team_members stays the single answer to what anyone may do.
+    [person.role === 'superadmin' ? 'superadmin' : person.role === 'crew' ? 'team' : 'admin',
+     person.id, hmac(token), String(TTL_SECONDS)]);
   await db().query('update team_members set last_login_at = now() where id = $1', [person.id]);
   setSessionCookie(res, token);
   return { id: sessions[0].id, teamId: person.id, name: person.name, email: person.email, role: person.role };
@@ -151,7 +163,7 @@ export async function getSession(req: ApiRequest): Promise<AdminSession | null> 
     `select s.id, t.id as team_id, t.name, t.email, t.role
        from sessions s join team_members t on t.id = s.team_id
       where s.token_hash = $1 and s.revoked_at is null and s.expires_at > now()
-        and t.status = 'active' and t.role in ('superadmin','admin')`,
+        and t.status = 'active' and t.role in ('superadmin','admin','crew')`,
     [hmac(token)]);
   if (!rows.length) return null;
   const r = rows[0];

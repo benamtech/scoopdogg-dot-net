@@ -1,54 +1,246 @@
+/* Self-hosted brand fonts: no request to fonts.googleapis.com before first paint. */
+@import '@fontsource/dm-serif-display/latin-400.css';
+@import '@fontsource-variable/outfit/wght.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * THE SURFACES. A band sets one of these and everything inside it that uses a `tone-*` colour
+ * follows. Channels are space-separated RGB so Tailwind's opacity modifiers work
+ * (`border-tone-rule/40`). Contrast for every pair: tests/contrast.test.ts.
+ *
+ *   white   black text on white. No longer the default for every other band.
+ *   cream   the live site's warmth (#FAF8F5). Anything.
+ *   sand    separation without colour (#F2EDE4). Anything.
+ *   tint    a whisper of green for app surfaces (booking, account). Not a marketing band.
+ *   forest  white text on the brand green (11.08:1). Any size.
+ *   orange  white text on the band orange (3.15:1). LARGE text only; small text sits on a
+ *           white card, or uses the dark-green accent (5.46:1).
+ *   deep    the footer.
+ *
+ * THREE OF THESE ARE NEW, and they are the answer to Ben's *"we want to avoid the basic, all
+ * white background that we have in the demo styling."* That was not a styling preference being
+ * ignored — `Section.astro` MAPPED `cream` and `sand` onto white and tint, so a page asking for
+ * warmth got white and nobody could see why. The mapping is gone; these are real surfaces now,
+ * and `gates/surface-rhythm.mjs` holds the page to at most 60% white by rendered height.
+ */
+.tone-white, :root {
+  --tone-bg: 255 255 255;        /* paper */
+  --tone-fg: 58 66 62;           /* ink-700 */
+  --tone-heading: 15 42 31;      /* forest-900 */
+  --tone-muted: 91 102 96;       /* ink-500, 5.98:1 */
+  --tone-accent: 36 89 63;       /* forest-600, 8.15:1 */
+  --tone-rule: 227 232 228;      /* line */
+}
+.tone-cream {
+  --tone-bg: 250 248 245;        /* cream — the live site's warmth */
+  --tone-fg: 58 66 62;
+  --tone-heading: 15 42 31;
+  --tone-muted: 91 102 96;       /* 5.80:1 on cream */
+  --tone-accent: 36 89 63;
+  --tone-rule: 230 225 216;      /* a warm rule, not the cool grey line */
+}
+.tone-sand {
+  --tone-bg: 242 237 228;        /* sand — separation without colour */
+  --tone-fg: 58 66 62;
+  --tone-heading: 15 42 31;
+  --tone-muted: 88 99 93;        /* darkened a step: 5.54:1 on sand */
+  --tone-accent: 36 89 63;
+  --tone-rule: 223 214 199;
+}
+.tone-tint {
+  --tone-bg: 243 247 244;        /* forest-50 */
+  --tone-fg: 58 66 62;
+  --tone-heading: 15 42 31;
+  --tone-muted: 91 102 96;       /* 5.53:1 on forest-50 */
+  --tone-accent: 36 89 63;
+  --tone-rule: 201 221 208;      /* forest-200 */
+}
+.tone-forest {
+  --tone-bg: 27 67 50;           /* forest-700, the brand green */
+  --tone-fg: 232 240 235;        /* forest-100 */
+  --tone-heading: 255 255 255;
+  --tone-muted: 201 221 208;     /* forest-200, 7.77:1 */
+  --tone-accent: 247 182 80;     /* amber-400, 6.21:1 */
+  --tone-rule: 255 255 255;      /* use at /15 */
+}
+.tone-orange {
+  --tone-bg: 221 118 7;          /* orange-600 */
+  --tone-fg: 255 255 255;        /* large text only */
+  --tone-heading: 255 255 255;
+  --tone-muted: 255 255 255;     /* large text only */
+  --tone-accent: 11 31 22;       /* forest-950, 5.46:1: the only small text allowed on orange */
+  --tone-rule: 255 255 255;
+}
+/*
+ * `amber` IS THE LIVE SITE'S BAND, and the answer to "white on orange only at large sizes".
+ * scoopdogg.net sets its Our Services intro on the brand amber with dark-green type, and that
+ * pairing is 7.22:1 — any size, no white card needed to carry the small text. The deeper
+ * `orange` above was invented to make WHITE text pass; it reads darker than the site Josue
+ * knows and still only reaches 3.15:1. Bands use `amber` now; `orange` stays defined for the
+ * few accents that reference it.
+ */
+.tone-amber {
+  --tone-bg: 244 160 36;         /* amber-500, the live band */
+  --tone-fg: 15 42 31;           /* forest-900, 7.22:1 */
+  --tone-heading: 15 42 31;
+  --tone-muted: 20 55 40;        /* forest-800, 6.2:1 */
+  --tone-accent: 11 31 22;       /* forest-950 */
+  --tone-rule: 15 42 31;         /* use at /15 */
+}
+/*
+ * `sage` is the live site's `sage-light` (#E8F0EB): the green-grey its service groups
+ * alternate with white. Stronger than `tint`, which stays for app surfaces.
+ */
+.tone-sage {
+  --tone-bg: 232 240 235;        /* forest-100 */
+  --tone-fg: 58 66 62;
+  --tone-heading: 15 42 31;
+  --tone-muted: 80 91 85;        /* 5.5:1 on sage */
+  --tone-accent: 36 89 63;
+  --tone-rule: 201 221 208;
+}
+/*
+ * `photo` is the hero and any band whose background is a graded photograph or a video frame
+ * under the forest duotone. It is a separate tone from `forest` for one practical reason and
+ * one honest one: two adjacent bands may not share a tone (`gates/surface-rhythm.mjs`), and
+ * the hero sitting directly above the forest proof strip would otherwise be two greens in a
+ * row; and the contrast behind this text comes from the overlay, not from a flat colour, so
+ * treating it as `forest` would be claiming a ratio nothing measured. LARGE TEXT ONLY.
+ */
+.tone-photo {
+  --tone-bg: 15 42 31;           /* what shows through where the picture is darkest */
+  --tone-fg: 255 255 255;
+  --tone-heading: 255 255 255;
+  --tone-muted: 232 240 235;     /* forest-100 — large only */
+  --tone-accent: 247 182 80;     /* amber-400 */
+  --tone-rule: 255 255 255;
+}
+.tone-deep {
+  --tone-bg: 15 42 31;           /* forest-900: the footer */
+  --tone-fg: 201 221 208;        /* 10.75:1 */
+  --tone-heading: 255 255 255;
+  --tone-muted: 149 184 162;     /* forest-300, 7.04:1 */
+  --tone-accent: 247 182 80;
+  --tone-rule: 255 255 255;
+}
+
 @layer base {
+  /*
+   * PRICES LINE UP. P15 §6.3 asks for tabular figures on every price, and the reliable way to
+   * get that is not a class somebody remembers: it is the attribute every price renderer
+   * already carries. `data-price-cents` is what `gates/price-four-places.mjs` looks for to
+   * find a price on a page, so anything that is a price has it, and anything that has it is a
+   * price. One selector, and a new price surface inherits it without being told.
+   *
+   * `font-variant-numeric` is inherited, so tagging the wrapper covers the digits inside it.
+   */
+  [data-price-cents], .tabular-figures {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+  }
+
   html {
-    font-family: 'Outfit', system-ui, sans-serif;
-    background-color: #FAF8F5;
-    color: #1A1A1A;
-    scroll-behavior: smooth;
-    font-size: 18px;
-    line-height: 1.7;
+    font-family: theme('fontFamily.sans');
+    background-color: theme('colors.paper');
+    color: theme('colors.ink.900');
+    /* 16px, not 18px: the old 18px root inflated every rem on the site by 12.5%. */
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
   }
 
-  h1, h2, h3, h4 {
-    font-family: 'DM Serif Display', Georgia, serif;
-    line-height: 1.15;
+  h1, h2, h3 {
+    font-family: theme('fontFamily.serif');
+    font-weight: 400;
+    text-wrap: balance;
   }
 
-  p {
-    line-height: 1.75;
+  p { text-wrap: pretty; }
+
+  :focus-visible {
+    outline: 3px solid theme('colors.amber.500');
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  .tone-orange :focus-visible, .tone-amber :focus-visible { outline-color: theme('colors.forest.950'); }
+
+  * { -webkit-tap-highlight-color: transparent; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html { scroll-behavior: smooth; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 1ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 1ms !important;
+    }
+  }
+}
+
+@layer components {
+  .container-site { @apply mx-auto w-full max-w-site px-5 sm:px-8; }
+
+  /* A small label with a short rule before it. Colour follows the surface. */
+  .eyebrow {
+    @apply inline-flex items-center gap-3 text-micro font-semibold uppercase text-tone-accent;
+  }
+  /* The live site's centred bands open with a small pill ("CUSTOMER REVIEWS", "SERVICE AREA"). */
+  .eyebrow-chip {
+    @apply inline-flex items-center rounded-full border border-tone-heading/15 bg-tone-heading/5 px-4 py-1.5 text-micro font-semibold uppercase text-tone-accent;
+  }
+  .eyebrow-plain::before { display: none; }
+  /* Kept for the admin and the React islands that still pass it. */
+  .eyebrow-on-dark { @apply text-micro font-semibold uppercase text-amber-400; }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3.5 text-base font-semibold
+      transition duration-fast ease-brand focus-visible:shadow-focus disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  /* The one action colour. Amber with dark green text: 7.22:1. */
+  .btn-primary { @apply btn bg-amber-500 text-forest-900 shadow-xs hover:bg-amber-600 active:translate-y-px; }
+  /* For the orange band and for a second action on white. */
+  .btn-forest { @apply btn bg-forest-700 text-white hover:bg-forest-800 active:translate-y-px; }
+  .btn-secondary { @apply btn-forest; }
+  .btn-white { @apply btn bg-paper text-forest-800 shadow-sm hover:bg-forest-50 active:translate-y-px; }
+  /* Outline that follows the surface. */
+  .btn-ghost { @apply btn border border-tone-heading/25 bg-transparent text-tone-heading hover:border-tone-heading/60 hover:bg-tone-heading/5; }
+  .btn-ghost-dark { @apply btn border border-white/25 bg-white/5 text-white hover:bg-white/10; }
+  .btn-lg { @apply px-7 py-4 text-lg; }
+  .btn-sm { @apply px-4 py-2.5 text-sm; }
+
+  .link { @apply font-medium text-tone-heading underline decoration-tone-accent/50 decoration-2 underline-offset-4 hover:decoration-tone-accent; }
+
+  /* A white card: the way small text lives on a coloured band. */
+  .card { @apply rounded-lg border border-line bg-paper text-ink-700 shadow-sm; }
+  .card-lift { @apply card transition duration-base ease-brand hover:-translate-y-0.5 hover:border-forest-300 hover:shadow-md; }
+
+  .field-label { @apply mb-1.5 block text-sm font-medium text-ink-700; }
+  .field {
+    @apply block w-full rounded-md border border-line-strong bg-paper px-4 py-3.5 text-base text-ink-900
+      placeholder:text-ink-400 transition duration-fast focus:border-forest-500 focus:outline-none focus:ring-4 focus:ring-forest-100;
   }
 
-  * {
-    -webkit-tap-highlight-color: transparent;
-  }
+  .prose-sd h2 { @apply mb-4 mt-12 font-serif text-h3 text-forest-900; }
+  .prose-sd h3 { @apply mb-3 mt-8 text-xl font-semibold text-forest-900; }
+  .prose-sd p { @apply mb-5 text-lg text-ink-700; }
+  .prose-sd ul { @apply mb-6 list-disc space-y-2 pl-6 text-lg text-ink-700 marker:text-orange-600; }
+  .prose-sd ol { @apply mb-6 list-decimal space-y-2 pl-6 text-lg text-ink-700 marker:font-semibold marker:text-forest-700; }
+  .prose-sd a:not(.chip) { @apply link; }
+  .prose-sd strong { @apply font-semibold text-ink-900; }
+  .prose-sd blockquote { @apply my-8 border-l-4 border-orange-600 pl-6 font-serif text-xl text-forest-900; }
+  .prose-sd table { @apply mb-6 w-full border-collapse text-left text-base; }
+  .prose-sd th { @apply border-b border-line-strong py-2 pr-4 font-semibold text-forest-900; }
+  .prose-sd td { @apply border-b border-line py-2 pr-4 text-ink-700; }
 }
 
-@keyframes slide-out-left {
-  0% { opacity: 1; transform: translateX(0); }
-  100% { opacity: 0; transform: translateX(-40px); }
-}
-
-@keyframes draw-check {
-  0% { stroke-dashoffset: 100; }
-  100% { stroke-dashoffset: 0; }
-}
-
-@keyframes draw-circle {
-  0% { stroke-dashoffset: 200; }
-  100% { stroke-dashoffset: 0; }
-}
-
-.check-animate {
-  stroke-dasharray: 100;
-  stroke-dashoffset: 100;
-  animation: draw-check 0.6s ease 0.4s forwards;
-}
-
-.circle-animate {
-  stroke-dasharray: 200;
-  stroke-dashoffset: 200;
-  animation: draw-circle 0.5s ease forwards;
-}
+/* Admin screens still use these two helpers. */
+.check-animate { stroke-dasharray: 100; stroke-dashoffset: 100; animation: draw-check 0.6s ease 0.4s forwards; }
+.circle-animate { stroke-dasharray: 200; stroke-dashoffset: 200; animation: draw-circle 0.5s ease forwards; }
+@keyframes draw-check { to { stroke-dashoffset: 0; } }
+@keyframes draw-circle { to { stroke-dashoffset: 0; } }

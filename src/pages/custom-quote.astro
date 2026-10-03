@@ -1,0 +1,105 @@
+---
+/**
+ * Custom jobs — the work that does not fit a price list, quoted by Josue (R21, migration 042).
+ *
+ * WHY THIS PAGE EXISTS. The price list tops out at $269. The owner bills $1,000 in a day on large
+ * yard and property work, and his customers already describe him that way in their reviews
+ * ("knows his craft when it comes to landscape and turf maintenance"). The site had no way to say
+ * so, and nowhere for that job to land but a contact form.
+ *
+ * WHAT IT IS NOT. Not a distance feature, not a city page. The sixteen service areas and the
+ * Google Business Profile are unchanged; travel for a bigger job is one sentence.
+ *
+ * The form is first, and short. Beside it (under it on a phone) is what happens next, in three
+ * lines. Reviews and questions follow for anyone who wants them before sending a stranger photos
+ * of their yard.
+ */
+import Site from '../layouts/Site.astro';
+import Section from '../components/site/Section.astro';
+import SectionHeading from '../components/site/SectionHeading.astro';
+import ReviewQuotes from '../components/site/ReviewQuotes.astro';
+import Faq from '../components/site/Faq.astro';
+import QuoteRequestForm from '../components/site/QuoteRequestForm.astro';
+import { SITE_URL } from '../lib/constants';
+import { business, setting } from '../lib/catalog';
+import { IMPROVEMENT_DEPOSIT_CEILING_CENTS, money } from '../shared/quote-math';
+const cap = money(IMPROVEMENT_DEPOSIT_CEILING_CENTS);
+
+const reply = setting<string>('quote.reply_promise', 'within one business day');
+const range = setting<string | null>('quote.typical_range', null);
+const licence = setting<string | null>('business.license_number', null);
+const licenceClass = setting<string | null>('business.license_class', null);
+
+const steps = [
+  { t: 'Josue looks', d: `He replies ${reply}, usually by text. If the job needs it he stops by.` },
+  { t: 'You get a price', d: 'Every part of the job itemised. Approve it online when you are ready.' },
+  { t: 'A deposit books it', d: 'The balance is paid after the work is done.' },
+];
+
+const faqs = [
+  { q: 'What does a custom job cost?', a: `It depends on the job, which is why Josue quotes it. ${range ?? ''} Every quote shows each part of the work with its own price, so you can see what you are paying for.`.trim() },
+  { q: 'Is the quote free?', a: 'Yes. Asking costs nothing and commits you to nothing. You only pay once you approve a quote.' },
+  { q: 'How does the deposit work?', a: `When you approve a quote you pay a deposit online to book the job, and the rest when the work is done. For work that installs or builds something — turf, planting, irrigation — California caps the deposit at ${cap} or 10% of the job, whichever is less, and the quote follows that rule.` },
+  { q: 'What if I change my mind after approving?', a: 'For install work you have a legal right to cancel within three business days (five if you are 65 or older), and anything you paid is returned. For anything else, text Josue and he will sort it out.' },
+  { q: 'Do I need to be home?', a: 'Not usually. If Josue needs to see the job before quoting, he will arrange a time with you.' },
+  { q: 'Do you go outside Ventura and Santa Barbara counties?', a: 'For the right job, yes — including Los Angeles. Send the details and Josue will tell you.' },
+];
+
+const jsonLd = {
+  '@context': 'https://schema.org', '@type': 'Service',
+  name: 'Custom yard and property work',
+  description: 'Yard clean-ups, haul-away, turf and landscaping work, large pressure-washing jobs and property clean-ups, quoted individually by Josue of Scoop Dogg.',
+  provider: { '@type': 'LocalBusiness', '@id': `${SITE_URL}/#business`, name: 'Scoop Dogg', telephone: '+18058698070' },
+  areaServed: [{ '@type': 'AdministrativeArea', name: 'Ventura County, CA' }, { '@type': 'AdministrativeArea', name: 'Santa Barbara County, CA' }],
+  offers: { '@type': 'Offer', priceSpecification: { '@type': 'PriceSpecification', priceCurrency: 'USD' }, availability: 'https://schema.org/InStock', description: 'Quoted individually' },
+};
+---
+<Site
+  jsonLd={jsonLd}
+  title="Custom Yard & Property Jobs, Quoted by Josue | Scoop Dogg"
+  description="Overgrown yards, haul-away, turf and landscaping, big pressure-washing jobs. Send a few photos and Josue quotes it himself, itemised, with a deposit to book and the rest after."
+  canonicalPath="/custom-quote"
+  mobileCta={false}
+>
+  {/* A SHORT HEADER, THE FORM, AND WHAT HAPPENS NEXT. The page used to open with a paragraph,
+       put a list of everything Josue takes on beside the form (the same list the form asked the
+       visitor to tick), and repeat the steps in a band of four cards under it. Somebody who
+       arrives from a service page already knows what they want; they need to send it and know
+       what happens then. The heading follows the service in the link (the form's script sets it). */}
+  <section class="tone-forest bg-tone-bg">
+    <div class="container-site py-10 text-center lg:py-14">
+      <p class="mb-3 text-micro font-bold uppercase text-tone-accent">Custom quote</p>
+      <h1 class="mx-auto max-w-3xl text-h1 text-white" data-quote-title>Yard and property work, quoted by Josue himself</h1>
+      <p class="mx-auto mt-4 max-w-xl text-lg text-tone-fg">Send a few photos. Josue replies {reply} with an itemised price.{range && <span data-quote-range> {range}</span>}</p>
+    </div>
+  </section>
+
+  <Section tone="white" size="sm">
+    <div class="grid gap-10 lg:grid-cols-12">
+      <div class="lg:col-span-7"><QuoteRequestForm /></div>
+      <aside class="lg:col-span-5">
+        <h2 class="text-h3 text-forest-900">What happens next</h2>
+        <ol class="mt-5 space-y-5">
+          {steps.map((st, i) => (
+            <li class="flex gap-4">
+              <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-forest-700 text-base font-bold text-white" aria-hidden="true">{i + 1}</span>
+              <span><span class="block text-base font-semibold text-forest-900">{st.t}</span><span class="mt-0.5 block text-base text-ink-700">{st.d}</span></span>
+            </li>
+          ))}
+        </ol>
+        <p class="mt-7 text-base text-ink-700">Rather talk? Call or text <a class="link whitespace-nowrap" href={business.phoneHref}>{business.phone}</a>.</p>
+        {licence && <p class="mt-3 text-sm text-ink-500" data-licence>CSLB licence #{licence}{licenceClass ? ` (${licenceClass})` : ''}</p>}
+      </aside>
+    </div>
+  </Section>
+
+  <Section tone="sand" labelledby="said-title">
+    <SectionHeading id="said-title" eyebrow="Reviews" title="What his customers say about the work" />
+    <div class="mt-10"><ReviewQuotes ids={['cheyenne-crafton', 'ilse-fuentes', 'capital-maintenance']} limit={3} /></div>
+  </Section>
+
+  <Section tone="white" labelledby="faq-title">
+    <SectionHeading id="faq-title" eyebrow="Questions" title="Before you send it" />
+    <div class="mt-8 max-w-3xl"><Faq items={faqs} schema openFirst={false} /></div>
+  </Section>
+</Site>

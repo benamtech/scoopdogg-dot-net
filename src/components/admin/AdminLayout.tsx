@@ -1,18 +1,121 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, MessageSquare, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Users, MessageSquare, LogOut, Menu, X, CreditCard, TrendingUp, ListChecks, Truck, UserPlus, UsersRound, Tags, FileText, BadgePercent, LayoutList, Hammer, CalendarDays, MapPin, Receipt } from 'lucide-react';
 import { adminApi } from '../../lib/adminApi';
+import { useAuth } from '../../lib/auth';
 
+/**
+ * The nav, in the order a route runs (P18 §4): today first, then what needs answering, then the
+ * business. `crew` is the person in the truck and sees one item - the server refuses the rest
+ * whatever this list says (api/admin.ts allowlists crew paths), so this is the honest menu for a
+ * refusal that already exists rather than the thing enforcing it.
+ */
 const navItems = [
-  { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
-  { to: '/admin/leads', label: 'Leads', icon: Users, exact: false },
-  { to: '/admin/messages', label: 'Messages', icon: MessageSquare, exact: false },
+  { to: '/admin/today', label: 'Today', icon: Truck, exact: false, crew: true },
+  { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true, crew: false },
+  { to: '/admin/growth', label: 'Growth', icon: TrendingUp, exact: false, crew: false },
+  { to: '/admin/leads', label: 'Leads', icon: Users, exact: false, crew: false },
+  { to: '/admin/week', label: 'The week', icon: CalendarDays, exact: false, crew: false },
+  { to: '/admin/quotes', label: 'Quotes', icon: FileText, exact: false, crew: false },
+  { to: '/admin/jobs', label: 'Jobs', icon: Hammer, exact: false, crew: false },
+  { to: '/admin/customers', label: 'Customers', icon: UserPlus, exact: false, crew: false },
+  { to: '/admin/messages', label: 'Messages', icon: MessageSquare, exact: false, crew: false },
+  { to: '/admin/invoices', label: 'Invoices', icon: Receipt, exact: false, crew: false },
+  { to: '/admin/payments', label: 'Payments', icon: CreditCard, exact: false, crew: false },
+  { to: '/admin/rate-card', label: 'Rate card', icon: Tags, exact: false, crew: false },
+  { to: '/admin/services', label: 'Services', icon: LayoutList, exact: false, crew: false },
+  { to: '/admin/offers', label: 'Offers', icon: BadgePercent, exact: false, crew: false },
+  { to: '/admin/areas', label: 'Areas', icon: MapPin, exact: false, crew: false },
+  { to: '/admin/setup', label: 'Your setup', icon: ListChecks, exact: false, crew: false },
+  { to: '/admin/team', label: 'Team', icon: UsersRound, exact: false, crew: false },
 ];
+
+/**
+ * The demo banner and its switch.
+ *
+ * It is here, in the shell, so it is on every admin screen without any screen having to
+ * remember it. A demo mode you cannot see from the screen you are looking at is a demo
+ * mode that ships - and the consequence of shipping in it is that every customer
+ * notification is silently swallowed.
+ *
+ * The switch says which surfaces changed. All four read the setting per request: mail, the
+ * booking journey, this admin, and the public pages, whose banner and `noindex` follow as soon
+ * as the save purges the page cache.
+ */
+function DemoBanner() {
+  const { demoMode, demoAddress, refresh } = useAuth();
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+
+  const toggle = async () => {
+    setBusy(true);
+    setNote(null);
+    try {
+      const r = await adminApi.setDemo(!demoMode);
+      setNote(
+        `Demo mode is ${r.demo_mode ? 'ON' : 'OFF'}. ` +
+        `Changed now: ${r.effective_now.join(', ')}.`,
+      );
+      await refresh();
+    } catch (e) {
+      setNote(e instanceof Error ? e.message : 'That did not work.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!demoMode) {
+    return (
+      <div className="bg-white border-b border-black/10 px-4 py-2 flex items-center justify-between gap-3 text-xs">
+        <span className="text-dark/60">
+          Live. Notifications go to the real recipients.
+        </span>
+        <button
+          onClick={toggle}
+          disabled={busy}
+          className="border border-forest text-forest px-3 py-1.5 font-semibold hover:bg-forest hover:text-white transition-colors disabled:opacity-50"
+        >
+          {busy ? 'Switching…' : 'Turn demo mode on'}
+        </button>
+      </div>
+    );
+  }
+
+  // THE SAME TOKENS as the public demo banner in src/layouts/Base.astro. Both were hand-mixed
+  // separately and this one carried three raw hexes until step 8 — the last brand-token debt in
+  // the tree, and the reason the two demo banners were subtly different yellows. amber-700 on
+  // amber-100 is the pair measured for contrast (tailwind.config.js).
+  return (
+    <div
+      data-demo-banner
+      role="status"
+      className="border-b-2 border-amber-600 bg-amber-100 px-4 py-2.5 text-sm text-amber-700"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span>
+          <strong>DEMO MODE.</strong> No message reaches a customer
+          {demoAddress ? <> — everything goes to <strong>{demoAddress}</strong></> : null}.
+          Bookings made now are marked and removable.
+        </span>
+        <button
+          onClick={toggle}
+          disabled={busy}
+          className="border-2 border-amber-700 px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-amber-700 hover:text-amber-100 disabled:opacity-50"
+        >
+          {busy ? 'Switching…' : 'Turn demo mode off'}
+        </button>
+      </div>
+      {note && <p className="mt-1.5 text-xs opacity-80">{note}</p>}
+    </div>
+  );
+}
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const items = navItems.filter((i) => user?.role !== 'crew' || i.crew);
 
   const handleSignOut = async () => {
     await adminApi.logout();
@@ -26,7 +129,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <p className="text-sage text-xs mt-0.5">Admin Portal</p>
       </div>
       <nav className="flex-1 p-3 flex flex-col gap-1 overflow-y-auto">
-        {navItems.map((item) => {
+        {items.map((item) => {
           const Icon = item.icon;
           const active = item.exact
             ? location.pathname === item.to
@@ -99,8 +202,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </aside>
 
       {/* Main content */}
-      <main className="md:ml-56 flex-1 p-4 md:p-6 lg:p-8 pt-16 md:pt-6 lg:pt-8 min-w-0 w-full">
-        {children}
+      <main className="md:ml-56 flex-1 min-w-0 w-full pt-12 md:pt-0">
+        <DemoBanner />
+        <div className="p-4 md:p-6 lg:p-8">
+          {children}
+        </div>
       </main>
     </div>
   );

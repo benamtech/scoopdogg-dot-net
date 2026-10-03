@@ -1,0 +1,17 @@
+---
+/**
+ * Numbered steps on white cards. Built for the orange band: the cards carry the small text, so
+ * nothing below 24px is ever white on orange (tests/contrast.test.ts). Works on any surface.
+ */
+export interface Props { steps: { t: string; d: string }[]; cols?: 3 | 4 }
+const { steps, cols = 3 } = Astro.props;
+---
+<ol class={`grid gap-4 lg:gap-5 ${cols === 4 ? 'sm:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'}`}>
+  {steps.map((s, i) => (
+    <li class="tone-white relative flex flex-col rounded-xl bg-paper p-6 shadow-md ring-1 ring-black/5 sm:p-7">
+      <span class="font-serif text-h1 leading-none text-orange-700" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
+      <h3 class="mt-5 font-sans text-xl font-semibold text-forest-900">{s.t}</h3>
+      <p class="mt-2 text-base text-ink-700">{s.d}</p>
+    </li>
+  ))}
+</ol>

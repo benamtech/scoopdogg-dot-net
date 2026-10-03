@@ -1,8 +1,8 @@
 /**
  * Apply migrations/*.sql in order, once each, tracked in a _migrations table.
  *
- *   node --env-file=.env.local scripts/run-migrations.mjs           # apply pending
- *   node --env-file=.env.local scripts/run-migrations.mjs --status  # show, change nothing
+ *   node scripts/run-migrations.mjs           # apply pending
+ *   node scripts/run-migrations.mjs --status  # show, change nothing
  *
  * Reads DATABASE_URL from its own environment and NEVER prints it. Only the host is
  * ever shown, and only so a human can tell which database they just changed.
@@ -10,10 +10,16 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import pg from 'pg';
+import { loadEnv } from './_env.mjs';
+// The environment is this script's own dependency. `--env-file=.env.local` still works and
+// is still the documented way for a human; a bare `node scripts/<this>` now works too, which
+// is the only shape an agent session can run (scripts/_env.mjs says why). Nothing is printed.
+loadEnv();
+
 
 const url = process.env.DATABASE_URL || process.env.POSTGRES_URL;
 if (!url) {
-  console.error('DATABASE_URL is not set. Run with: node --env-file=.env.local scripts/run-migrations.mjs');
+  console.error('DATABASE_URL is not set. Run from the repository root; scripts/_env.mjs reads .env.local');
   process.exit(1);
 }
 const host = (() => { try { return new URL(url).host.split('.').slice(-3).join('.'); } catch { return 'unknown'; } })();

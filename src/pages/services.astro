@@ -1,23 +1,55 @@
 ---
-import Base from '../layouts/Base.astro';
-import Nav from '../components/Nav';
-import Footer from '../components/Footer';
-import { SITE_URL } from '../lib/constants';
-import { SERVICES } from '../lib/services';
-import Page from '../pages_react/ServicesPage';
-const jsonLd = {
-  '@context': 'https://schema.org', '@type': 'CollectionPage',
-  name: 'Scoop Dogg Services',
-  mainEntity: {
-    '@type': 'ItemList',
-    itemListElement: SERVICES.map((s, i) => ({
-      '@type': 'ListItem', position: i + 1, name: s.name, url: `${SITE_URL}/services/${s.slug}`,
-    })),
-  },
-};
+/**
+ * All services. Bands: hero (white) -> monthly plans (white cards, ruled) -> one-time services
+ * (orange, white cards) -> close (green, since the band above is orange).
+ */
+import { Image } from 'astro:assets';
+import Site from '../layouts/Site.astro';
+import PageHero from '../components/site/PageHero.astro';
+import Section from '../components/site/Section.astro';
+import CloseCta from '../components/site/CloseCta.astro';
+import { services, headlinePrice, packagesForService, headlineOffer } from '../lib/catalog';
+import mowing from '../assets/art/transp-dog-character-mowing-grass.png';
+const recurring = services.filter((s) => packagesForService(s.slug).length > 0);
+const oneTime = services.filter((s) => packagesForService(s.slug).length === 0);
+const Card = (s: (typeof services)[number]) => ({ s, p: headlinePrice(s.slug) });
 ---
-<Base jsonLd={jsonLd} title={'Our Services | Dog Waste Removal & Yard Care in Ventura County'} description={'Weekly pooper scooper service from $15, one-time cleanups, turf deodorizing, yard maintenance, litter box service and more across Ventura County.'} canonicalPath="/services">
-  <Nav client:load />
-  <main><Page  /></main>
-  <Footer />
-</Base>
+<Site title="Services | Dog Poop Cleanup, Turf Care & More | Scoop Dogg" description="Weekly dog poop scooping, turf maintenance, yard care, litter box service and one-time cleanups across Ventura and Santa Barbara counties." canonicalPath="/services">
+  <PageHero eyebrow="Services" title="Everything your yard and your pets need" lede="Monthly plans that run themselves, and one-time jobs when you need a reset.">
+    <div slot="aside" class="hidden justify-center lg:flex" aria-hidden="true">
+      <Image quality={75} src={mowing} alt="" widths={[260, 520]} sizes="260px" class="h-auto w-60" loading="eager" />
+    </div>
+  </PageHero>
+  <Section tone="white" labelledby="plans">
+    <p class="eyebrow mb-4">Monthly plans</p>
+    <h2 id="plans" class="text-h2 text-forest-900">Same day every week</h2>
+    {headlineOffer && <p class="mt-4 text-lg text-ink-500">{headlineOffer.name} on weekly scooping. Cancel anytime.</p>}
+    <ul class="mt-12 grid gap-5 md:grid-cols-2">
+      {recurring.map(Card).map(({ s, p }) => (
+        <li><a href={`/services/${s.slug}`} class="card-lift group flex h-full flex-col p-7 sm:p-8">
+          <span class="flex items-start justify-between gap-4">
+            <span class="text-h3 text-forest-900">{s.name}</span>
+            {p && <span class="shrink-0 text-right text-sm text-ink-500">{p.text.startsWith('From') ? 'from' : ''}<span class="block font-serif text-h3 text-forest-900">{p.text.replace(/^From /, '')}<span class="font-sans text-sm text-ink-500">{p.per}</span></span></span>}
+          </span>
+          <span class="mt-4 line-clamp-3 text-base text-ink-700">{s.intro}</span>
+          <span class="mt-6 inline-flex items-center gap-1.5 text-base font-semibold text-forest-700 group-hover:text-forest-900">See plans<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true" class="transition duration-fast group-hover:translate-x-0.5"><path d="M5 12h14M13 6l6 6-6 6" /></svg></span>
+        </a></li>
+      ))}
+    </ul>
+  </Section>
+  <Section tone="amber" labelledby="onetime">
+    <p class="eyebrow mb-4">Book once</p>
+    <h2 id="onetime" class="text-h2 text-tone-heading">One-time services</h2>
+    <p class="mt-4 text-xl text-tone-fg">A reset, a deep clean, or a job you only need now and then.</p>
+    <ul class="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
+      {oneTime.map(Card).map(({ s, p }) => (
+        <li><a href={`/services/${s.slug}`} class="tone-white group flex h-full flex-col rounded-xl bg-paper p-6 shadow-md transition duration-base ease-brand hover:-translate-y-0.5 hover:shadow-lg">
+          <span class="text-xl font-semibold text-forest-900">{s.name}</span>
+          {p && <span class="mt-1 text-base font-medium text-orange-700">{p.text}{p.per}</span>}
+          <span class="mt-3 line-clamp-2 text-base text-ink-700">{s.intro}</span>
+        </a></li>
+      ))}
+    </ul>
+  </Section>
+  <CloseCta source="services-close" tone="forest" />
+</Site>

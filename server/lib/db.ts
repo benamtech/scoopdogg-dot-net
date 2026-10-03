@@ -22,6 +22,11 @@ export function db(): pg.Pool {
       idleTimeoutMillis: 10_000,
       connectionTimeoutMillis: 8_000,
     });
+    // AN IDLE CLIENT THE SERVER CLOSED IS NOT A CRASH. Neon closes idle connections; the pool then
+    // emits 'error', and an 'error' event with no listener is thrown by Node and takes the process —
+    // and every request in flight on a warm function — down with it. The pool already drops the
+    // dead client; the next query opens a new one. Logged without the connection string.
+    pool.on('error', (e) => console.error(`[db] idle connection closed: ${e.message}`));
   }
   return pool;
 }

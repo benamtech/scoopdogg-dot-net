@@ -1,0 +1,113 @@
+---
+/**
+ * The header on every public page. No framework: the mobile menu is one <button> and a few
+ * lines of script, so a content page ships zero React (baseline: 73KB of JS on every page).
+ *
+ * "Sign in" is here from the first deploy (R5 §3: 14 of 22 scoopers link a customer login
+ * from the homepage), and the one call to action is "See my price" (R5 §2).
+ *
+ * GUIDES IS IN THE NAV, not only in the footer (P15 §8). A crawler reaches a page by following
+ * a link and a page with no inbound internal link receives no internal PageRank at all — the
+ * mechanism is not correlational (R10 §5). `/resources` and `/questions` are 32 answer-shaped
+ * pages and the header is the one link every page on the site carries.
+ *
+ * The desktop and mobile lists are the SAME array. They drifted once — the mobile menu had
+ * About and Contact and the desktop nav did not — which is how a link ends up existing on one
+ * viewport and not the other. `gates/orphan-pages.mjs` reads the built bytes and cannot tell
+ * the two apart, so keeping one array is what makes the gate's answer true for both.
+ */
+import Logo from './Logo.astro';
+import { business, headlineOffer, serviceRegion } from '../../lib/catalog';
+
+export interface Props { current?: string }
+const { current = '' } = Astro.props;
+const links = [
+  { href: '/services', label: 'Services' },
+  { href: '/pricing', label: 'Pricing' },
+  { href: '/custom-quote', label: 'Custom jobs' },
+  { href: '/how-it-works', label: 'How it works' },
+  { href: '/areas', label: 'Areas' },
+  { href: '/resources', label: 'Guides' },
+  { href: '/reviews', label: 'Reviews' },
+];
+/** Shown in the mobile menu only, where there is room for the full list. */
+const extra = [
+  { href: '/questions', label: 'Questions' },
+  { href: '/about', label: 'About Josue' },
+  { href: '/contact', label: 'Contact' },
+];
+const isCurrent = (href: string) => current === href || (href !== '/' && current.startsWith(href + '/'));
+---
+<div class="tone-forest bg-tone-bg text-sm text-white">
+  <div class="container-site flex h-9 items-center justify-center gap-2 sm:justify-between">
+    <p class="truncate">{headlineOffer && <><span class="font-semibold text-amber-400">{headlineOffer.name}</span><span class="hidden sm:inline"> on weekly scooping</span> · </>}No contract · Cancel anytime</p>
+    <p class="hidden items-center gap-5 sm:flex">
+      <span class="hidden lg:inline">{serviceRegion}</span>
+      <a href={business.phoneHref} class="font-semibold hover:text-amber-400">{business.phone}</a>
+    </p>
+  </div>
+</div>
+<header class="tone-white sticky top-0 z-40 border-b border-line bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/85" data-site-header>
+  <div class="container-site flex h-[72px] items-center justify-between gap-6">
+    <Logo size="md" emblem />
+
+    <nav aria-label="Main" class="hidden nav:block">
+      <ul class="flex items-center gap-1">
+        {links.map((l) => (
+          <li>
+            <a
+              href={l.href}
+              aria-current={isCurrent(l.href) ? 'page' : undefined}
+              class={`rounded-md px-3 py-2 text-base font-medium transition duration-fast ${isCurrent(l.href) ? 'text-forest-800 underline decoration-orange-600 decoration-2 underline-offset-8' : 'text-ink-700 hover:bg-forest-50 hover:text-forest-800'}`}
+            >{l.label}</a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+
+    <div class="flex items-center gap-2">
+            <a href="/account" class="btn btn-sm hidden border border-line-strong bg-paper text-forest-800 hover:border-forest-400 sm:inline-flex">Sign in</a>
+      <a href="/book" class="btn-primary btn-sm hidden sm:inline-flex" data-cta="header">See my price</a>
+      <button
+        type="button"
+        class="inline-flex h-11 w-11 items-center justify-center rounded-md text-forest-800 hover:bg-forest-50 nav:hidden"
+        aria-expanded="false"
+        aria-controls="mobile-menu"
+        aria-label="Open menu"
+        data-menu-toggle
+      >
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true" data-icon-open><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true" class="hidden" data-icon-close><path d="M6 6l12 12M18 6L6 18" /></svg>
+      </button>
+    </div>
+  </div>
+
+  <div id="mobile-menu" class="hidden border-t border-line bg-paper nav:hidden" data-menu>
+    <nav aria-label="Mobile" class="container-site py-4">
+      <ul class="flex flex-col">
+        {[...links, ...extra].map((l) => (
+          <li><a href={l.href} class="block border-b border-line py-4 text-xl font-medium text-forest-800">{l.label}</a></li>
+        ))}
+      </ul>
+      <div class="mt-6 grid grid-cols-2 gap-3">
+        <a href="/account" class="btn-ghost">Sign in</a>
+        <a href="/book" class="btn-primary">See my price</a>
+      </div>
+      <a href={business.phoneHref} class="mt-5 block text-center text-lg font-medium text-forest-700">Call {business.phone}</a>
+    </nav>
+  </div>
+</header>
+
+<script>
+  const toggle = document.querySelector<HTMLButtonElement>('[data-menu-toggle]');
+  const menu = document.querySelector<HTMLElement>('[data-menu]');
+  toggle?.addEventListener('click', () => {
+    const open = toggle.getAttribute('aria-expanded') === 'true';
+    toggle.setAttribute('aria-expanded', String(!open));
+    toggle.setAttribute('aria-label', open ? 'Open menu' : 'Close menu');
+    menu?.classList.toggle('hidden', open);
+    toggle.querySelector('[data-icon-open]')?.classList.toggle('hidden', !open);
+    toggle.querySelector('[data-icon-close]')?.classList.toggle('hidden', open);
+    document.documentElement.classList.toggle('overflow-hidden', !open);
+  });
+</script>

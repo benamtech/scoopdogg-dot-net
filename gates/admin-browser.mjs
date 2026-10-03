@@ -24,6 +24,11 @@ import pg from 'pg';
 import { createHmac, randomInt } from 'node:crypto';
 import { readFileSync, mkdirSync } from 'node:fs';
 
+import { loadEnv } from '../scripts/_env.mjs';
+// The same loader every other gate uses, so this runs on its own as well as under
+// `vercel env run`. It fills only what the environment does not already carry, and it reads the
+// preview token from .env.oidc.local (see scripts/_env.mjs) — never printed, header only.
+loadEnv();
 const base = (process.argv[2] || '').replace(/\/$/, '');
 if (!base) { console.error('usage: admin-browser.mjs <deployment-url>'); process.exit(1); }
 
@@ -86,6 +91,21 @@ if (!firstMessage) {
 firstMessage ? ok('probe message present', `${firstMessage}${seededMessage ? ' (seeded for this run)' : ''}`)
              : no('probe message present', 'contact_messages is empty and could not be seeded');
 
+// The quote screens (migration 042) need a quote to show, and there may be none. Seed one on the
+// probe lead, straight into the tables — not through /api/quote, which emails — and delete it at
+// the end. Its title and line are text only an authenticated read of these rows can produce.
+let seededQuote = null;
+if (probeLead) {
+  const q = await client.query(
+    `insert into quotes (lead_id, title, created_by) values ($1, 'AMTECH SITE TEST quote', 'gate:admin-browser') returning id, number`,
+    [probeLead.id]).catch((e) => ({ rows: [], error: e }));
+  seededQuote = q.rows[0] || null;
+  if (seededQuote) {
+    await client.query(`insert into quote_lines (quote_id, sort, description, amount_cents) values ($1, 0, 'AMTECH SITE TEST line', 12345)`, [seededQuote.id]);
+    ok('probe quote seeded', `#${seededQuote.number}`);
+  } else no('probe quote seeded', q.error?.message ?? 'no row');
+}
+
 const email = 'ben@amtechai.com';
 const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
 await client.query(
@@ -142,12 +162,56 @@ if (session) {
  * PRESENT with it. That is the assertion falsifying itself on every run.
  */
 const leadEmail = probeLead?.email || null;
+// §4 needs a real customer and a real visit to open. Reported, never assumed.
+const { rows: [probeCustomer] } = await client.query(
+  `select id, name from customers where deleted_at is null and name not like 'DEMO—%' order by created_at limit 1`);
+const { rows: [probeVisit] } = await client.query(
+  `select v.id, c.name from visits v join subscriptions s on s.id = v.subscription_id join customers c on c.id = s.customer_id
+    where c.name not like 'DEMO—%' order by v.scheduled_for desc limit 1`);
+const { rows: [probeArea] } = await client.query(`select name from service_areas where status = 'active' order by sort_order limit 1`);
+const esc = (x) => new RegExp(String(x ?? 'never-matches').replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
 const screens = [
   ['/admin',                          [/AMTECH SITE TEST/, /Recent Leads/],        'dashboard'],
   ['/admin/leads',                    [/AMTECH SITE TEST/],                        'leads list'],
   ['/admin/messages',                 [/AMTECH SITE TEST/],                        'messages list'],
   [`/admin/leads/${probeLead?.id}`,   [/AMTECH SITE TEST/, new RegExp(leadEmail ? leadEmail.replace(/[.+]/g, '\\$&') : 'never-matches')], 'lead detail'],
   [`/admin/messages/${firstMessage}`, [/AMTECH SITE TEST/, /Seeded by gates\/admin-browser\.mjs/], 'message detail'],
+  // The four screens elevation-2026-09-16 changed, each with a needle that only an authenticated
+  // read can produce. Every server feature on that branch shipped first with NO screen reading it,
+  // so the screens are checked here in a browser, signed in — not assumed from a green typecheck.
+  ['/admin/today',    [/No stop has been timed yet|stops? timed so far/],                      'today — the stop clock'],
+  ['/admin/growth',   [/Where the next customer should come from/,
+                       /Where visitors came from|left out of these numbers/,
+                       // Migration 036: the money column, and the sentence that calls it an assumption.
+                       /After your time/, /An assumption, not a figure from your books/],  'growth — channels, our own visits, the assumed hour'],
+  ['/admin/payments', [/Live payments/, /Monthly plans/],                                     'payments'],
+  ['/admin/team',     [/\(you\)/, new RegExp(email.replace(/[.+]/g, '\\$&'))],              'team'],
+  // WS1: the rate card had never been opened in a browser. A tier label and a package name only
+  // the rate-card read returns — the login screen carries neither.
+  ['/admin/rate-card', [/Large or custom property/, /Litter-Robot/],                              'rate card'],
+  // The quote rail: the seeded quote in the list, and on its own screen with the total the server
+  // computed from its one line ($123.45) — the builder's numbers come back from quoteForOwner.
+  ['/admin/quotes',   [/AMTECH SITE TEST quote/],                                               'quotes list'],
+  // A draft's title and lines sit in <input>s, which innerText does not read; the heading and the
+  // total are rendered text.
+  // The number is in a chip styled `uppercase`, and innerText returns the transformed text.
+  [`/admin/quotes/${seededQuote?.id}`, [new RegExp(`Quote #${seededQuote?.number ?? 'never'}`, 'i'), /\$123\.45/], 'quote builder'],
+  // §3 (2026-09-29): the owner edits services, offers and the tier ranges himself. Each needle is a
+  // row only the authenticated read returns: a live offer's customer count sentence, a service's
+  // price count, and the rate card's range editor with a tier label in it.
+  ['/admin/offers',   [/First month half off/, /customers? on it now/],                         'offers'],
+  ['/admin/services', [/Pet Area Pressure Washing|Pressure Washing/, /prices? on the rate card/], 'services'],
+  ['/admin/rate-card', [/Which tier a customer lands in, by dogs/, /Save ranges/],               'rate card — the ranges'],
+  // §4 (2026-09-30): the screens that run the business. A customer's own name and payment total, a
+  // visit's customer, a city with its counts, the week's stop count, the invoices' owed sentence.
+  ['/admin/jobs',     [/To schedule \(\d+\)/, /Balance owed \(\d+\)/],                         'jobs by stage'],
+  [`/admin/customers/${probeCustomer?.id}`, [esc(probeCustomer?.name), /paid in all/],           'customer detail'],
+  ['/admin/week',     [/stops? from/],                                                         'the week'],
+  [`/admin/visits/${probeVisit?.id}`, [esc(probeVisit?.name), /Photos \(\d+\)/],               'visit detail'],
+  ['/admin/areas',    [esc(probeArea?.name), /visits? in the next two weeks/],                  'areas and route days'],
+  ['/admin/invoices', [/owed, \$[\d,.]+ in all/],                                              'invoices by state'],
+  // §5: the card that says where the owner's time goes, and when the daily run last ran.
+  ['/admin/growth',   [/What is taking your time/, /Quotes to follow up/, /The daily run/],        'growth — what is taking your time'],
 ];
 
 async function visit(context, route, shot) {
@@ -206,6 +270,11 @@ if (session) {
 }
 
 await client.query("delete from verification_codes where purpose = 'admin_login'");
+if (seededQuote) {
+  await client.query('delete from quotes where id = $1', [seededQuote.id]);   // lines cascade
+  const { rows } = await client.query('select count(*)::int n from quotes where id = $1', [seededQuote.id]);
+  rows[0].n === 0 ? ok('seeded quote removed', `#${seededQuote.number}`) : no('seeded quote removed', `${seededQuote.id} is still there`);
+}
 if (seededMessage) {
   await client.query('delete from contact_messages where id = $1', [seededMessage]);
   const { rows } = await client.query('select count(*)::int n from contact_messages where id = $1', [seededMessage]);

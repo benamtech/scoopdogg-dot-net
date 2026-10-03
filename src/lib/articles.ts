@@ -144,7 +144,7 @@ export const ARTICLES: ArticleData[] = [
         heading: 'When Weekly Cleanup Makes More Sense Than DIY',
         paragraphs: [
           'Most dog owners start by handling cleanup themselves. It works for a while — until it doesn\'t. The pattern is predictable: you skip a weekend because you\'re busy, then it rains, then it\'s hot, then you\'re behind by two weeks and the backyard smells.',
-          'The math on professional service is straightforward. At $15/week for one dog, you\'re paying roughly $2.14/day for a consistently clean yard. Compare that to the actual cost of DIY: dedicated bags, a scooper tool that needs replacing, 15-20 minutes per session (more for multiple dogs), disposal logistics, and the reality that most people eventually fall behind.',
+          'The math on professional service is straightforward. Weekly service is one predictable monthly price, set by how many dogs you have, and the current figure is on the service page. Compare that to the actual cost of DIY: dedicated bags, a scooper tool that needs replacing, 15-20 minutes per session (more for multiple dogs), disposal logistics, and the reality that most people eventually fall behind.',
           'Weekly service also catches issues early. We notice drainage problems, fence damage, turf wear patterns, and health concerns (like changes in stool consistency) before they become bigger problems. Several of our clients have caught early signs of dog illness because we flagged unusual waste.',
         ],
         bullets: [
@@ -155,7 +155,7 @@ export const ARTICLES: ArticleData[] = [
           'Cancel or pause anytime — no contracts, no commitment',
         ],
         internalLinks: [
-          { to: '/services/weekly-pooper-scooper-service', label: 'Weekly Service — Starting at $15/week' },
+          { to: '/services/weekly-pooper-scooper-service', label: 'Weekly Service — priced by how many dogs you have' },
           { to: '/services/one-time-dog-poop-cleanup', label: 'One-Time Cleanup for Backlogs' },
         ],
       },
@@ -200,7 +200,7 @@ export const ARTICLES: ArticleData[] = [
       },
       {
         q: 'Is professional dog waste removal worth it?',
-        a: 'At $15/week for one dog, it costs roughly $2/day for a consistently clean yard with professional disposal. Most homeowners find the convenience, consistency, and elimination of disposal logistics makes it an easy decision.',
+        a: 'A weekly plan is one predictable monthly price, set by how many dogs you have, and you see it on the service page before you book. Most homeowners find the convenience, consistency, and elimination of disposal logistics makes it an easy decision.',
       },
       {
         q: 'What happens to the waste after you pick it up?',
@@ -1175,3 +1175,46 @@ export const ARTICLE_MAP: Record<string, ArticleData> = Object.fromEntries(
 );
 
 export const ARTICLE_SLUGS = ARTICLES.map((a) => a.slug);
+
+/**
+ * The full text of one guide: everything a reader sees, and nothing the layout adds.
+ *
+ * It exists because the first attempt at "which guides are about this city" measured the BUILT
+ * page and found all six naming all sixteen cities — the footer's "Where we work" column is in
+ * the bytes of every page on the site. Reading the data instead of the render is what makes the
+ * answer about the guide rather than about the chrome.
+ */
+function articleText(a: ArticleData): string {
+  return [
+    a.title, a.excerpt, a.openingAnswer,
+    ...a.sections.flatMap((s) => [
+      s.heading,
+      ...(s.paragraphs ?? []),
+      ...(s.bullets ?? []),
+      ...(s.numberedSteps ?? []),
+      ...(s.callout ? [s.callout.text] : []),
+      ...(s.subsections ?? []).flatMap((x) => [x.heading, ...x.paragraphs]),
+      ...(s.table ?? []).flatMap((t) => [t.question, t.answer]),
+    ]),
+    ...a.faqs.flatMap((f) => [f.q, f.a]),
+  ].join(' ');
+}
+
+/**
+ * The guides that NAME a city, for the city page to link (P15 §8, "every area page links its
+ * guides"). Grounded rather than templated: the list varies by city because the guides really
+ * do differ in which places they discuss, and a link list identical across sixteen city pages
+ * is the templated-location-page shape Google calls doorway abuse.
+ *
+ * Six of the sixteen cities are named in no guide at all (Malibu, Agoura Hills, Westlake
+ * Village, Newbury Park, Fillmore, Santa Paula). Those pages get an empty list and link the
+ * guide index instead. That is the honest answer — inventing a "related" guide for them would
+ * be writing a fact about content that does not mention them.
+ */
+export function articlesMentioning(cityName: string): ArticleData[] {
+  // "Ventura" needs the negative lookahead or every guide matches it through the phrase
+  // "Ventura County", which names the county and not the city. The first version of this
+  // returned all six guides for Ventura for exactly that reason.
+  const re = new RegExp(`\\b${cityName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b(?!\\s+County)`);
+  return ARTICLES.filter((a) => re.test(articleText(a)));
+}

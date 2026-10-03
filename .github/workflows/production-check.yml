@@ -1,0 +1,80 @@
+# The production checks, run by themselves (scripts/production-check.mjs says what each one is).
+#
+#   - After every successful production deployment of the `scoopdogg` Vercel project, which includes
+#     the merge to main: the full check (--deploy).
+#   - Every morning at 15:30 UTC, an hour after the site's own daily cron: the health check (--daily).
+#   - By hand from the Actions tab (workflow_dispatch), either mode.
+#
+# A failure fails the job AND emails Ben the detail (--alert). This repository is public, so the log
+# prints one line per check; anything that could name a customer goes only in the email.
+name: production-check
+
+on:
+  deployment_status:
+  schedule:
+    - cron: '30 15 * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: deploy or daily
+        default: deploy
+
+permissions:
+  contents: read
+  id-token: write   # keyless Google sign-in for Search Console (Workload Identity Federation)
+
+concurrency:
+  group: production-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    # Only the scoopdogg project's production deployments; the dormant scoopdogg-dot-net project
+    # also reports, and previews never count.
+    if: >-
+      github.event_name != 'deployment_status' ||
+      (github.event.deployment_status.state == 'success' &&
+       github.event.deployment.environment == 'Production – scoopdogg')
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      MODE: ${{ github.event_name == 'schedule' && 'daily' || (github.event_name == 'workflow_dispatch' && inputs.mode) || 'deploy' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Browser for the admin checks
+        if: env.MODE == 'deploy'
+        run: npx playwright install --with-deps chromium
+      - name: Google token for Search Console (no key file)
+        if: env.MODE == 'deploy'
+        id: google
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/109708278569/locations/global/workloadIdentityPools/github/providers/scoopdogg
+          service_account: search-console@amtech-search-console.iam.gserviceaccount.com
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/siteverification,https://www.googleapis.com/auth/webmasters
+      - name: Wait until the new deployment answers (deploy only)
+        # Vercel reports success when the deployment is ready; the domain alias can follow a moment
+        # later. Poll the one route that proves the new code is live, up to five minutes.
+        if: env.MODE == 'deploy'
+        run: |
+          for i in $(seq 1 60); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -X POST https://scoopdogg.net/api/stripe-webhook || true)
+            if [ "$code" = "400" ]; then echo "serving after $((i*5))s"; exit 0; fi
+            sleep 5
+          done
+          echo "the webhook route never answered 400; the check below says what is wrong"
+      - name: Check production
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          STRIPE_SECRET_KEY_LIVE: ${{ secrets.STRIPE_SECRET_KEY_LIVE }}
+          STRIPE_SECRET_KEY_TEST: ${{ secrets.STRIPE_SECRET_KEY_TEST }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+          SEARCH_CONSOLE_TOKEN: ${{ steps.google.outputs.access_token }}
+        run: node scripts/production-check.mjs --${{ env.MODE }} --alert

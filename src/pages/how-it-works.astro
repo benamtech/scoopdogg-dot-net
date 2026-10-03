@@ -1,0 +1,70 @@
+---
+/**
+ * From first click to a clean yard. Bands: hero (white, form) -> every step (orange, white
+ * cards) -> the account, drawn as real UI (green) -> good to know (white) -> close (orange).
+ */
+import Site from '../layouts/Site.astro';
+import PageHero from '../components/site/PageHero.astro';
+import Section from '../components/site/Section.astro';
+import Steps from '../components/site/Steps.astro';
+import PortalPreview from '../components/site/PortalPreview.astro';
+import Faq from '../components/site/Faq.astro';
+import CloseCta from '../components/site/CloseCta.astro';
+import { trust, setting, headlineOffer } from '../lib/catalog';
+const startDays = setting<number>('schedule.new_customer_start_days', 3);
+const steps = [
+  { t: 'Enter your address', d: 'Tell us where your yard is. We check it is on one of our routes and show you the days we are in your city.' },
+  { t: 'See your price', d: `Pick how many dogs you have. Your monthly price${headlineOffer ? ` and your ${headlineOffer.name.toLowerCase()}` : ''} are on the screen before we ask for your details.` },
+  { t: 'Pick your day and pay', d: `Choose a start day as soon as ${startDays} days from now. Pay your first month securely with card, Apple Pay or Google Pay.` },
+  { t: 'We show up every week', d: 'Same day every week. We walk the whole yard, scoop every pile, bag it, haul it away and close the gate behind us.' },
+  { t: 'Run it from your account', d: 'See your next visit, skip a week, pause for vacation, update your card or cancel — all without a phone call.' },
+  { t: 'Tell us if we missed a spot', d: trust.guarantee ?? 'Tell us and we will make it right.' },
+];
+const faqs = [
+  { q: 'Do I need to be home?', a: 'No. As long as we can get into the yard, we take care of everything and close the gate behind us.' },
+  { q: 'What if you miss a spot?', a: trust.guarantee ?? 'Tell us and we will make it right.' },
+  { q: 'What about rain?', a: 'We scoop in light rain. If weather makes a visit unsafe, we reschedule and let you know.' },
+  { q: 'How do I cancel?', a: 'From your account, in two taps. No calls, no forms, no questions.' },
+];
+---
+<Site title="How It Works | Book Weekly Dog Poop Cleanup Online | Scoop Dogg" description="See your price, pick your day and pay online in about a minute. Then we show up every week, and you manage everything from your account." canonicalPath="/how-it-works">
+  <PageHero eyebrow="How it works" title="Booked in a minute. Handled every week." lede="No phone tag, no quotes to wait for. Here's what happens from your first click to a clean yard." form source="how-hero" />
+
+  <Section tone="amber" labelledby="steps-title">
+    <div class="grid gap-8 lg:grid-cols-12 lg:items-end">
+      <h2 id="steps-title" class="text-h2 text-tone-heading lg:col-span-7">A minute online. Then it's handled.</h2>
+      <p class="text-xl text-tone-fg lg:col-span-5">Every step, including the ones you never see.</p>
+    </div>
+    <div class="mt-12"><Steps steps={steps} /></div>
+  </Section>
+
+  <Section tone="forest" labelledby="account-title">
+    <div class="grid items-center gap-14 lg:grid-cols-2">
+      <div>
+        <p class="eyebrow mb-4">Your account</p>
+        <h2 id="account-title" class="text-h1 text-white">Everything in one place. No phone calls.</h2>
+        <ul class="mt-8 space-y-4 text-lg text-tone-fg">
+          {['Your next visit and the day it is on', 'Skip a week or pause for vacation', 'Your plan, your card and every payment', 'Cancel in two taps, any time'].map((t) => (
+            <li class="flex gap-3"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="mt-1 shrink-0 text-amber-400" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>{t}</li>
+          ))}
+        </ul>
+        <a href="/account" class="btn-ghost mt-10">Sign in to your account</a>
+      </div>
+      <div class="flex flex-col items-center gap-5 lg:items-end">
+        <PortalPreview variant="next-visit" />
+        <div class="w-full max-w-sm lg:mr-12"><PortalPreview variant="plan" /></div>
+      </div>
+    </div>
+  </Section>
+
+  <Section tone="white" labelledby="know-title">
+    <div class="grid gap-12 lg:grid-cols-12">
+      <div class="lg:col-span-4">
+        <p class="eyebrow mb-4">Good to know</p>
+        <h2 id="know-title" class="text-h2 text-forest-900">The small print, in plain words</h2>
+      </div>
+      <div class="lg:col-span-8"><Faq items={faqs} /></div>
+    </div>
+  </Section>
+  <CloseCta source="how-close" />
+</Site>

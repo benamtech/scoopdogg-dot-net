@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save } from 'lucide-react';
-import { adminApi } from '../../lib/adminApi';
+import { adminApi, type CustomLead, type RequestPhoto, type QuoteSummary } from '../../lib/adminApi';
+import { jobKindLabel } from '../../shared/quote-contract';
+import { money } from '../../shared/quote-math';
 import { serviceLabel } from '../../lib/serviceLabel';
 import type { Lead, LeadStatus } from '../../lib/types';
 import StatusBadge from '../../components/admin/StatusBadge';
@@ -33,7 +35,10 @@ function InfoRow({ label, value }: { label: string; value?: string | number | nu
 export default function AdminLeadDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [lead, setLead] = useState<Lead | null>(null);
+  const [lead, setLead] = useState<(Lead & CustomLead) | null>(null);
+  const [photos, setPhotos] = useState<RequestPhoto[]>([]);
+  const [quotes, setQuotes] = useState<QuoteSummary[]>([]);
+  const [building, setBuilding] = useState(false);
   const [loading, setLoading] = useState(true);
   const [notes, setNotes] = useState('');
   const [savingNotes, setSavingNotes] = useState(false);
@@ -43,8 +48,10 @@ export default function AdminLeadDetailPage() {
     const fetchLead = async () => {
       if (!id) return;
       try {
-        const { lead: data } = await adminApi.lead(id);
+        const { lead: data, photos: ph, quotes: qs } = await adminApi.lead(id);
         setLead(data as never);
+        setPhotos(ph ?? []);
+        setQuotes(qs ?? []);
         setNotes(data.notes || '');
       } catch { /* handled by ProtectedRoute */ }
       setLoading(false);
@@ -127,6 +134,23 @@ export default function AdminLeadDetailPage() {
             <InfoRow label="Last Updated" value={formatDateTime(lead.updated_at)} />
           </div>
 
+          {(lead.kind === 'custom' || photos.length > 0 || (lead.job_kinds?.length ?? 0) > 0) && (
+            <div className="bg-white rounded-card shadow-card p-6" data-custom-request>
+              <h2 className="font-semibold text-dark">The job they described</h2>
+              {(lead.job_kinds?.length ?? 0) > 0 && <p className="mt-2 text-sm text-dark/70">{lead.job_kinds!.map(jobKindLabel).join(' · ')}</p>}
+              {lead.notes && <p className="mt-3 whitespace-pre-wrap text-dark">{lead.notes}</p>}
+              <p className="mt-2 text-sm text-dark/60">
+                {lead.timing === 'asap' ? 'As soon as possible' : lead.timing === 'month' ? 'Within a month' : lead.timing === 'flexible' ? 'Timing is flexible' : ''}
+                {lead.contact_pref ? ` · prefers ${lead.contact_pref === 'text' ? 'a text' : lead.contact_pref === 'call' ? 'a call' : 'email'}` : ''}
+              </p>
+              {photos.length > 0 && (
+                <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4">
+                  {photos.map((p) => <a key={p.id} href={p.url} target="_blank" rel="noreferrer"><img src={p.url} alt="Customer photo" className="aspect-square w-full rounded-lg object-cover" /></a>)}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="bg-white rounded-card shadow-card p-6">
             <h2 className="font-semibold text-dark mb-3">Notes</h2>
             <textarea
@@ -172,6 +196,30 @@ export default function AdminLeadDetailPage() {
             </div>
           </div>
 
+          <div className="bg-white rounded-card shadow-card p-6" data-lead-quotes>
+            <h2 className="font-semibold text-dark">Quote</h2>
+            {quotes.length > 0 && (
+              <ul className="mt-3 flex flex-col gap-2">
+                {quotes.map((q) => (
+                  <li key={q.id}><a className="flex justify-between rounded-xl bg-cream px-4 py-3 text-sm hover:bg-sage-light" href={`/admin/quotes/${q.id}`}>
+                    <span>#{q.number} · {q.state}{q.view_count ? ` · opened ${q.view_count}×` : ''}</span>
+                    <span className="font-semibold">{q.total_cents != null ? money(q.total_cents) : ''}</span>
+                  </a></li>
+                ))}
+              </ul>
+            )}
+            <button
+              className="mt-3 w-full rounded-full bg-forest px-5 py-3 text-sm font-semibold text-white hover:bg-forest-dark disabled:opacity-60"
+              disabled={building}
+              data-build-quote
+              onClick={async () => {
+                setBuilding(true);
+                try { const v = await adminApi.quoteNew(lead.id); navigate(`/admin/quotes/${v.quote.id}`); }
+                catch (e) { alert((e as Error).message); setBuilding(false); }
+              }}
+            >{quotes.some((q) => q.state === 'draft') ? 'Open the draft quote' : 'Build a quote'}</button>
+          </div>
+
           <div className="bg-cream rounded-card p-5 border border-sage-light">
             <p className="text-xs text-dark/40 uppercase tracking-wider font-semibold mb-3">Quick Actions</p>
             <div className="flex flex-col gap-2">
@@ -180,6 +228,12 @@ export default function AdminLeadDetailPage() {
                 className="flex items-center gap-2 px-4 py-2.5 bg-white rounded-xl text-sm font-medium text-dark hover:bg-sage-light transition-colors border border-sage-light"
               >
                 📞 Call {lead.name.split(' ')[0]}
+              </a>
+              <a
+                href={`sms:${lead.phone}`}
+                className="flex items-center gap-2 px-4 py-2.5 bg-white rounded-xl text-sm font-medium text-dark hover:bg-sage-light transition-colors border border-sage-light"
+              >
+                💬 Text {lead.name.split(' ')[0]}
               </a>
               <a
                 href={`mailto:${lead.email}`}

@@ -1,0 +1,95 @@
+---
+/**
+ * The footer on every public page, and the site's second link surface.
+ *
+ * THE KNOWLEDGE COLUMN (P15 §8) is not decoration. `/questions` (26 pages) and `/gallery` were
+ * each reachable from exactly one page before it — the homepage band — which means one edit to
+ * one page could orphan thirty-two written pages again without anything going red. A footer
+ * link is carried by every page on the site, so the floor under those routes stops being a
+ * single point of failure. `gates/orphan-pages.mjs` holds the floor at two inbound links.
+ */
+import Logo from './Logo.astro';
+import { business, services, markets, growth, setting } from '../../lib/catalog';
+
+const year = new Date().getFullYear();
+// B&P §7030.5: a licensed contractor's number goes on all advertising. Shown the moment it is on record.
+const licence = setting<string | null>('business.license_number', null);
+const licenceClass = setting<string | null>('business.license_class', null);
+const serviceLinks = services.slice(0, 7).map((s) => ({ href: `/services/${s.slug}`, label: s.short_name || s.name }));
+const company = [
+  { href: '/about', label: 'About Josue' },
+  { href: '/how-it-works', label: 'How it works' },
+  { href: '/pricing', label: 'Pricing' },
+  { href: '/contact', label: 'Contact' },
+  ...(growth.commercial ? [{ href: '/commercial', label: 'HOAs & apartments' }] : []),
+  ...(growth.careers ? [{ href: '/careers', label: 'Careers' }] : []),
+];
+const knowledge = [
+  { href: '/resources', label: 'Guides' },
+  { href: '/questions', label: 'Questions' },
+  { href: '/reviews', label: 'Reviews' },
+  { href: '/gallery', label: 'Before & after' },
+];
+---
+<footer class="tone-deep bg-tone-bg text-tone-fg">
+  <div class="container-site grid gap-12 py-section-sm lg:grid-cols-12">
+    <div class="lg:col-span-4">
+      <Logo tone="dark" size="lg" tagline />
+      <p class="mt-6 max-w-sm text-base text-tone-fg">
+        Weekly dog poop cleanup and turf care on the same day every week. Locally owned by Josue.
+      </p>
+      <div class="mt-6 flex flex-col gap-2 text-base">
+        <a href={business.phoneHref} class="font-semibold text-white hover:text-amber-400">{business.phone}</a>
+        <a href={`mailto:${business.email}`} class="text-tone-fg hover:text-white">{business.email}</a>
+      </div>
+      <div class="mt-8 flex flex-wrap gap-3">
+        <a href="/book" class="btn-primary btn-sm">See my price</a>
+        <a href="/account" class="btn-ghost btn-sm">Sign in</a>
+      </div>
+    </div>
+
+    <nav aria-label="Services" class="lg:col-span-2">
+      <p class="eyebrow mb-5">Services</p>
+      <ul class="space-y-2.5">
+        {serviceLinks.map((l) => <li><a href={l.href} class="text-base text-tone-fg hover:text-white">{l.label}</a></li>)}
+        <li><a href="/services" class="text-base font-medium text-white hover:text-amber-400">All services →</a></li>
+      </ul>
+    </nav>
+
+    <nav aria-label="Company" class="lg:col-span-3">
+      <p class="eyebrow mb-5">Scoop Dogg</p>
+      <ul class="space-y-2.5">
+        {company.map((l) => <li><a href={l.href} class="text-base text-tone-fg hover:text-white">{l.label}</a></li>)}
+      </ul>
+    </nav>
+
+    <nav aria-label="Guides and answers" class="lg:col-span-3">
+      <p class="eyebrow mb-5">Guides & answers</p>
+      <ul class="space-y-2.5">
+        {knowledge.map((l) => <li><a href={l.href} class="text-base text-tone-fg hover:text-white">{l.label}</a></li>)}
+      </ul>
+    </nav>
+  </div>
+
+  <div class="border-t border-white/10">
+    <nav aria-label="Areas" class="container-site py-section-sm">
+      <p class="eyebrow mb-6">Where we work</p>
+      <div class="grid gap-x-6 gap-y-7 sm:grid-cols-2 lg:grid-cols-4">
+        {markets().map((m) => (
+          <div>
+            <p class="mb-2.5 text-sm font-semibold capitalize text-white">{m.label}</p>
+            <ul class="space-y-1.5">
+              {m.areas.map((a) => <li><a href={`/areas/${a.slug}`} class="text-sm text-tone-fg hover:text-white">{a.name}</a></li>)}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </nav>
+  </div>
+  <div class="border-t border-white/10">
+    <div class="container-site flex flex-col gap-2 py-6 text-sm text-tone-muted sm:flex-row sm:items-center sm:justify-between">
+      <p>© {year} Scoop Dogg. Locally owned and operated.{licence && <span data-licence> CSLB licence #{licence}{licenceClass ? ` (${licenceClass})` : ''}.</span>}</p>
+      <p><a href="/admin/login" class="hover:text-white">Team sign-in</a></p>
+    </div>
+  </div>
+</footer>

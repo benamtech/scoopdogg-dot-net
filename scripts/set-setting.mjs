@@ -1,5 +1,11 @@
-/** Set one setting in the live database. `node --env-file=.env.local scripts/set-setting.mjs key '<json>'` */
+/** Set one setting in the live database. `node scripts/set-setting.mjs key '<json>'` */
 import pg from 'pg';
+import { loadEnv } from './_env.mjs';
+// The environment is this script's own dependency. `--env-file=.env.local` still works and
+// is still the documented way for a human; a bare `node scripts/<this>` now works too, which
+// is the only shape an agent session can run (scripts/_env.mjs says why). Nothing is printed.
+loadEnv();
+
 const [key, json] = process.argv.slice(2);
 if (!key || json === undefined) { console.error('usage: set-setting.mjs <key> <json-value>'); process.exit(1); }
 const c = new pg.Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: true } });
@@ -12,3 +18,7 @@ await c.query(
 const after = await c.query('select value from settings where key = $1', [key]);
 console.log(`  ${key}\n    was: ${JSON.stringify(before.rows[0]?.value ?? null)}\n    now: ${JSON.stringify(after.rows[0].value)}`);
 await c.end();
+// The pages render from the rows but sit behind the CDN until a purge (server/lib/site-cache.ts). An
+// admin save purges by itself; a row changed here must purge too, or the site shows the old value.
+try { const { purgeSite } = await import('./purge-site.mjs'); console.log(`  purged the public pages (${purgeSite()})`); }
+catch (e) { console.error(`  the row is saved but the purge failed — run node scripts/purge-site.mjs: ${String(e.message).split('\n')[0]}`); process.exitCode = 1; }

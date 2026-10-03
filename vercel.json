@@ -56,22 +56,41 @@
     },
     {
       "source": "/areas/:city(ventura|ojai|oak-view|oxnard|camarillo|santa-paula|thousand-oaks|newbury-park|moorpark|simi-valley|santa-barbara|westlake-village|malibu|fillmore|agoura-hills|carpinteria)/:service(weekly-pooper-scooper-service|one-time-dog-poop-cleanup|artificial-turf-deodorizing|yard-deep-clean|weekly-turf-maintenance|weekly-yard-maintenance|kitty-litter-exchange|dog-run-cleanups|cat-tree-cleaning|pressure-washing|kitty-litter-robot-cleaning)",
-      "destination": "/services/:service",
+      "destination": "/areas/:city",
+      "permanent": true
+    },
+    {
+      "source": "/zip/:zip(\\d{5})",
+      "destination": "/book?zip=:zip",
       "permanent": true
     }
   ],
   "rewrites": [
     {
+      "source": "/api/photo/:id",
+      "destination": "/api/photo"
+    },
+    {
+      "source": "/api/account/:path*",
+      "destination": "/api/account"
+    },
+    {
+      "source": "/api/booking/:path*",
+      "destination": "/api/booking"
+    },
+    {
       "source": "/api/admin/:path*",
       "destination": "/api/admin"
     },
     {
-      "source": "/admin/leads/:id",
-      "destination": "/admin/lead"
-    },
+      "source": "/api/quote/:path*",
+      "destination": "/api/quote"
+    }
+  ],
+  "crons": [
     {
-      "source": "/admin/messages/:id",
-      "destination": "/admin/message"
+      "path": "/api/cron",
+      "schedule": "0 14 * * *"
     }
   ]
 }

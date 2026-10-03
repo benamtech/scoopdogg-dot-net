@@ -1,33 +1,197 @@
 ---
-import Base from '../../layouts/Base.astro';
-import Nav from '../../components/Nav';
-import Footer from '../../components/Footer';
-import ServicePage from '../../pages_react/ServicePage';
-import { SERVICES } from '../../lib/services';
+/**
+ * One template for every service, rendered from the services, tiers and packages rows.
+ * A recurring service shows its monthly packages; a one-time service shows its published tiers,
+ * with "from" prices always reading "From" (e-from-never-final).
+ *
+ * Bands: header on the brand green with the ZIP card -> proof (sage) -> pricing (white) ->
+ * what every visit includes (amber, the list on a white card) -> reviews (green, white cards)
+ * -> questions (white) -> often paired with (sand) -> close (green).
+ */
+import Site from '../../layouts/Site.astro';
+import PageHero from '../../components/site/PageHero.astro';
+import Section from '../../components/site/Section.astro';
+import SectionHeading from '../../components/site/SectionHeading.astro';
+import PackageCards from '../../components/site/PackageCards.astro';
+import GuaranteeStamp from '../../components/site/GuaranteeStamp.astro';
+import Faq from '../../components/site/Faq.astro';
+import ReviewQuotes from '../../components/site/ReviewQuotes.astro';
+import CloseCta from '../../components/site/CloseCta.astro';
+import ProofBar from '../../components/site/ProofBar.astro';
+import { services, serviceBySlug, isRetiredService, tiersFor, packagesForService, formatTierPrice, headlinePrice, trust, headlineOffer } from '../../lib/catalog';
+import { questions } from '../../lib/questions';
 import { SITE_URL } from '../../lib/constants';
 
-export function getStaticPaths() {
-  return SERVICES.map((s) => ({ params: { service: s.slug }, props: { s } }));
-}
-const { s } = Astro.props;
+// Rendered on demand from the live rows, so a service the owner edits, adds or retires is on this
+// page at the next render. A slug with no active service answers 404.
+const { service: slug } = Astro.params;
+const found = serviceBySlug(slug!);
+// Retired, never deleted: a link somebody saved keeps working (migration 003's rule).
+if (!found && isRetiredService(slug!)) return Astro.redirect('/services', 301);
+if (!found) return new Response(null, { status: 404 });
+const s = found;
+const tiers = tiersFor(s.slug);
+const pkgs = packagesForService(s.slug);
+const price = headlinePrice(s.slug);
+const related = (s.related_slugs ?? []).map((r) => serviceBySlug(r)).filter(Boolean).slice(0, 3) as typeof services;
+/**
+ * The question pages that belong to THIS service (P15 §8, "every service page links its
+ * questions"). Measured before this existed: the question pages' own `related` lists are
+ * computed greedily — same service, then same topic, then the rest, capped at five — so two
+ * pages (litter-robot cleaning, pet-area pressure washing) were crowded out of every list and
+ * had exactly ONE inbound link, the /questions index. A page whose only inbound link is an
+ * index is one edit away from being an orphan again.
+ *
+ * This band is the structural fix: a question is reachable from the service it is about, which
+ * is also the page a reader arrives on. `gates/orphan-pages.mjs` holds the floor at two.
+ */
+const serviceQuestions = questions().filter((q) => q.service === s.slug);
+/**
+ * ONE DOOR PER SERVICE, and it is the funnel. Measured 2026-10-02: the homepage card for a
+ * one-time service went to `/book?service=<slug>` while this page — the one a search for that
+ * service lands on — sent the same visitor to `/contact?service=<slug>`, a general message form
+ * that never read the parameter. The funnel has booked all eleven services since P16 §3, so the
+ * page now opens with the same ZIP card the monthly plans have. A service with nothing but
+ * quoted tiers goes to the custom-quote lane, which does read `service`.
+ */
+const priced = tiers.some((t) => t.price_cents && !t.requires_quote && !t.price_is_from);
+const shape: 'recurring' | 'one_time' | 'quote' = pkgs.length ? 'recurring' : priced ? 'one_time' : 'quote';
+const bookHref = shape === 'quote' ? `/custom-quote?service=${s.slug}` : `/book?service=${s.slug}`;
+const bookLabel = shape === 'recurring' ? 'See my price' : shape === 'one_time' ? 'Book this service' : 'Get a quote';
+// Ben, 2026-09-16: the copy must not limit Scoop Dogg to one county.
+const widen = (t: string) => t.replace(/ in Ventura County\b/g, ' in Ventura & Santa Barbara Counties').replace(/\bServing Ventura County\b/g, 'Serving Ventura & Santa Barbara Counties').replace(/ across Ventura County\b/g, ' across Ventura & Santa Barbara Counties');
+const title = widen(s.meta_title || `${s.name} | Scoop Dogg`);
+const description = widen(s.meta_description || s.intro || '');
+const heading = widen(s.h1 || s.name);
+const intro = s.intro ? widen(s.intro) : undefined;
+const offerHere = headlineOffer && headlineOffer.applies_to_slugs.includes(s.slug) ? headlineOffer.name : null;
 const jsonLd = [
   {
-    '@context': 'https://schema.org', '@type': 'Service',
-    name: s.name, description: s.metaDescription,
-    provider: { '@type': 'LocalBusiness', name: 'Scoop Dogg', '@id': `${SITE_URL}/#business` },
-    areaServed: { '@type': 'AdministrativeArea', name: 'Ventura County, CA' },
+    '@context': 'https://schema.org', '@type': 'Service', name: s.name, description,
+    provider: { '@type': 'LocalBusiness', '@id': `${SITE_URL}/#business`, name: 'Scoop Dogg' },
+    areaServed: [{ '@type': 'AdministrativeArea', name: 'Ventura County, CA' }, { '@type': 'AdministrativeArea', name: 'Santa Barbara County, CA' }],
+    offers: pkgs.length
+      ? pkgs.map((p) => ({ '@type': 'Offer', name: p.name, priceSpecification: { '@type': 'UnitPriceSpecification', price: (p.monthly_price_cents / 100).toFixed(2), priceCurrency: 'USD', unitText: 'MON' } }))
+      : tiers.filter((t) => t.price_cents && !t.price_is_from).map((t) => ({ '@type': 'Offer', name: t.label, price: ((t.price_cents ?? 0) / 100).toFixed(2), priceCurrency: 'USD' })),
   },
-  {
-    '@context': 'https://schema.org', '@type': 'FAQPage',
-    mainEntity: s.faqs.map((f) => ({
-      '@type': 'Question', name: f.q,
-      acceptedAnswer: { '@type': 'Answer', text: f.a },
-    })),
-  },
+  ...(s.faqs?.length ? [{ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: s.faqs.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) }] : []),
 ];
 ---
-<Base title={s.metaTitle} description={s.metaDescription} canonicalPath={`/services/${s.slug}`} jsonLd={jsonLd}>
-  <Nav client:load />
-  <main><ServicePage service={s.slug} /></main>
-  <Footer />
-</Base>
+<Site title={title} description={description} canonicalPath={`/services/${s.slug}`} jsonLd={jsonLd} mobileCtaHref={bookHref} mobileCtaLabel={bookLabel}>
+  <PageHero
+    eyebrow={shape === 'recurring' ? 'Monthly plan' : 'One-time service'}
+    title={heading}
+    lede={intro}
+    crumbs={[{ href: '/services', label: 'Services' }]}
+    form={shape !== 'quote'}
+    formService={s.slug}
+    formTitle={shape === 'recurring' ? 'See your price in a minute' : 'Book online in a minute'}
+    source={`service-${s.slug}`}
+  >
+    {shape === 'quote' && (
+      <div class="mt-8 flex flex-wrap items-center gap-5">
+        <a href={bookHref} class="btn-primary btn-lg">{bookLabel}</a>
+        {price && <p class="text-xl font-semibold text-white" data-price-cents={price.cents}>{price.text}{price.per}</p>}
+      </div>
+    )}
+  </PageHero>
+
+  {/* The count and the words of real reviews beside the decision, on the page a search lands on. */}
+  <ProofBar tone="sage" />
+
+  <Section tone="white" labelledby="price-title">
+    <SectionHeading id="price-title" eyebrow="Pricing" title={pkgs.length ? 'Pick your plan' : 'What it costs'} lede={[s.pricing_note, offerHere ? `${offerHere}.` : null].filter(Boolean).join(' ') || undefined}>
+      <a slot="action" href="/pricing" class="link text-base">All pricing</a>
+    </SectionHeading>
+    <div class="mt-12">
+      {pkgs.length > 0 ? <PackageCards service={s.slug} /> : (
+        <dl class="max-w-3xl divide-y divide-line border-y border-line">
+          {tiers.map((t) => (
+            <div class="flex items-center justify-between gap-6 py-5" data-tier={t.id} data-price-cents={t.price_cents ?? undefined}>
+              <dt class="text-lg text-ink-700">{t.label}</dt>
+              <dd class="shrink-0 font-serif text-h3 text-forest-900">{t.requires_quote || t.price_cents === null
+                ? <a class="link" href={`/custom-quote?service=${s.slug}&size=${encodeURIComponent(t.label)}`}>Get a quote</a>
+                : formatTierPrice(t, 'Custom quote')}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </div>
+  </Section>
+
+  {(s.what_includes?.length ?? 0) > 0 && (
+    <Section tone="amber" labelledby="included-title">
+      <div class="grid gap-10 lg:grid-cols-12 lg:items-center">
+        <div class="lg:col-span-5">
+          <p class="eyebrow mb-4">Every visit</p>
+          <h2 id="included-title" class="text-h2 text-tone-heading">What's included</h2>
+          {s.who_its_for && <p class="mt-6 text-xl text-tone-fg">Best for: {s.who_its_for}</p>}
+        </div>
+        <div class="tone-white rounded-xl bg-paper p-6 shadow-lg sm:p-9 lg:col-span-7">
+          <ul class="space-y-4">
+            {(s.what_includes ?? []).map((w) => (
+              <li class="flex gap-4 text-lg text-ink-700">
+                <span class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-forest-700 text-white" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l5 5 9-10" /></svg></span>
+                {w}
+              </li>
+            ))}
+          </ul>
+          {trust.guarantee && <div class="mt-8 border-t border-line pt-7"><GuaranteeStamp size={84} /></div>}
+        </div>
+      </div>
+    </Section>
+  )}
+
+  <Section tone="forest" labelledby="svc-reviews">
+    <SectionHeading id="svc-reviews" eyebrow="Reviews" title="Neighbors love it" />
+    <div class="mt-12"><ReviewQuotes limit={3} /></div>
+  </Section>
+
+  {(s.faqs?.length > 0 || serviceQuestions.length > 0) && (
+    <Section tone="white" labelledby="svc-faq">
+      <div class="grid gap-12 lg:grid-cols-12">
+        <div class="lg:col-span-4">
+          <p class="eyebrow mb-4">Questions</p>
+          <h2 id="svc-faq" class="text-h2 text-forest-900">{s.short_name || s.name}: questions</h2>
+          <a href={bookHref} class="btn-primary mt-8">{bookLabel}</a>
+        </div>
+        <div class="lg:col-span-8">
+          {s.faqs?.length > 0 && <Faq items={s.faqs} />}
+          {serviceQuestions.length > 0 && (
+            <div class={s.faqs?.length > 0 ? 'mt-10 border-t border-line pt-8' : ''}>
+              <h3 class="text-h3 text-forest-900">Answered in full</h3>
+              <ul class="mt-5 grid gap-3 sm:grid-cols-2">
+                {serviceQuestions.map((q) => (
+                  <li><a href={`/questions/${q.slug}`} class="card-lift group flex h-full items-start justify-between gap-4 p-5">
+                    <span class="text-base font-semibold text-forest-900">{q.q}</span>
+                    <span aria-hidden="true" class="shrink-0 text-orange-600 transition duration-fast group-hover:translate-x-0.5">→</span>
+                  </a></li>
+                ))}
+              </ul>
+              <p class="mt-6"><a href="/questions" class="link text-base">All questions</a></p>
+            </div>
+          )}
+        </div>
+      </div>
+    </Section>
+  )}
+
+  {related.length > 0 && (
+    <Section tone="sand" size="sm" rule labelledby="related">
+      <h2 id="related" class="text-h3 text-forest-900">Often paired with</h2>
+      <ul class="mt-6 grid gap-4 sm:grid-cols-3">
+        {related.map((r) => {
+          const p = headlinePrice(r.slug);
+          return (
+            <li><a href={`/services/${r.slug}`} class="card-lift group flex h-full items-center justify-between gap-4 p-5">
+              <span><span class="block text-lg font-semibold text-forest-900">{r.name}</span>{p && <span class="mt-1 block text-sm text-ink-500">{p.text}{p.per}</span>}</span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="shrink-0 text-forest-500 transition duration-fast group-hover:translate-x-0.5" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+            </a></li>
+          );
+        })}
+      </ul>
+    </Section>
+  )}
+
+  <CloseCta source={`service-${s.slug}-close`} service={shape !== 'quote' ? s.slug : undefined} title={shape === 'recurring' ? undefined : `Book ${s.short_name || s.name} online.`} />
+</Site>
