@@ -67,6 +67,14 @@ export type BookingInput = {
   /** Trimmed request metadata that makes the consent record verifiable. Set by the API layer. */
   consent_ip?: string | null;
   consent_user_agent?: string | null;
+  /**
+   * WHERE THE BOOKING WAS MADE. Set by server code only (api/mcp.ts), never read from a request
+   * body, so a browser cannot choose it. 'chatgpt' books the chosen day with NO card and NO
+   * renewal consent: ChatGPT may not take payment for a service (plugin guidelines), so the
+   * booking goes down the request path and Josue confirms it, then sends the billing invite
+   * (which records the consent, server/lib/invites.ts) or takes payment on the day.
+   */
+  channel?: 'site' | 'chatgpt';
 };
 
 export class BookingError extends Error {
@@ -239,7 +247,8 @@ export async function createBooking(input: BookingInput, base: string) {
 
   const mode = await currentMode();
   // A first visit Josue has to price himself is not a checkout, whatever Stripe's state is.
-  const ready = (await paymentsReady(mode)) && !needsFirstVisitQuote;
+  const viaChatgpt = input.channel === 'chatgpt';
+  const ready = (await paymentsReady(mode)) && !needsFirstVisitQuote && !viaChatgpt;
 
   // LANE B ONLY EXISTS WHEN THE SETTINGS SAY SO, and only for a recurring plan: a one-time job
   // has no second month to trial into. `booking.lanes_enabled` is a row (migration 018).
@@ -271,7 +280,9 @@ export async function createBooking(input: BookingInput, base: string) {
    * article does not reach it, and a renewal sentence over it would be a false statement.
    */
   const settings = catalogNow.settings;
-  const terms = quote && quote.ok
+  // A ChatGPT booking agrees to nothing that renews: no card, no charge. The consent is taken when
+  // the customer accepts Josue's billing invite.
+  const terms = quote && quote.ok && !viaChatgpt
     ? renewalTerms({
         lane: payAfter ? 'payafter' : 'prepay',
         monthlyCents: quote.monthlyCents,
@@ -387,7 +398,9 @@ export async function createBooking(input: BookingInput, base: string) {
 
   if (!ready) {
     await notifyOwner('booking_owner', `Booking request: ${input.name} — ${quote ? quote.package.name : oneTime!.label}`, input, quote, chosen.label,
-      needsFirstVisitQuote
+      viaChatgpt
+        ? `Booked in ChatGPT for ${chosen.label}. No card was taken: ChatGPT does not take payment for a service. Confirm the day with the customer, then send the billing invite from their record or take payment on the day.${needsFirstVisitQuote ? ' The yard is more than six weeks behind, so price the first visit with them.' : ''}`
+        : needsFirstVisitQuote
         ? `The yard has not been cleaned in ${input.last_cleaned === 'longer' ? 'more than six weeks' : 'a while'}, so your own catalog says the first visit needs a quote. No card was taken. Price the first visit and confirm it with the customer; the weekly plan is unaffected.`
         : 'Online payments are not connected in this mode yet, so this booking was saved without payment. Confirm it with the customer.');
     return { mode: 'request' as const, booking_id: subscriptionId, start_label: chosen.label };
