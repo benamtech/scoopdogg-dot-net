@@ -14,6 +14,7 @@ import { demoMode, demoStatus } from '../server/lib/notify.js';
 import { sendJson, readJsonBody, safeError, type ApiRequest, type ApiResponse } from '../server/lib/http.js';
 import { startLogin, verifyLogin, getSession, endSession, rateLimit, isOverLimit, type AdminSession } from '../server/lib/admin-auth.js';
 import { probeAccount, createConnectedAccount, onboardingLink, publishAllPrices, publishPricesWhenReady, connection, requirementsOf, disconnect, reconnect, type StripeMode } from '../server/lib/stripe.js';
+import { onboardingRefusal } from '../server/lib/stripe-refusal.js';
 import { checklist, setRouteDays, setOwnerSetting, setAreaBookable, confirmPrices } from '../server/lib/onboarding.js';
 import { listAreas } from '../server/lib/areas.js';
 import { listJobs, scheduleJob, recordManualPayment, customerDetail, week, visitDetail, invoicesByState, BusinessError } from '../server/lib/business.js';
@@ -321,10 +322,17 @@ async function route(req: ApiRequest, res: ApiResponse) {
     if (path === 'payments/onboard' && req.method === 'POST') {
       const body = await readJsonBody(req);
       const mode: StripeMode = body.mode === 'live' ? 'live' : 'test';
-      await createConnectedAccount(mode, { displayName: 'Scoop Dogg', email: session.email, by: session.email });
       const host = (req.headers['x-forwarded-host'] as string) || req.headers.host || 'scoopdogg.net';
       const proto = host.startsWith('127.') || host.startsWith('localhost') ? 'http' : 'https';
-      return sendJson(res, 200, { url: await onboardingLink(mode, `${proto}://${host}`) });
+      try {
+        await createConnectedAccount(mode, { displayName: 'Scoop Dogg', email: session.email, by: session.email });
+        return sendJson(res, 200, { url: await onboardingLink(mode, `${proto}://${host}`) });
+      } catch (e) {
+        const refusal = onboardingRefusal(e);
+        if (!refusal) throw e;
+        safeError(`admin:payments/onboard:${mode}`, e);
+        return sendJson(res, refusal.status, { error: refusal.error, code: refusal.code });
+      }
     }
     if (path === 'payments/publish' && req.method === 'POST') {
       const body = await readJsonBody(req);
