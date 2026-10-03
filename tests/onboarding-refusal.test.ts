@@ -20,6 +20,13 @@ test("the platform's missing live Connect setup is named as AMTECH's, not his", 
   assert.doesNotMatch(r.error, /must be activated|dashboard\.stripe\.com/);
 });
 
+test('the missing platform branding icon is AMTECH\'s too', () => {
+  const r = onboardingRefusal(stripeError('', 'You must update your Connect branding settings with icon in order to create an account link. You can set the missing fields at https://dashboard.stripe.com/settings/connect/onboarding-interface.'));
+  assert.ok(r);
+  assert.equal(r.status, 503);
+  assert.match(r.error, /AMTECH/);
+});
+
 test('any other Stripe refusal reaches him in Stripe\'s words', () => {
   const r = onboardingRefusal(stripeError('email_invalid', 'Invalid email address: x'));
   assert.ok(r);

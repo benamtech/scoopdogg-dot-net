@@ -11,8 +11,11 @@
 export function onboardingRefusal(e: unknown): { status: number; error: string; code: string | null } | null {
   const err = e as { type?: string; code?: string; raw?: { code?: string }; message?: string };
   const code = err?.code ?? err?.raw?.code ?? null;
-  if (code === 'account_create_activation_required') {
-    return { status: 503, code, error: "Stripe hasn't switched on payments for this site's platform yet. That part is on AMTECH's side, not yours, and AMTECH is fixing it. There is nothing for you to do; once it's sorted this button will take you straight to Stripe." };
+  // The second platform-side refusal, met the same evening: a live account link needs the
+  // platform's Connect branding icon, set only in AMTECH's dashboard.
+  const platformSide = code === 'account_create_activation_required' || /Connect branding settings/i.test(err?.message ?? '');
+  if (platformSide) {
+    return { status: 503, code: code ?? 'platform_connect_branding', error: "Stripe hasn't switched on payments for this site's platform yet. That part is on AMTECH's side, not yours, and AMTECH is fixing it. There is nothing for you to do; once it's sorted this button will take you straight to Stripe." };
   }
   if (typeof err?.type === 'string' && err.type.startsWith('Stripe')) {
     return { status: 502, code, error: `Stripe said: ${err.message ?? 'no reason given'}` };
