@@ -101,6 +101,20 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       if (pub) console.log(`[stripe-webhook] prices: ${pub.attempted ? `${pub.created} created` : `skipped — ${pub.reason}`}`);
     }
 
+    // HE DISCONNECTED US FROM HIS SIDE. An account connected with "Connect with Stripe" can revoke
+    // AMTECH in his own Stripe dashboard, and from then on every call for it fails. Recorded as a
+    // revocation, the same row state the admin's Disconnect leaves, so the Payments screen offers
+    // Connect Stripe again, and it can no longer read as able to charge: the booking path decides from
+    // charges_enabled, and a probe of an account we cannot reach leaves the old reading standing. Our fee
+    // cannot be cleared from here, because our access is already gone (unlike disconnect()).
+    if (event.type === 'account.application.deauthorized' && event.account) {
+      const { rowCount } = await db().query(
+        `update stripe_connection set revoked_at = now(), revoked_by = 'stripe:deauthorized',
+                charges_enabled = false, card_payments_status = null, updated_at = now()
+          where livemode = $1 and account_id = $2 and revoked_at is null`, [mode === 'live', event.account]);
+      console.log(`[stripe-webhook] account.application.deauthorized ${event.account} -> ${rowCount ? 'revoked' : 'not ours or already revoked'}`);
+    }
+
     // LANE B, THREE DAYS OUT. Stripe sends this before it charges a trialing subscription. We
     // record it against the subscription rather than emailing from here: the customer already
     // knows the date (it is on the review screen, in the welcome mail and in their account), and

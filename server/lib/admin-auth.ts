@@ -32,7 +32,8 @@ const MAX_CODE_ATTEMPTS = 5;
 export type AdminRole = 'superadmin' | 'admin' | 'crew';
 export type AdminSession = { id: string; teamId: string; name: string; email: string; role: AdminRole };
 
-function secret() {
+/** Also signs the Stripe Connect state token (server/lib/stripe-oauth.ts), so it dies with the sessions it binds to. */
+export function secret() {
   const s = process.env.SESSION_SECRET || process.env.DATABASE_URL;
   if (!s) throw new Error('SESSION_SECRET is not configured.');
   return s;

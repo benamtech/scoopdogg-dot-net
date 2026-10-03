@@ -41,6 +41,9 @@ const EVENTS = [
   'customer.subscription.deleted',
   'customer.subscription.trial_will_end',
   'account.updated',
+  // He disconnected AMTECH from inside his own Stripe (an account connected with "Connect with
+  // Stripe", server/lib/stripe-oauth.ts). Nothing else would tell the site its account is gone.
+  'account.application.deauthorized',
   'payment_method.attached',
   // Stripe's current name for a network reissue, and the one it actually delivers. Asking for
   // either registers both; handling only the old one loses every card update (see cards.ts).
