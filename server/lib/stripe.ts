@@ -88,6 +88,55 @@ export async function createConnectedAccount(mode: StripeMode, opts: { displayNa
   return { accountId: (account as { id: string }).id, created: true };
 }
 
+export class ConnectError extends Error {
+  constructor(readonly result: 'mismatch' | 'occupied' | 'failed', message: string) { super(message); }
+}
+
+/**
+ * Finish "Connect with Stripe" (server/lib/stripe-oauth.ts): trade Stripe's one-time code for the
+ * account the owner signed in to, or created, and make it this mode's account.
+ *
+ * Three refusals, each a real way to point the business's money at the wrong place:
+ *   mismatch  a test-mode code answered for the live row, or the reverse (P11: key and account
+ *             come from the same mode, always).
+ *   occupied  a DIFFERENT account is already connected here and Stripe says it can take cards.
+ *             Replacing a working account is a disconnect first, on purpose: disconnect() is what
+ *             takes our fee off its subscriptions, and a silent swap would skip that.
+ *   failed    Stripe would not trade the code (expired, used twice, or not ours).
+ * The readiness of whatever account was there before is discarded by the row's own trigger
+ * (migrations 037 and 038); the probe and price publish run straight after, in the caller.
+ */
+export async function connectWithCode(mode: StripeMode, code: string, by: string) {
+  const stripe = stripeFor(mode);
+  let token: { livemode?: boolean; stripe_user_id?: string };
+  try {
+    token = await stripe.oauth.token({ grant_type: 'authorization_code', code });
+  } catch (e) {
+    throw new ConnectError('failed', `oauth_token: ${(e as Error).message.slice(0, 160)}`);
+  }
+  const accountId = token.stripe_user_id;
+  if (!accountId) throw new ConnectError('failed', 'oauth_token: no stripe_user_id');
+  if (Boolean(token.livemode) !== (mode === 'live')) {
+    throw new ConnectError('mismatch', `oauth_mode_mismatch: asked ${mode}, Stripe answered livemode=${token.livemode}`);
+  }
+  const { rows } = await db().query(
+    `select account_id, charges_enabled, revoked_at from stripe_connection where livemode = $1`, [mode === 'live']);
+  const here = rows[0] as { account_id: string | null; charges_enabled: boolean; revoked_at: string | null } | undefined;
+  if (here?.account_id && here.account_id !== accountId && here.charges_enabled && !here.revoked_at) {
+    throw new ConnectError('occupied', `occupied: ${here.account_id} is connected and can charge`);
+  }
+  // His name for the business, as his Stripe account has it. Optional: the connection stands without it.
+  const acct = await stripe.accounts.retrieve(accountId).catch(() => null);
+  const name = acct?.settings?.dashboard?.display_name || acct?.business_profile?.name || null;
+  await db().query(
+    `insert into stripe_connection (livemode, account_id, connected_at, connected_by, display_name, updated_at)
+       values ($1, $2, now(), $3, $4, now())
+     on conflict (livemode) do update set account_id = $2, connected_at = now(), connected_by = $3,
+       display_name = coalesce($4, stripe_connection.display_name), revoked_at = null, revoked_by = null, updated_at = now()`,
+    [mode === 'live', accountId, by, name]);
+  return { accountId, displayName: name };
+}
+
 export async function onboardingLink(mode: StripeMode, base: string) {
   const conn = await connection(mode);
   if (!conn?.account_id) throw new Error(`stripe_not_connected_${mode}`);
@@ -445,10 +494,21 @@ export async function createTestFixtureAccount(by: string) {
 export async function requirementsOf(mode: StripeMode) {
   const conn = await connection(mode);
   if (!conn?.account_id) return null;
-  const acct = (await stripeFor(mode).v2.core.accounts.retrieve(conn.account_id, { include: ['requirements', 'configuration.merchant'] } as never)) as unknown as {
+  const acct = (await stripeFor(mode).v2.core.accounts.retrieve(conn.account_id, { include: ['requirements', 'configuration.merchant'] } as never).catch(() => null)) as unknown as {
     requirements?: { entries?: { description: string; minimum_deadline?: { status?: string }; errors?: { description?: string }[] }[] };
     configuration?: { merchant?: { capabilities?: { card_payments?: { status?: string } } } };
-  };
+  } | null;
+  // An account he connected with "Connect with Stripe" is a v1 Standard account, and v2 can answer
+  // for it with no merchant configuration (see probeAccount). A read that did not answer is not
+  // an answer, so ask v1, whose `currently_due` is Stripe's own list, by field name.
+  if (!acct?.configuration?.merchant) {
+    const v1 = await stripeFor(mode).accounts.retrieve(conn.account_id);
+    return {
+      card_payments: v1.capabilities?.card_payments ?? null,
+      entries: [...(v1.requirements?.past_due ?? []).map((f) => `past_due: ${f}`), ...(v1.requirements?.currently_due ?? []).map((f) => `currently_due: ${f}`)]
+        .filter((e, i, all) => all.indexOf(e) === i),
+    };
+  }
   return {
     card_payments: acct.configuration?.merchant?.capabilities?.card_payments?.status ?? null,
     entries: (acct.requirements?.entries ?? []).map((e) => `${e.minimum_deadline?.status}: ${e.description}${e.errors?.length ? ' ! ' + e.errors.map((x) => x.description).join('; ') : ''}`),

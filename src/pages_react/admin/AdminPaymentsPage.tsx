@@ -2,8 +2,9 @@
  * Payments: connecting Josue's own Stripe account, and whether it can actually take money.
  *
  * Ben, 2026-09-19: *"josue connecting his stripe account isnt a step in the development plan,
- * its a feature."* This is the feature. One button, Stripe's own hosted onboarding, and a card
- * that says what Stripe says.
+ * its a feature."* This is the feature. One button, Stripe's own "Connect with Stripe" page, and a
+ * card that says what Stripe says. On that page he signs in to the Stripe account he already has, or
+ * makes one (server/lib/stripe-oauth.ts: hosted onboarding could only ever make a NEW account).
  *
  * THREE THINGS THIS CARD MUST NEVER DO (P18 §1.3), each of which is a real failure somebody has
  * shipped before:
@@ -34,6 +35,16 @@ import type { ModeStatus, PaymentsData as Data } from '../../lib/adminApi';
 
 const money = (c: number) => `$${(c / 100).toFixed(0)}`;
 
+/** What happened on Stripe's page, said once when he lands back here (api/admin.ts payments/oauth-callback). */
+const CONNECT_RESULT: Record<string, { ok: boolean; text: string }> = {
+  connected: { ok: true, text: 'Your Stripe account is connected. The card below says whether Stripe has card payments on yet.' },
+  cancelled: { ok: false, text: "You left Stripe's page without connecting. Nothing changed." },
+  expired: { ok: false, text: 'That connect link expired, or it was opened from a different sign-in. Press Connect Stripe again.' },
+  failed: { ok: false, text: "Stripe didn't finish the connection. Press Connect Stripe again. If it happens twice, tell AMTECH." },
+  mismatch: { ok: false, text: "Stripe answered for test mode when this was live, or the other way round. Nothing changed. Tell AMTECH." },
+  occupied: { ok: false, text: 'A different Stripe account is already connected and taking payments. Disconnect it first, then connect the new one.' },
+};
+
 async function call(path: string, body?: unknown) {
   const r = await fetch(`/api/admin/${path}`, { credentials: 'same-origin', ...(body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}) });
   const j = await r.json().catch(() => ({}));
@@ -47,7 +58,16 @@ export default function AdminPaymentsPage() {
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
   const load = async () => { try { setData(await call('payments')); } catch (e) { setError((e as Error).message); } };
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    const result = new URLSearchParams(window.location.search).get('connect');
+    const said = result ? CONNECT_RESULT[result] : undefined;
+    if (said) {
+      if (said.ok) setNote(said.text); else setError(said.text);
+      // Said once. A reload must not announce a connection again.
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+    load();
+  }, []);
 
   const onboard = async (mode: 'test' | 'live') => {
     setBusy(`onboard-${mode}`); setError('');
@@ -80,7 +100,8 @@ export default function AdminPaymentsPage() {
           <span className={`rounded-sm px-2 py-1 text-micro font-semibold uppercase ${state.cls}`}>{state.label}</span>
         </div>
         <p className="mt-3 text-base text-ink-700">
-          {s.account_id ? `Account ${s.account_id}${s.display_name ? ` · ${s.display_name}` : ''}` : 'Connect the Stripe account you want your customers\u2019 money to land in.'}
+          {s.account_id && !s.revoked_at ? `Account ${s.account_id}${s.display_name ? ` · ${s.display_name}` : ''}`
+            : 'Connect the Stripe account you want your customers\u2019 money to land in. On Stripe\u2019s page you sign in to the account you already have, or make one.'}
         </p>
         {s.account_id && (
           <dl className="mt-4 grid gap-2 text-base">
@@ -119,8 +140,8 @@ export default function AdminPaymentsPage() {
           <p className="mt-4 text-sm text-ink-500">We could not read what Stripe wants just now, so this may be incomplete.</p>
         )}
         <div className="mt-5 flex flex-wrap gap-2">
-          {!s.ready && <button className="btn-primary btn-sm" disabled={!!busy} onClick={() => onboard(mode)}>
-            {busy === `onboard-${mode}` ? 'Opening Stripe…' : s.account_id ? 'Finish connecting' : 'Connect Stripe'}</button>}
+          {(!s.ready || s.revoked_at) && <button className="btn-primary btn-sm" disabled={!!busy} onClick={() => onboard(mode)}>
+            {busy === `onboard-${mode}` ? 'Opening Stripe…' : s.account_id && !s.revoked_at ? 'Finish connecting' : 'Connect Stripe'}</button>}
           {s.ready && !s.revoked_at && <button className="btn-ghost btn-sm" disabled={!!busy} onClick={() => publish(mode)}>
             {busy === `publish-${mode}` ? 'Publishing…' : 'Publish prices again'}</button>}
           <button className="btn-ghost btn-sm" disabled={!!busy} onClick={load}>Re-check</button>

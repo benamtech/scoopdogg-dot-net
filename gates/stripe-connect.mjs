@@ -3,15 +3,18 @@
  *
  *   node gates/stripe-connect.mjs
  *
- * P18 §5. The gate P18 originally specified checked an OAuth `state` token — reusable, expiring,
- * bound to the admin session. THERE IS NO OAUTH HERE and there cannot be: Stripe's Accounts v2
- * documentation lists "Using OAuth to authenticate connected accounts" among the cases where you
- * must use Accounts v1, and v1 account creation is refused for this platform. So the three things
- * worth proving about the v2 path are different, and this is them:
+ * P18 §5 specified an OAuth `state` token — expiring, bound to the admin session. From 2026-09-19
+ * to 2026-10-03 there was no OAuth here, and this gate forbade it. It is back because Josue already
+ * has a Stripe account, and hosted onboarding can only ever make a new one
+ * (server/lib/stripe-oauth.ts). So the state token is checked again, with what a callback must do:
  *
- *  1. ONBOARDING IS BEHIND A SESSION. The route that mints a Stripe onboarding link sits below
- *     api/admin.ts's session check, where everything after `getSession` lives. A link minted for
- *     an anonymous caller is an invitation to attach an account to somebody else's business.
+ *  1. CONNECTING IS BEHIND A SESSION. The route that mints Stripe's link, and the callback that
+ *     lands an account, sit below api/admin.ts's session check. Either one open to an anonymous
+ *     caller is an invitation to attach an account to somebody else's business.
+ *
+ *  4. THE CALLBACK TRUSTS NOTHING IT DID NOT SIGN. It verifies the state (signed, this session,
+ *     not expired) before it trades the code; and `connectWithCode()` refuses a code from the other
+ *     mode, and refuses to replace a different account that can already charge, BEFORE it writes.
  *
  *  2. THE FEE COMES OFF BEFORE WE STOP LOOKING. Stripe keeps collecting `application_fee_percent`
  *     after a disconnect (P17 §8), so `disconnect()` must clear it FIRST and must not record the
@@ -38,12 +41,12 @@ const guardAt = admin.indexOf('const session = await getSession(req)');
 const routesBelowSession = (src) => {
   const at = src.indexOf('const session = await getSession(req)');
   if (at < 0) return false;
-  return ['payments/onboard', 'payments/disconnect', 'payments/publish', 'customers/invite']
+  return ['payments/onboard', 'payments/oauth-callback', 'payments/disconnect', 'payments/publish', 'customers/invite']
     .every((p) => { const i = src.indexOf(`'${p}'`); return i > at; });
 };
 routesBelowSession(admin)
-  ? ok('onboarding, disconnect, publish and invite all sit behind a session', `guard at char ${guardAt}`)
-  : no('onboarding, disconnect, publish and invite all sit behind a session');
+  ? ok('connect, its callback, disconnect, publish and invite all sit behind a session', `guard at char ${guardAt}`)
+  : no('connect, its callback, disconnect, publish and invite all sit behind a session');
 
 // 2. the order inside disconnect(), read as positions in the function body.
 const body = stripeTs.slice(stripeTs.indexOf('export async function disconnect('));
@@ -64,15 +67,26 @@ const closesAccount = (src) => /accounts\.close|accounts\.del\(|\/close'/.test(s
 closesAccount(code(stripeTs)) ? no('the platform never closes the client\'s Stripe account')
                         : ok('the platform never closes the client\'s Stripe account');
 
-// 4. no OAuth remnant. A half-removed mechanism is worse than either mechanism.
-const oauthLeft = /connect\.stripe\.com\/oauth|stripe_oauth_states|oauth\/deauthorize/.test(code(stripeTs) + code(admin));
-oauthLeft ? no('no OAuth remnants in the shipped path', 'P18 §1 was rewritten to Accounts v2')
-          : ok('no OAuth remnants in the shipped path');
-
-// The remnant check must still see a real one.
-/connect\.stripe\.com\/oauth/.test(code("const u = 'https://connect.stripe.com/oauth/authorize';"))
-  ? ok('negative control: a real OAuth call trips the remnant check')
-  : no('negative control: a real OAuth call trips the remnant check', 'DETECTOR BLIND');
+// 4. the callback verifies before it trades, and the trade checks before it writes.
+const callback = (src) => { const at = src.indexOf("'payments/oauth-callback'"); return at < 0 ? '' : src.slice(at, src.indexOf("if (path === '", at + 30)); };
+const verifiesFirst = (src) => { const v = src.indexOf('verifyConnectState('), x = src.indexOf('connectWithCode('); return v >= 0 && x > v; };
+const connectFn = stripeTs.slice(stripeTs.indexOf('export async function connectWithCode('));
+const connectBody = connectFn.slice(0, connectFn.indexOf('\n}\n'));
+const checksBeforeWrite = (src) => {
+  const write = src.indexOf('insert into stripe_connection');
+  const mode = src.indexOf("'mismatch'", src.indexOf('livemode'));
+  const occupied = src.indexOf("'occupied'", src.indexOf('charges_enabled'));
+  return write > 0 && mode > 0 && occupied > 0 && mode < write && occupied < write;
+};
+verifiesFirst(callback(code(admin)))
+  ? ok('the OAuth callback verifies the signed state before it trades the code')
+  : no('the OAuth callback verifies the signed state before it trades the code');
+checksBeforeWrite(connectBody)
+  ? ok('connectWithCode refuses the wrong mode and a working different account before it writes')
+  : no('connectWithCode refuses the wrong mode and a working different account before it writes');
+/createConnectedAccount\(/.test(code(admin))
+  ? no('the button makes no account of its own', 'connecting is Stripe\'s page now; a second path would be a half mechanism')
+  : ok('the button makes no account of its own');
 
 // ---- negative controls ---------------------------------------------------------------------
 const brokenOrder = disconnectBody
@@ -89,6 +103,12 @@ feeFirst(swapped.join('\n'))
 closesAccount('await stripe.v2.core.accounts.close(id)')
   ? ok('negative control: a close() call trips it')
   : no('negative control: a close() call trips it', 'DETECTOR BLIND');
+verifiesFirst(callback(code(admin)).replace('verifyConnectState(', 'trustState('))
+  ? no('negative control: a callback that never verifies must trip it', 'DETECTOR BLIND')
+  : ok('negative control: a callback that never verifies trips it');
+checksBeforeWrite(connectBody.replace("'mismatch'", "'ignored'"))
+  ? no('negative control: dropping the mode check must trip it', 'DETECTOR BLIND')
+  : ok('negative control: dropping the mode check trips it');
 routesBelowSession(admin.replace("const session = await getSession(req)", "const zzz = 1; // moved"))
   ? no('negative control: a payments route above the session guard must trip it', 'DETECTOR BLIND')
   : ok('negative control: a payments route above the session guard trips it');

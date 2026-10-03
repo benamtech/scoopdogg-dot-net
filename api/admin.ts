@@ -12,8 +12,9 @@ import { db } from '../server/lib/db.js';
 import { expireDuePauses } from '../server/lib/account.js';
 import { demoMode, demoStatus } from '../server/lib/notify.js';
 import { sendJson, readJsonBody, safeError, type ApiRequest, type ApiResponse } from '../server/lib/http.js';
-import { startLogin, verifyLogin, getSession, endSession, rateLimit, isOverLimit, type AdminSession } from '../server/lib/admin-auth.js';
-import { probeAccount, createConnectedAccount, onboardingLink, publishAllPrices, publishPricesWhenReady, connection, requirementsOf, disconnect, reconnect, type StripeMode } from '../server/lib/stripe.js';
+import { startLogin, verifyLogin, getSession, endSession, rateLimit, isOverLimit, secret, type AdminSession } from '../server/lib/admin-auth.js';
+import { connectState, verifyConnectState, authorizeUrl, paymentsReturn } from '../server/lib/stripe-oauth.js';
+import { probeAccount, onboardingLink, connectWithCode, ConnectError, publishAllPrices, publishPricesWhenReady, connection, requirementsOf, disconnect, reconnect, type StripeMode } from '../server/lib/stripe.js';
 import { onboardingRefusal } from '../server/lib/stripe-refusal.js';
 import { checklist, setRouteDays, setOwnerSetting, setAreaBookable, confirmPrices } from '../server/lib/onboarding.js';
 import { listAreas } from '../server/lib/areas.js';
@@ -324,15 +325,56 @@ async function route(req: ApiRequest, res: ApiResponse) {
       const mode: StripeMode = body.mode === 'live' ? 'live' : 'test';
       const host = (req.headers['x-forwarded-host'] as string) || req.headers.host || 'scoopdogg.net';
       const proto = host.startsWith('127.') || host.startsWith('localhost') ? 'http' : 'https';
+      const base = `${proto}://${host}`;
+      const conn = await connection(mode);
+      const { rows: rev } = await db().query(`select revoked_at from stripe_connection where livemode = $1`, [mode === 'live']);
+      // NO ACCOUNT YET, OR HE DISCONNECTED: Stripe's own "Connect with Stripe" page, where he signs
+      // in to the account he already has or makes one (server/lib/stripe-oauth.ts says why this is
+      // not hosted onboarding any more). The callback below lands whichever he picks.
+      if (!conn?.account_id || rev[0]?.revoked_at) {
+        const state = connectState(session.id, mode, secret());
+        return sendJson(res, 200, { url: authorizeUrl(mode, { state, base, email: session.email, businessName: 'Scoop Dogg' }) });
+      }
+      // AN ACCOUNT THAT IS NOT FINISHED. One we created gets Stripe's hosted onboarding; one he
+      // brought with him is finished in his own Stripe dashboard, which is where Stripe sends an
+      // owner of a Standard account for anything it still wants.
       try {
-        await createConnectedAccount(mode, { displayName: 'Scoop Dogg', email: session.email, by: session.email });
-        return sendJson(res, 200, { url: await onboardingLink(mode, `${proto}://${host}`) });
+        return sendJson(res, 200, { url: await onboardingLink(mode, base) });
       } catch (e) {
         const refusal = onboardingRefusal(e);
-        if (!refusal) throw e;
-        safeError(`admin:payments/onboard:${mode}`, e);
-        return sendJson(res, refusal.status, { error: refusal.error, code: refusal.code });
+        if (refusal?.status === 503) {
+          safeError(`admin:payments/onboard:${mode}`, e);
+          return sendJson(res, refusal.status, { error: refusal.error, code: refusal.code });
+        }
+        safeError(`admin:payments/onboard:${mode}:link`, e);
+        return sendJson(res, 200, { url: 'https://dashboard.stripe.com/', where: 'dashboard' });
       }
+    }
+    if (path === 'payments/oauth-callback' && req.method === 'GET') {
+      // Stripe sends him back here, signed in (the cookie is SameSite=Lax, which a top-level
+      // redirect carries). Every outcome is a redirect to the Payments screen with one word on it,
+      // never a JSON body in a browser tab.
+      const q = new URL(req.url || '/', 'https://local.test').searchParams;
+      const back = (to: string) => { res.statusCode = 302; res.setHeader('Location', to); res.setHeader('Cache-Control', 'no-store'); res.end(); };
+      const mode = verifyConnectState(q.get('state') ?? '', session.id, secret());
+      if (!mode) return back(paymentsReturn('expired'));
+      if (q.get('error')) {
+        if (q.get('error') !== 'access_denied') safeError('admin:payments/oauth-callback', new Error(`${q.get('error')}: ${q.get('error_description') ?? ''}`));
+        return back(paymentsReturn(q.get('error') === 'access_denied' ? 'cancelled' : 'failed'));
+      }
+      const code = q.get('code');
+      if (!code) return back(paymentsReturn('failed'));
+      try {
+        await connectWithCode(mode, code, session.email);
+      } catch (e) {
+        safeError(`admin:payments/oauth-callback:${mode}`, e);
+        return back(paymentsReturn(e instanceof ConnectError ? e.result : 'failed'));
+      }
+      // Read what Stripe says about it now, and put the prices up if it can already take cards.
+      // Neither may undo the connection: the Payments screen re-reads both on load anyway.
+      await probeAccount(mode).catch((e) => safeError('admin:payments/oauth-callback:probe', e));
+      await publishPricesWhenReady(mode, 'admin:connect').catch((e) => safeError('admin:payments/oauth-callback:publish', e));
+      return back(paymentsReturn('connected'));
     }
     if (path === 'payments/publish' && req.method === 'POST') {
       const body = await readJsonBody(req);
