@@ -242,6 +242,8 @@ try {
     PUBLIC_SITE_URL: 'optional — falls back to the canonical host',
     SD_FORCE_DEMO: 'Preview only — it is what makes a preview safe to click through',
     SD_DEMO_ADDRESS: 'optional — demo.address covers it',
+    CRON_SECRET: 'Production — Vercel sends it to /api/cron; without it the daily run answers 503',
+    VERCEL: 'set by Vercel itself on every deployment — never added by hand',
   };
   const readInCode = [...new Set([...readFileSync('server/lib/db.ts', 'utf8')
     .concat(['server', 'api', 'src'].flatMap((d) => '').join(''))
