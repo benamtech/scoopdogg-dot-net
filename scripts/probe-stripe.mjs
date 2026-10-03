@@ -77,7 +77,13 @@ for (const [label, fn] of Object.entries(checks)) {
 const accounts = await call('GET', 'accounts?limit=100');
 const connected = accounts.status === 200 ? accounts.json.data.length : null;
 const connectReady = results['read platform account'] && results['list connected accounts'] && results['create onboarding link'];
-console.log(`\n  mode ${mode}  platform ${platform?.id ?? '?'}  connect usable: ${connectReady ? 'YES' : 'NO'}  connected accounts: ${connected}`);
+console.log(`\n  mode ${mode}  platform ${platform?.id ?? '?'}  connect scope: ${connectReady ? 'YES' : 'NO'}  connected accounts: ${connected}`);
+// SCOPE IS NOT ACTIVATION (2026-10-03). This printed "connect usable: YES" for AMTECH's live key
+// while Stripe refused every live account create with account_create_activation_required: the
+// platform had never finished live Connect's own identity check. A parameter_missing 400 proves
+// the key may call the endpoint; only a real create proves Stripe will make the account, and
+// this script creates nothing. Zero live connected accounts means that has never been shown.
+if (mode === 'live' && connected === 0) console.log('  live account creation: NOT MEASURED (no live connected account has ever been made)');
 
 if (write) {
   const c = new pg.Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: true } });
