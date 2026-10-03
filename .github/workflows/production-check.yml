@@ -30,11 +30,15 @@ concurrency:
 jobs:
   check:
     # Only the scoopdogg project's production deployments; the dormant scoopdogg-dot-net project
-    # also reports, and previews never count.
+    # also reports ('Production – scoopdogg-dot-net'), and previews never count. A production
+    # deployment started by hand or through Vercel's API reports plain 'Production' (measured
+    # 2026-10-03: the merge of PR #3 was never built by the Git integration, the deployment made
+    # from ref main through /v13/deployments reported 'Production', and this check skipped it).
     if: >-
       github.event_name != 'deployment_status' ||
       (github.event.deployment_status.state == 'success' &&
-       github.event.deployment.environment == 'Production – scoopdogg')
+       (github.event.deployment.environment == 'Production – scoopdogg' ||
+        github.event.deployment.environment == 'Production'))
     runs-on: ubuntu-latest
     timeout-minutes: 40
     env:
