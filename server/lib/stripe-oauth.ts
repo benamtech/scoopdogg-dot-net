@@ -84,6 +84,28 @@ export function authorizeUrl(mode: ConnectMode, opts: { state: string; base: str
   return `https://connect.stripe.com/oauth/authorize?${q}`;
 }
 
+/**
+ * Will Stripe's OAuth page open for this mode right now? Read-only: it loads the same public page a
+ * browser would, and Stripe answers a JSON error instead of a page when the platform's OAuth switch
+ * is off. Measured 2026-10-03: "Standard OAuth is disabled for this Stripe Connect integration",
+ * with the switch greyed out in Ben's dashboard. The button asks this on every press, so it uses
+ * OAuth the day Stripe allows it and hosted onboarding until then, with no deploy in between.
+ */
+export async function oauthAvailable(mode: ConnectMode, base: string, fetcher: typeof fetch = fetch): Promise<{ ok: boolean; reason: string | null }> {
+  try {
+    const res = await fetcher(authorizeUrl(mode, { state: 'availability-check', base }), {
+      redirect: 'follow', headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ScoopDogg-Site/1.0)' }, signal: AbortSignal.timeout(8000),
+    });
+    const text = await res.text();
+    let reason: string | null = null;
+    try { reason = JSON.parse(text)?.error?.message ?? null; } catch { /* a page, which is the good answer */ }
+    if (!reason && res.status >= 400) reason = `HTTP ${res.status}`;
+    return { ok: !reason, reason };
+  } catch (e) {
+    return { ok: false, reason: `unreachable: ${(e as Error).message.slice(0, 80)}` };
+  }
+}
+
 /** Where the callback sends the owner back to, with one word saying how it went. */
 export const paymentsReturn = (result: 'connected' | 'cancelled' | 'failed' | 'expired' | 'mismatch' | 'occupied') =>
   `/admin/payments?connect=${result}`;

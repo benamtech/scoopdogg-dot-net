@@ -3,7 +3,7 @@
 // and the link that lets Josue sign in to the Stripe account he already has.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { connectState, verifyConnectState, authorizeUrl, CLIENT_IDS, REDIRECT_PATH, STATE_TTL_MS } from '../server/lib/stripe-oauth.ts';
+import { connectState, verifyConnectState, authorizeUrl, oauthAvailable, CLIENT_IDS, REDIRECT_PATH, STATE_TTL_MS } from '../server/lib/stripe-oauth.ts';
 
 const SECRET = 'test-secret';
 const NOW = 1_800_000_000_000;
@@ -44,4 +44,21 @@ test("the link is Stripe's OAuth page for this mode, opening on sign-in, returni
   assert.equal(u.searchParams.get('stripe_user[email]'), 'j@example.com');
   assert.equal(new URL(authorizeUrl('test', { state: 'st', base: 'https://x.test' })).searchParams.get('client_id'), CLIENT_IDS.test);
   assert.notEqual(CLIENT_IDS.live, CLIENT_IDS.test);
+});
+
+// What Stripe answered on 2026-10-03 with the platform's OAuth switch off, and a page when it is on.
+const answering = (status: number, body: string) => (async () => new Response(body, { status })) as unknown as typeof fetch;
+
+test("OAuth is unavailable when Stripe answers its JSON error, and available when it serves the page", async () => {
+  const off = await oauthAvailable('live', 'https://scoopdogg.net', answering(400,
+    '{"error":{"message":"Standard OAuth is disabled for this Stripe Connect integration."}}'));
+  assert.equal(off.ok, false);
+  assert.match(off.reason ?? '', /Standard OAuth is disabled/);
+  assert.deepEqual(await oauthAvailable('live', 'https://scoopdogg.net', answering(200, '<html>Sign in to Stripe</html>')), { ok: true, reason: null });
+});
+
+test('an unreachable Stripe counts as unavailable, so the button still opens hosted onboarding', async () => {
+  const down = await oauthAvailable('live', 'https://x.test', (async () => { throw new Error('ECONNRESET'); }) as unknown as typeof fetch);
+  assert.equal(down.ok, false);
+  assert.equal((await oauthAvailable('live', 'https://x.test', answering(503, 'busy'))).ok, false);
 });

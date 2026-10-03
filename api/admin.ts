@@ -13,8 +13,8 @@ import { expireDuePauses } from '../server/lib/account.js';
 import { demoMode, demoStatus } from '../server/lib/notify.js';
 import { sendJson, readJsonBody, safeError, type ApiRequest, type ApiResponse } from '../server/lib/http.js';
 import { startLogin, verifyLogin, getSession, endSession, rateLimit, isOverLimit, secret, type AdminSession } from '../server/lib/admin-auth.js';
-import { connectState, verifyConnectState, authorizeUrl, paymentsReturn } from '../server/lib/stripe-oauth.js';
-import { probeAccount, onboardingLink, connectWithCode, ConnectError, publishAllPrices, publishPricesWhenReady, connection, requirementsOf, disconnect, reconnect, type StripeMode } from '../server/lib/stripe.js';
+import { connectState, verifyConnectState, authorizeUrl, paymentsReturn, oauthAvailable } from '../server/lib/stripe-oauth.js';
+import { probeAccount, createConnectedAccount, onboardingLink, connectWithCode, ConnectError, publishAllPrices, publishPricesWhenReady, connection, requirementsOf, disconnect, reconnect, type StripeMode } from '../server/lib/stripe.js';
 import { onboardingRefusal } from '../server/lib/stripe-refusal.js';
 import { checklist, setRouteDays, setOwnerSetting, setAreaBookable, confirmPrices } from '../server/lib/onboarding.js';
 import { listAreas } from '../server/lib/areas.js';
@@ -332,8 +332,25 @@ async function route(req: ApiRequest, res: ApiResponse) {
       // in to the account he already has or makes one (server/lib/stripe-oauth.ts says why this is
       // not hosted onboarding any more). The callback below lands whichever he picks.
       if (!conn?.account_id || rev[0]?.revoked_at) {
-        const state = connectState(session.id, mode, secret());
-        return sendJson(res, 200, { url: authorizeUrl(mode, { state, base, email: session.email, businessName: 'Scoop Dogg' }) });
+        const oauth = await oauthAvailable(mode, base);
+        if (oauth.ok) {
+          const state = connectState(session.id, mode, secret());
+          return sendJson(res, 200, { url: authorizeUrl(mode, { state, base, email: session.email, businessName: 'Scoop Dogg' }) });
+        }
+        // OAUTH IS OFF ON THE PLATFORM (stripe-oauth.ts oauthAvailable): Stripe's hosted sign-up
+        // instead. It makes his connected account; he signs in there with the Stripe login he
+        // already has and Stripe reuses his details. His money and our fee work the same either way.
+        safeError(`admin:payments/onboard:${mode}:oauth-unavailable`, new Error(oauth.reason ?? 'unknown'));
+        try {
+          if (rev[0]?.revoked_at) await reconnect(mode).catch(() => null);
+          await createConnectedAccount(mode, { displayName: 'Scoop Dogg', email: session.email, by: session.email });
+          return sendJson(res, 200, { url: await onboardingLink(mode, base) });
+        } catch (e) {
+          const refusal = onboardingRefusal(e);
+          if (!refusal) throw e;
+          safeError(`admin:payments/onboard:${mode}`, e);
+          return sendJson(res, refusal.status, { error: refusal.error, code: refusal.code });
+        }
       }
       // AN ACCOUNT THAT IS NOT FINISHED. One we created gets Stripe's hosted onboarding; one he
       // brought with him is finished in his own Stripe dashboard, which is where Stripe sends an

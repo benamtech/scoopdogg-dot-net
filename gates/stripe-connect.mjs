@@ -84,9 +84,14 @@ verifiesFirst(callback(code(admin)))
 checksBeforeWrite(connectBody)
   ? ok('connectWithCode refuses the wrong mode and a working different account before it writes')
   : no('connectWithCode refuses the wrong mode and a working different account before it writes');
-/createConnectedAccount\(/.test(code(admin))
-  ? no('the button makes no account of its own', 'connecting is Stripe\'s page now; a second path would be a half mechanism')
-  : ok('the button makes no account of its own');
+// The button makes an account of its own only when Stripe's OAuth page is unavailable (greyed out
+// on AMTECH's platform, 2026-10-03), so the owner is never handed a fresh account while he could
+// have signed in to his own. In hosted onboarding, Stripe's networked onboarding lets him reuse it.
+const onboardRoute = (src) => { const at = src.indexOf("'payments/onboard'"); return at < 0 ? '' : src.slice(at, src.indexOf("'payments/oauth-callback'", at)); };
+const asksOauthFirst = (src) => { const a = src.indexOf('oauthAvailable('), c = src.indexOf('createConnectedAccount('); return c < 0 || (a >= 0 && a < c); };
+asksOauthFirst(onboardRoute(code(admin)))
+  ? ok('the button creates an account only after Stripe says OAuth is unavailable')
+  : no('the button creates an account only after Stripe says OAuth is unavailable');
 
 // ---- negative controls ---------------------------------------------------------------------
 const brokenOrder = disconnectBody
@@ -106,6 +111,9 @@ closesAccount('await stripe.v2.core.accounts.close(id)')
 verifiesFirst(callback(code(admin)).replace('verifyConnectState(', 'trustState('))
   ? no('negative control: a callback that never verifies must trip it', 'DETECTOR BLIND')
   : ok('negative control: a callback that never verifies trips it');
+asksOauthFirst(onboardRoute(code(admin)).replace('oauthAvailable(', 'skipped('))
+  ? no('negative control: creating without asking about OAuth must trip it', 'DETECTOR BLIND')
+  : ok('negative control: creating without asking about OAuth trips it');
 checksBeforeWrite(connectBody.replace("'mismatch'", "'ignored'"))
   ? no('negative control: dropping the mode check must trip it', 'DETECTOR BLIND')
   : ok('negative control: dropping the mode check trips it');
