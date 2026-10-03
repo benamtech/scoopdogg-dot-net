@@ -1,0 +1,83 @@
+---
+/**
+ * Privacy policy. Required by OpenAI for any ChatGPT plugin listing (plugin guidelines, "Privacy
+ * policy": categories collected, purposes, recipients, retention, controls), and owed to every
+ * customer anyway.
+ *
+ * EVERY SENTENCE NAMES SOMETHING THE CODE DOES. Collected fields: api/lead.ts, server/lib/booking.ts,
+ * server/lib/quotes.ts (photos, kept in the database per migration 029), server/lib/consent.ts (IP
+ * and browser for the renewal consent, Cal. B&P §17602), server/lib/funnel.ts and events (the site's
+ * own measurement). Recipients: Stripe (payments), Resend (email), Vercel (hosting), Neon (database),
+ * Google Analytics (tag in Base.astro), AMTECH (builds and runs the site; copied on lead emails).
+ * There is no SMS transport (server/lib/comms.ts), so the page promises no texts it cannot send.
+ * Change the code, change this page.
+ */
+import Site from '../layouts/Site.astro';
+import PageHero from '../components/site/PageHero.astro';
+import Section from '../components/site/Section.astro';
+import { business } from '../lib/catalog';
+
+const updated = 'October 3, 2026';
+const sections: { h: string; p: string[] }[] = [
+  {
+    h: 'What we collect',
+    p: [
+      'When you book, ask for a quote or send a message, we collect what you type: your name, phone number, email address, service address, gate code, the number of dogs and their names, and any notes about your yard. If you send photos with a quote request, we keep them with the request.',
+      'When you agree to a monthly plan, we record the renewal terms you were shown, the time you agreed, and the internet address and browser you agreed from, because California law asks us to be able to show that consent.',
+      'Card payments are handled by Stripe. Your card number goes to Stripe, not to us; we keep only what Stripe tells us back, such as the last four digits and whether a payment went through.',
+      'While you use the site we record which pages you visit, the ZIP code you check, the prices you are shown, whether you tap our phone number, and the website or link that brought you here. We use Google Analytics for the same purpose. None of this is sold.',
+    ],
+  },
+  {
+    h: 'Booking through ChatGPT or another assistant',
+    p: [
+      'If you book or send a request to Scoop Dogg from ChatGPT or another AI assistant, we receive only the details entered for that booking or request, such as your name, contact details, service address, ZIP code and the service you chose. We do not receive your conversation with the assistant. The assistant\'s own privacy policy covers what it keeps.',
+    ],
+  },
+  {
+    h: 'How we use it',
+    p: [
+      'To schedule and carry out your service, to send booking confirmations, visit updates, receipts and review requests by email, to bill you, to answer your questions, and to understand which parts of the site help people book so we can improve it.',
+    ],
+  },
+  {
+    h: 'Who we share it with',
+    p: [
+      'Only the companies that run the site and our business for us: Stripe (payments), Resend (email delivery), Vercel (website hosting), Neon (our database), Google Analytics (site measurement), and AMTECH, which builds and runs this website and receives copies of new requests so nothing is missed. Each of them handles your information only to provide that service. We share information with others only when the law requires it.',
+    ],
+  },
+  {
+    h: 'How long we keep it',
+    p: [
+      'We keep your details while you are a customer, and afterwards for as long as we need them for our tax and accounting records. Requests that never became a booking are kept so we can follow up and answer you if you come back. You can ask us to delete your information at any time, and we will delete everything we are not required by law to keep.',
+    ],
+  },
+  {
+    h: 'Your choices',
+    p: [
+      `You can see your plan and visits in your customer account. To stop review requests or reminders, or to ask for a copy of your information, a correction or a deletion, email ${business.email} and we will take care of it. California residents have these rights under the California Consumer Privacy Act, and we do not sell or share personal information for advertising.`,
+    ],
+  },
+  {
+    h: 'Children',
+    p: ['This site is for adults arranging service at their home. We do not knowingly collect information from children under 13.'],
+  },
+  {
+    h: 'Contact',
+    p: [`Questions about this policy go to ${business.name} at ${business.email} or ${business.phone}. If we change it, we will update the date at the top of this page.`],
+  },
+];
+---
+<Site title="Privacy Policy | Scoop Dogg" description="What Scoop Dogg collects when you book or ask for a quote, who handles it, how long it is kept, and how to have it changed or deleted." canonicalPath="/privacy">
+  <PageHero eyebrow="Privacy" title="Privacy policy" lede={`How ${business.name} handles the information you give us. Last updated ${updated}.`} />
+  <Section tone="sand">
+    <div class="mx-auto max-w-3xl space-y-12">
+      {sections.map((s) => (
+        <section>
+          <h2 class="text-h3 text-forest-900">{s.h}</h2>
+          {s.p.map((para) => <p class="mt-4 text-lg text-ink-700">{para}</p>)}
+        </section>
+      ))}
+    </div>
+  </Section>
+</Site>

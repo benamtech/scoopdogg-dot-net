@@ -67,6 +67,10 @@
   ],
   "rewrites": [
     {
+      "source": "/mcp",
+      "destination": "/api/mcp"
+    },
+    {
       "source": "/api/photo/:id",
       "destination": "/api/photo"
     },
