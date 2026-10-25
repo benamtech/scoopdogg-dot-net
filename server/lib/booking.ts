@@ -16,6 +16,7 @@
  */
 import type Stripe from 'stripe';
 import { db } from './db.js';
+import { tellEmployee } from './employee.js';
 import { sendEmail } from './notify.js';
 import { appendEvent } from './events.js';
 import { loadCatalog } from './catalog-db.js';
@@ -714,6 +715,17 @@ async function notifyOwner(purpose: 'booking_owner' | 'waitlist_owner', subject:
       ${quote && quote.ok ? row('Plan', quote.package.name) + row('First charge', formatCents(quote.firstChargeCents)) : ''}${row('Starts', startLabel)}
       ${row('Gate code', input.gate_code)}${row('Notes', input.access_notes)}${row('Last cleaned', input.last_cleaned)}</table>`),
   }).catch(() => undefined);
+  // And the business's AI employee, in the envelope it asked for (server/lib/employee.ts). Never costs the booking.
+  const waitlist = purpose === 'waitlist_owner';
+  const plan = quote && quote.ok ? quote.package.name : '';
+  await tellEmployee(waitlist ? 'waitlist' : 'booking', {
+    name: input.name, phone: input.phone, email: input.email, town: input.city, postal_code: input.postal_code,
+    address: input.address, package_id: input.package_id, gate_code: input.gate_code, access_notes: input.access_notes,
+    source_page: '/book',
+    what_they_want: waitlist
+      ? `Wants to be told when a route reaches ${[input.address, input.city].filter(Boolean).join(', ')}.`
+      : [plan, startLabel && `starting ${startLabel}`, input.access_notes && `Access: ${input.access_notes}`].filter(Boolean).join(', ') || note,
+  }, { ...input, gate_code: input.gate_code ? '(given)' : '' }, input.source === 'gate');
 }
 
 export async function joinWaitlist(body: Record<string, unknown>) {

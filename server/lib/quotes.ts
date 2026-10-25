@@ -27,6 +27,7 @@
  * paperwork "has nothing to do with our work". The builder still SHOWS what the contract section is
  * missing (`quoteForOwner().contract.gaps`); a send never stops on it.
  */
+import { tellEmployee } from './employee.js';
 import { randomBytes, createHash } from 'node:crypto';
 import type Stripe from 'stripe';
 import { resolve, currentMode, type StripeMode } from './stripe.js';
@@ -223,6 +224,13 @@ export async function finishRequest(q: Queryable, token: string, base: string): 
       <p><a href="${base}/admin/leads/${lead.id}" style="display:inline-block;background:#F4A024;color:#0F2A1F;font-weight:600;padding:12px 20px;border-radius:10px;text-decoration:none">Open it and build a quote</a></p>
       <p style="color:#666;font-size:13px">The customer was told you reply ${esc(reply)}.</p></div>`,
   }).catch(() => null);
+  // And the business's AI employee (server/lib/employee.ts). Never costs the request.
+  await tellEmployee('quote', {
+    name: lead.name, phone: lead.phone, email: lead.email, town: lead.city, postal_code: lead.postal_code ?? '',
+    address: lead.address ?? '', what_they_want: [lead.notes, kinds.length ? `(${kinds.join(', ')})` : ''].filter(Boolean).join(' '),
+    service_slug: lead.service_slug ?? '', timing: lead.timing ?? '', job_kinds: lead.job_kinds as string[],
+    photos_expected: photos.length, source_page: lead.source_page ?? '/custom-quote',
+  }, { lead_id: lead.id, photos: photos.length, road }, String(lead.name ?? '').startsWith('TEST'));
   await sendEmail({
     purpose: 'quote_receipt',
     recipients: { explicit: [lead.email] },
