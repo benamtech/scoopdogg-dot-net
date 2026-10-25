@@ -7,6 +7,7 @@
  */
 import { db } from '../server/lib/db.js';
 import { sendEmail } from '../server/lib/notify.js';
+import { tellEmployee, isAmtechTest } from '../server/lib/employee.js';
 import { sendJson, readJsonBody, safeError, type ApiRequest, type ApiResponse } from '../server/lib/http.js';
 
 const str = (v: unknown, max = 500) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
@@ -63,6 +64,11 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   } catch (e) {
     safeError('contact:notify', e);
   }
+  // And the business's AI employee (server/lib/employee.ts): the form flattens its select into "topic:" lines.
+  await tellEmployee('contact', {
+    name: m.name, phone: m.phone, email: m.email, source_page: m.source_page,
+    what_they_want: m.message.replace(/^(topic|message):\s*/gim, '').trim(),
+  }, m, isAmtechTest(req.headers as Record<string, unknown>));
 
   return sendJson(res, 201, { ok: true });
 }
