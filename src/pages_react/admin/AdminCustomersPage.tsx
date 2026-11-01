@@ -133,7 +133,7 @@ export default function AdminCustomersPage() {
                         </td>
                         <td className="px-4 py-3 text-ink-700">{c.address ?? '—'}{c.area_name ? `, ${c.area_name}` : ''}</td>
                         <td className="px-4 py-3 text-ink-700">{c.frequency === 'one_time' ? 'One time' : c.service_weekday == null ? '—' : DAYS[c.service_weekday]}</td>
-                        <td className="px-4 py-3 tabular-nums text-forest-900">{c.frequency === 'one_time' ? `${money(c.price_cents)} once` : money(c.monthly_price_cents)}</td>
+                        <td className="px-4 py-3 tabular-nums text-forest-900">{c.frequency === 'one_time' ? `${money(c.price_cents ?? null)} once` : money(c.monthly_price_cents)}</td>
                         <td className="px-4 py-3"><span className={`rounded-sm px-2 py-1 text-micro font-semibold uppercase ${s.cls}`}>{s.label}</span></td>
                       </tr>
                     );

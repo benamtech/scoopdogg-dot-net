@@ -69,7 +69,13 @@ await client.connect();
 // A row the detail screens must be able to show. Reported, never assumed.
 const probe = await client.query(
   `select id, name, email from leads where name ilike '%AMTECH%' order by created_at desc limit 1`);
-const probeLead = probe.rows[0] || null;
+// The test lead this gate used to find was removed from the live data on 2026-11-01. It writes its own
+// now, directly, so nobody is emailed, and deletes it at the end. A real customer's lead is never used.
+const seededLead = probe.rows[0] ? null : (await client.query(
+  `insert into leads (name, phone, email, city, service_slug, notes, source_page, status)
+   values ('AMTECH SITE TEST', '8058698070', 'ben@amtechai.com', 'Ventura', 'weekly', 'Seeded by gates/admin-browser.mjs. Deleted at the end of the run.', '/', 'new')
+   returning *`)).rows[0];
+const probeLead = probe.rows[0] || seededLead || null;
 probeLead ? ok('probe lead present', `${probeLead.name} (${probeLead.id})`)
           : no('probe lead present', "no lead matching 'AMTECH' — the lead detail screen has nothing to render");
 
@@ -283,6 +289,7 @@ if (seededMessage) {
   rows[0].n === 0 ? ok('seeded message removed', seededMessage)
                   : no('seeded message removed', `${seededMessage} is still there`);
 }
+if (seededLead) await client.query('delete from leads where id = $1', [seededLead.id]);
 await client.end();
 console.log(`\n══ ${pass} passed, ${fail} failed ══\n`);
 process.exit(fail ? 1 : 0);
