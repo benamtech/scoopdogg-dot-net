@@ -400,12 +400,12 @@ function choosingQuestions(): Question[] {
       slug: 'how-do-i-get-rid-of-dog-urine-smell-on-artificial-turf',
       q: 'How do I get rid of dog urine smell on artificial turf?',
       topic: 'Turf and odor',
-      answer: `Treat the turf with an enzyme deodorizer, which breaks down urine instead of masking it: Scoop Dogg's weekly Turf Deodorizing starts at ${formatTierPrice(d)}${d.price_suffix ?? ''}. If the smell comes back within days, the infill is saturated and needs a deep clean first, from ${formatTierPrice(dc)}.`,
+      answer: `Treat the turf with an enzyme deodorizer, which breaks down urine instead of masking it: Scoop Dogg's weekly Turf Deodorizing starts at ${formatTierPrice(d)}. If the smell comes back within days, the infill is saturated and needs a deep clean first, from ${formatTierPrice(dc)}.`,
       more: 'Our weekly visit clears debris, rakes leaves, sanitizes and deodorizes, so the smell does not come back.',
       facts: [tierFact(d), tierFact(dc)],
       blocks: [
         { kind: 'table', title: 'Which turf service fits', head: ['If your turf', 'Service', 'From'], rows: [
-          ['Gets daily use from dogs, or smells now and then', deo.name, `${formatTierPrice(d)}${d.price_suffix ?? ''}`],
+          ['Gets daily use from dogs, or smells now and then', deo.name, `${formatTierPrice(d)}`],
           ['Smells again days after cleaning', deep.name, formatTierPrice(dc)],
         ] },
         { kind: 'links', title: 'Read more', items: [{ href: '/resources/clean-dog-poop-artificial-turf-ventura-county', label: 'How to clean dog poop off artificial turf' }] },
