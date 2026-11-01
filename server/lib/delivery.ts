@@ -142,6 +142,8 @@ export async function reconcileOutbox(limit = 200): Promise<ReconcileReport> {
        from outbox
       where provider = 'resend' and provider_id is not null
         and state in ('pending', 'delivering')
+        -- The provider forgets a message after a while; older rows can never be read again.
+        and created_at > now() - interval '21 days'
       order by created_at asc
       limit $1`,
     [limit],
