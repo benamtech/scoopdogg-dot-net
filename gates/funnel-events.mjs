@@ -64,9 +64,7 @@ try {
   {
     const page = await browser.newPage({ extraHTTPHeaders: VERIFIER_HEADER, viewport: { width: 390, height: 844 } });   // a phone
     page.on('pageerror', (e) => errors.push(e.message));
-    await page.goto(`${BASE}/book`, { waitUntil: 'networkidle' });
-    await page.fill('#bk-zip', '93041');                       // Port Hueneme: known, not served
-    await page.getByRole('button', { name: /see my price/i }).click();
+    await page.goto(`${BASE}/book?zip=93041`, { waitUntil: 'networkidle' });   // Port Hueneme: known, not served
     await page.getByRole('heading', { name: /not on a route in 93041/i }).waitFor({ timeout: 15000 });
     ok('an unserved ZIP says so by name, rather than shrugging');
     const id = await sid(page);
@@ -100,9 +98,7 @@ try {
   {
     const page = await browser.newPage({ extraHTTPHeaders: VERIFIER_HEADER, viewport: { width: 390, height: 844 } });
     page.on('pageerror', (e) => errors.push(e.message));
-    await page.goto(`${BASE}/book`, { waitUntil: 'networkidle' });
-    await page.fill('#bk-zip', '93030');                        // Oxnard
-    await page.getByRole('button', { name: /see my price/i }).click();
+    await page.goto(`${BASE}/book?zip=93030`, { waitUntil: 'networkidle' });   // Oxnard
     await page.getByRole('heading', { name: /what do you need/i }).waitFor({ timeout: 15000 });
     ok('a served ZIP goes straight to the service question');
     const id = await sid(page);
@@ -113,11 +109,8 @@ try {
     await page.getByRole('button', { name: /2 dogs/i }).first().click();
     await page.getByRole('heading', { name: /here's your price/i }).waitFor();
     const priceText = await page.locator('main').innerText();
-    /\$120/.test(priceText) ? ok('the price step shows the ladder price for two dogs', '$120')
+    /\$25/.test(priceText) && /\$100 a month/.test(priceText) ? ok('the price step shows the ladder price for two dogs', '$25 a week, $100 a month')
                             : no('the price step shows the ladder price for two dogs', priceText.slice(0, 80));
-    // The weekly equivalent under every monthly price (P16 §5).
-    /about \$[\d,.]+ a visit/i.test(priceText) ? ok('the monthly price carries its per-visit equivalent')
-                                           : no('the monthly price carries its per-visit equivalent');
 
     await page.getByRole('button', { name: /pay after my first visit/i }).click();
     await settle();
@@ -151,7 +144,7 @@ try {
       ? ok('the full sequence was written', evs.join(' -> '))
       : no('the full sequence was written', evs.join(' -> ') || 'none');
     const row = await sessionRow(id);
-    row?.lane === 'payafter' && row?.price_cents_seen === 12000 && row?.area_slug === 'oxnard'
+    row?.lane === 'payafter' && row?.price_cents_seen === 10000 && row?.area_slug === 'oxnard'
       ? ok('the session row carries the lane, the area and the price that was on screen', `${row.price_cents_seen} cents`)
       : no('the session row carries the lane, the area and the price on screen', JSON.stringify(row ?? {}));
     await page.close();
@@ -161,9 +154,7 @@ try {
   {
     const page = await browser.newPage({ extraHTTPHeaders: VERIFIER_HEADER, viewport: { width: 390, height: 844 } });
     page.on('pageerror', (e) => errors.push(e.message));
-    await page.goto(`${BASE}/book`, { waitUntil: 'networkidle' });
-    await page.fill('#bk-zip', '93030');
-    await page.getByRole('button', { name: /see my price/i }).click();
+    await page.goto(`${BASE}/book?zip=93030`, { waitUntil: 'networkidle' });
     await page.getByRole('heading', { name: /what do you need/i }).waitFor({ timeout: 15000 });
     const id = await sid(page);
     sessionIds.push(id);

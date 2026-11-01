@@ -128,7 +128,7 @@ const money = (c: number) => `$${(c / 100).toFixed(c % 100 ? 2 : 0)}`;
       </h1>
 
       <p class="mt-6 max-w-2xl text-lg leading-relaxed text-forest-100 sm:text-xl">
-        Same day every week. Scooped, bagged and hauled away{fromCents && <> — from <strong class="font-semibold text-white">{money(fromCents)} a month</strong></>}{perVisitCents && <>, {money(perVisitCents)} a week</>}.
+        Same day every week. Scooped, bagged and hauled away{perVisitCents && <> — from <strong class="font-semibold text-white">{money(perVisitCents)} a week</strong></>}{fromCents && <>, {money(fromCents)} a month</>}.
         {offer && <> {offer}.</>} No contract.
       </p>
 

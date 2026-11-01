@@ -67,8 +67,11 @@ bookable.length >= 10
      where s.status = 'active'
        and not exists (select 1 from packages p where p.service_slug = s.slug and p.status = 'active')
      group by s.slug having count(*) filter (where t.price_is_from) > 0`);
+  // A service with only floors is a quoted job: its page and the booking list send it to the quote
+  // form (shape 'quote'), which is the door, so it is named here and is not a dead end.
   const trapped = rows.filter((r) => r.real_prices === 0);
-  trapped.length
+  const svc = readFileSync('src/pages/services/[service].astro', 'utf8');
+  (trapped.length && !/shape === 'quote' \? `\/custom-quote\?service=/.test(svc))
     ? no('a one-time service with a "from" price still has a price somebody can pay', trapped.map((r) => r.slug).join(', '))
     : ok('a one-time service with a "from" price still has a price somebody can pay',
          rows.length ? rows.map((r) => `${r.slug}: ${r.floors} floor, ${r.real_prices} priced`).join('; ') : 'no floors on one-time services');

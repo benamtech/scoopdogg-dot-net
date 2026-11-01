@@ -108,12 +108,13 @@ const jsonLd = [
       <a slot="action" href="/pricing" class="link text-base">All pricing</a>
     </SectionHeading>
     <div class="mt-12">
-      {pkgs.length > 0 ? <PackageCards service={s.slug} /> : shape === 'quote' ? (
-        <div class="flex flex-wrap items-center gap-5">
+      {shape === 'quote' && !pkgs.length && (
+        <div class="mb-10 flex flex-wrap items-center gap-5">
           <a href={bookHref} class="btn-primary btn-lg">Get a quote</a>
           <a href={business.phoneHref} class="link text-lg">Or call {business.phone}</a>
         </div>
-      ) : (
+      )}
+      {pkgs.length > 0 ? <PackageCards service={s.slug} /> : tiers.every((t) => t.requires_quote || t.price_cents === null) ? null : (
         <dl class="max-w-3xl divide-y divide-line border-y border-line">
           {tiers.map((t) => (
             <div class="flex items-center justify-between gap-6 py-5" data-tier={t.id} data-price-cents={t.price_cents ?? undefined}>

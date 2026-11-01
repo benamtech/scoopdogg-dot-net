@@ -234,7 +234,7 @@ for (const [scheme, label] of [['tel', 'tel'], ['mailto', 'mailto']]) {
     // SERVER HTML. The heading and the field moved from a street address to a ZIP; the city list
     // stopped being a <select> inside the island and became text on the page. A reader with no
     // JavaScript, and a crawler, still get both.
-    ['/book', ["Where's your yard?", 'id="bk-zip"', 'See my price', 'Ventura'], 'booking flow step 1'],
+    ['/book', ['What do you need?', 'Weekly Pooper Scooper Service', 'Ventura'], 'booking flow step 1: the service, with no field in front of the price'],
     ['/contact', ['<textarea', '<input'], 'contact form fields'],
     ['/', ['data-hero-cta', 'See my price', 'name="address"'], 'homepage address form (the first step of booking)'],
   ];

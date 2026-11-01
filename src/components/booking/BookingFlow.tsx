@@ -78,6 +78,23 @@ type Lane = 'prepay' | 'payafter';
 
 const STORE = 'sd-booking-v2';
 
+/** What each job is, in the words customers use in their own lead notes (2026-11-01 evidence). */
+const HINT: Record<string, string> = {
+  'weekly-pooper-scooper-service': 'Weekly pickup, same day every week',
+  'one-time-dog-poop-cleanup': 'Before a party or a move, or when it got away from you',
+  'weekly-turf-maintenance': 'Weekly turf care: debris, leaves, sanitizing, odor',
+  'turf-deep-clean': 'A one-time reset for turf that smells or looks tired',
+  'yard-deep-clean': 'Overgrown yard? One time, one quoted price',
+  'weekly-yard-maintenance': 'Mow, blow, debris and leaves, every week',
+  'kitty-litter-exchange': 'We clean the box and the area around it',
+  'kitty-litter-robot-cleaning': 'Deep clean and careful technical maintenance',
+  'dog-run-cleanups': 'Side yards, gravel runs and dog areas',
+  'cat-tree-cleaning': 'Hair, odor and dust off the cat tree',
+  'pressure-washing': 'Patios and concrete, after the waste is gone',
+};
+/** A weekly plan a customer can also try once (his note: "per week or per visit"). */
+const ONE_VISIT_TOO = new Set(['weekly-yard-maintenance']);
+
 const SIZE_QUESTION: Record<string, string> = {
   'weekly-pooper-scooper-service': 'How many dogs do you have?',
   'weekly-turf-maintenance': 'How big is your yard?',
@@ -93,14 +110,16 @@ const SIZE_QUESTION: Record<string, string> = {
 const DEEP_CLEAN = 'one-time-dog-poop-cleanup';
 const SCOOP = 'weekly-pooper-scooper-service';
 /** Outdoor jobs where a customer is offered weekly scooping on the same visit (Josue, 2026-11-01). */
-const SCOOP_PAIRS = new Set(['weekly-turf-maintenance', 'weekly-yard-maintenance', 'turf-deep-clean', 'dog-run-cleanups', 'pressure-washing']);
+const SCOOP_PAIRS = new Set(['weekly-turf-maintenance', 'weekly-yard-maintenance', 'one-time-dog-poop-cleanup', 'dog-run-cleanups', 'pressure-washing']);
 
 /** Five digits out of whatever was typed or pasted. An address still works. */
 const zipIn = (text: string) => (/\b(\d{5})\b/.exec(String(text ?? '')) ?? [])[1] ?? '';
 
 export default function BookingFlow(props: Props) {
   const { catalog, areas, zipMap } = props;
-  const [step, setStep] = useState<Step>('zip');
+  // THE PRICE COMES BEFORE THE ZIP (2026-11-01). Of 14 real referred sessions, 7 ended at a ZIP box
+  // before seeing any price. Prices do not depend on the ZIP, so it is asked only to find the days.
+  const [step, setStep] = useState<Step>('service');
   const [history, setHistory] = useState<Step[]>([]);
   const [zip, setZip] = useState('');
   const [city, setCity] = useState('');            // area slug, resolved from the ZIP
@@ -236,7 +255,7 @@ export default function BookingFlow(props: Props) {
       const slug = zipMap[z];
       setCity(slug);
       setCityName(areas.find((a) => a.slug === slug)?.name ?? '');
-      setHistory(entry ? ['zip', 'service'] : ['zip']);
+      setHistory(pkg || entry ? ['service'] : []);
       setStep(pkg ? 'price' : entry ? 'size' : 'service');
       trackOnce('zip', { postal_code: z, area_slug: slug });
     } else if (zipIn(fromUrl)) {
@@ -244,8 +263,9 @@ export default function BookingFlow(props: Props) {
       // on the same question it had just answered, with the answer filled in and nothing said.
       // Ask the server now, so the visitor gets the honest sentence and the waitlist at once.
       void resolveZip(z);
-    } else if (saved.city) {
-      setCity(saved.city); setCityName(saved.cityName || '');
+    } else {
+      if (saved.city) { setCity(saved.city); setCityName(saved.cityName || ''); }
+      if (pkg || entry) { setHistory(['service']); setStep(pkg ? 'price' : 'size'); }
     }
   }, []);
 
@@ -383,9 +403,7 @@ export default function BookingFlow(props: Props) {
       if (j.served) {
         setCity(j.area_slug); setCityName(j.area_name);
         trackOnce('zip', { postal_code: z, area_slug: j.area_slug, city_name: j.area_name });
-        if (packageId) go('price');
-        else if (entryService) { setError(''); setHistory((h) => [...h, step, 'service']); setStep('size'); }
-        else go('service');
+        if (pkg || tierId) go('day');
         return;
       }
       // Known and not served, or never heard of. Both end somewhere, neither pretends.
@@ -489,7 +507,7 @@ export default function BookingFlow(props: Props) {
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }
 
-  const stepIndex = ['zip', 'service', 'size', 'price', 'day', 'details', 'review'].indexOf(step);
+  const stepIndex = ['service', 'size', 'price', 'zip', 'day', 'details', 'review'].indexOf(step);
 
   // ------------------------------------------------------------------ render helpers ----
   const Heading = ({ children, sub }: { children: React.ReactNode; sub?: React.ReactNode }) => (
@@ -518,7 +536,7 @@ export default function BookingFlow(props: Props) {
       <div className="lg:col-span-7">
         {stepIndex >= 0 && (
           <div className="mb-8 flex items-center gap-4">
-            {history.length > 0 && step !== 'zip' && (
+            {history.length > 0 && (
               <button type="button" onClick={back} className="inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-base font-medium text-forest-700 hover:bg-forest-50">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>Back
               </button>
@@ -539,12 +557,12 @@ export default function BookingFlow(props: Props) {
                   {props.services.find((x) => x.slug === entryService)?.name ?? 'Your service'}
                 </p>
               )}
-              <Heading sub="We'll show your price in about a minute.">Where's your yard?</Heading>
+              <Heading sub="So we can show you the days we're there.">Where's your yard?</Heading>
               <label htmlFor="bk-zip" className="field-label">ZIP code</label>
               <input id="bk-zip" ref={zipRef} className="field max-w-[220px] text-lg" inputMode="numeric" autoComplete="postal-code"
                 placeholder="93030" value={zip} onChange={(e) => setZip(e.target.value)} required />
               <p className="mt-2 text-sm text-ink-500">Pasted your whole address? That works too.</p>
-              <div className="mt-8"><Primary type="submit">See my price</Primary></div>
+              <div className="mt-8"><Primary type="submit">See my days</Primary></div>
             </form>
           )}
 
@@ -565,7 +583,7 @@ export default function BookingFlow(props: Props) {
                         <span>
                           <span className="block text-lg font-semibold text-forest-900">{info?.name ?? s.name}</span>
                           <span className="mt-1 block text-base text-ink-500">
-                            {shape === 'recurring' ? 'Every week, same day, billed monthly' : shape === 'one_time' ? 'A one-time visit' : 'We’ll give you one price'}
+                            {HINT[s.slug] ?? (shape === 'recurring' ? 'Every week, same day' : shape === 'one_time' ? 'A one-time visit' : 'Call or send the details for one price')}
                           </span>
                         </span>
                         {fromCents != null && (
@@ -598,7 +616,7 @@ export default function BookingFlow(props: Props) {
 
           {step === 'size' && (
             <div>
-              <Heading sub={wantAddOn === 'yard-sanitizing' ? 'Then pick your yard size for the sanitizing.' : undefined}>{SIZE_QUESTION[service] ?? 'Which fits best?'}</Heading>
+              <Heading sub={wantAddOn === 'yard-sanitizing' ? 'Then pick your yard size for the sanitizing.' : /yard\?$/.test(SIZE_QUESTION[service] ?? '') ? 'Not sure? Pick the closest and Josue will confirm.' : undefined}>{SIZE_QUESTION[service] ?? 'Which fits best?'}</Heading>
               <div className="grid grid-cols-2 gap-3">
                 {shapeOf(service) === 'recurring' && pkgs.map((p) => (
                   <Choice key={p.id} selected={packageId === p.id} badge={p.featured ? 'Most booked' : undefined}
@@ -620,6 +638,16 @@ export default function BookingFlow(props: Props) {
                       <span className="mt-1 block text-base text-ink-500">{quoteOnly ? 'Get a quote' : formatCents(p.cents)}</span>
                     </Choice>
                   );
+                })}
+                {ONE_VISIT_TOO.has(service) && pkgs.map((p) => {
+                  const t = catalog.tiers.find((x) => x.id === p.tier_id);
+                  return t && tierPrice(t).kind === 'price' ? (
+                    <Choice key={`once-${t.id}`} selected={tierId === t.id}
+                      onClick={() => { setTierId(t.id); setPackageId(''); go('price'); }}>
+                      <span className="block text-lg font-semibold text-forest-900">Just one visit</span>
+                      <span className="mt-1 block text-base text-ink-500">{formatCents(t.price_cents ?? 0)}</span>
+                    </Choice>
+                  ) : null;
                 })}
                 {shapeOf(service) === 'recurring' && catalog.tiers.filter((t) => t.service_slug === service && t.requires_quote).map((t) => (
                   <Choice key={t.id} onClick={() => { window.location.href = `/custom-quote?service=${service}&size=${encodeURIComponent(t.label)}${zip ? `&zip=${zip}` : ''}`; }}>
@@ -813,11 +841,12 @@ export default function BookingFlow(props: Props) {
               )}
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <Primary onClick={() => go('day')}>
+                <Primary onClick={() => go(city ? 'day' : 'zip')}>
                   {isOneTime ? 'Choose my day' : 'Choose my start day'}
                 </Primary>
                 <p className="text-sm text-ink-500">Nothing is charged yet.</p>
               </div>
+              <p className="mt-4 text-base text-ink-700">No contract, no cancellation fee. Rather talk first? <a className="link" href={props.phoneHref}>Call or text {props.phone}</a></p>
             </div>
           )}
 
@@ -864,8 +893,13 @@ export default function BookingFlow(props: Props) {
                   <div><label htmlFor="bk-email" className="field-label">Email</label><input id="bk-email" type="email" className="field" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} /></div>
                   <div><label htmlFor="bk-phone" className="field-label">Mobile phone</label><input id="bk-phone" type="tel" className="field" autoComplete="tel" required minLength={10} value={phone} onChange={(e) => setPhone(e.target.value)} /></div>
                 </div>
+                <details className="rounded-lg border border-line bg-paper p-4" data-optional-details>
+                  <summary className="cursor-pointer text-base font-medium text-forest-800">Add a gate code or a note (optional)</summary>
+                  <div className="mt-4 space-y-5">
                 <div><label htmlFor="bk-gate" className="field-label">Gate code <span className="font-normal text-ink-400">(optional)</span></label><input id="bk-gate" className="field" autoComplete="off" value={gate} onChange={(e) => setGate(e.target.value)} /></div>
                 <div><label htmlFor="bk-notes" className="field-label">Anything we should know? <span className="font-normal text-ink-400">(optional)</span></label><textarea id="bk-notes" className="field min-h-[96px]" placeholder="Dogs' names, which gate to use, tricky spots…" value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
+                  </div>
+                </details>
               </div>
               <div className="mt-8"><Primary type="submit">Review and book</Primary></div>
             </form>
@@ -1019,7 +1053,7 @@ export default function BookingFlow(props: Props) {
             </div>
           )}
           <ul className="mt-6 space-y-2 border-t border-line pt-5 text-sm text-ink-700">
-            <li className="flex gap-2"><span className="text-forest-500">✓</span>No contract — cancel anytime</li>
+            <li className="flex gap-2"><span className="text-forest-500">✓</span>No contract, no cancellation fee</li>
             {!isOneTime && <li className="flex gap-2"><span className="text-forest-500">✓</span>Same day every week</li>}
             {props.guarantee && <li className="flex gap-2"><span className="text-forest-500">✓</span>{props.guarantee.split(':')[0]}</li>}
           </ul>
