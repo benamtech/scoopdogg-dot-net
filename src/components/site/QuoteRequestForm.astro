@@ -32,6 +32,7 @@ const SHORT: Record<string, string> = {
 /** The job kind a service implies, where one clearly does. Otherwise the service name is the context. */
 const KIND_FOR: Record<string, string> = {
   'pressure-washing': 'pressure_washing', 'one-time-dog-poop-cleanup': 'pet_waste', 'dog-run-cleanups': 'pet_waste',
+  'yard-deep-clean': 'yard_cleanup',
 };
 const names = Object.fromEntries(services.map((s) => [s.slug, s.short_name || s.name]));
 const chip = 'flex cursor-pointer items-center gap-2 rounded-full border border-line-strong px-4 py-2.5 text-base text-ink-700 transition duration-fast has-[:checked]:border-forest-600 has-[:checked]:bg-forest-50 has-[:checked]:font-semibold has-[:checked]:text-forest-900';

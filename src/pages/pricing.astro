@@ -44,7 +44,7 @@ const faqs = [
       {addOnsFor(s.slug).map((a) => (
         <p class="mt-8 max-w-3xl text-lg text-ink-700">
           <a href={`/services/${a.slug}`} class="font-semibold text-forest-900 hover:text-forest-600">Add-on: {a.name}.</a>{' '}
-          {tiersFor(a.slug).map((t) => `${t.label.split(' (')[0]} ${formatTierPrice(t)}${t.price_suffix ?? ''}`).join(' · ')}
+          {tiersFor(a.slug).filter((t) => !t.requires_quote).map((t) => `${t.label.split(' (')[0]} ${formatTierPrice(t)}${t.price_suffix ?? ''}`).join(' · ')}
         </p>
       ))}
     </Section>
