@@ -72,8 +72,8 @@ const probe = await client.query(
 // The test lead this gate used to find was removed from the live data on 2026-11-01. It writes its own
 // now, directly, so nobody is emailed, and deletes it at the end. A real customer's lead is never used.
 const seededLead = probe.rows[0] ? null : (await client.query(
-  `insert into leads (name, phone, email, city, service_slug, notes, source_page, status)
-   values ('AMTECH SITE TEST', '8058698070', 'ben@amtechai.com', 'Ventura', 'weekly', 'Seeded by gates/admin-browser.mjs. Deleted at the end of the run.', '/', 'new')
+  `insert into leads (id, created_at, name, phone, email, city, service_slug, notes, source_page, status)
+   values (gen_random_uuid(), now(), 'AMTECH SITE TEST', '8058698070', 'ben@amtechai.com', 'Ventura', 'weekly', 'Seeded by gates/admin-browser.mjs. Deleted at the end of the run.', '/', 'new')
    returning *`)).rows[0];
 const probeLead = probe.rows[0] || seededLead || null;
 probeLead ? ok('probe lead present', `${probeLead.name} (${probeLead.id})`)
@@ -192,11 +192,11 @@ const screens = [
                        /Where visitors came from|left out of these numbers/,
                        // Migration 036: the money column, and the sentence that calls it an assumption.
                        /After your time/, /An assumption, not a figure from your books/],  'growth — channels, our own visits, the assumed hour'],
-  ['/admin/payments', [/Live payments/, /Monthly plans/],                                     'payments'],
+  ['/admin/payments', [/Money in/, /Monthly plans/],                                     'payments'],
   ['/admin/team',     [/\(you\)/, new RegExp(email.replace(/[.+]/g, '\\$&'))],              'team'],
   // WS1: the rate card had never been opened in a browser. A tier label and a package name only
   // the rate-card read returns — the login screen carries neither.
-  ['/admin/rate-card', [/Large or custom property/, /Litter-Robot/],                              'rate card'],
+  ['/admin/rate-card', [/Tap a service to open its prices/, /Litter-Robot/],                              'rate card'],
   // The quote rail: the seeded quote in the list, and on its own screen with the total the server
   // computed from its one line ($123.45) — the builder's numbers come back from quoteForOwner.
   ['/admin/quotes',   [/AMTECH SITE TEST quote/],                                               'quotes list'],
