@@ -11,17 +11,17 @@ import CloseCta from '../components/site/CloseCta.astro';
 import { services, headlinePrice, packagesForService, headlineOffer } from '../lib/catalog';
 import mowing from '../assets/art/transp-dog-character-mowing-grass.png';
 const recurring = services.filter((s) => packagesForService(s.slug).length > 0);
-const oneTime = services.filter((s) => packagesForService(s.slug).length === 0);
+const oneTime = services.filter((s) => s.kind !== 'addon' && packagesForService(s.slug).length === 0);
 const Card = (s: (typeof services)[number]) => ({ s, p: headlinePrice(s.slug) });
 ---
 <Site title="Services | Dog Poop Cleanup, Turf Care & More | Scoop Dogg" description="Weekly dog poop scooping, turf maintenance, yard care, litter box service and one-time cleanups across Ventura and Santa Barbara counties." canonicalPath="/services">
-  <PageHero eyebrow="Services" title="Everything your yard and your pets need" lede="Monthly plans that run themselves, and one-time jobs when you need a reset.">
+  <PageHero eyebrow="Services" title="Everything your yard and your pets need" lede="Weekly plans that run themselves, and one-time jobs when you need a reset.">
     <div slot="aside" class="hidden justify-center lg:flex" aria-hidden="true">
       <Image quality={75} src={mowing} alt="" widths={[260, 520]} sizes="260px" class="h-auto w-60" loading="eager" />
     </div>
   </PageHero>
   <Section tone="white" labelledby="plans">
-    <p class="eyebrow mb-4">Monthly plans</p>
+    <p class="eyebrow mb-4">Weekly plans</p>
     <h2 id="plans" class="text-h2 text-forest-900">Same day every week</h2>
     {headlineOffer && <p class="mt-4 text-lg text-ink-500">{headlineOffer.name} on weekly scooping. Cancel anytime.</p>}
     <ul class="mt-12 grid gap-5 md:grid-cols-2">

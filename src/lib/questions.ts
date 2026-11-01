@@ -335,9 +335,8 @@ function policyQuestions(): Question[] {
 function serviceCostQuestions(): Question[] {
   const phrasing: Record<string, { q: string; slug: string; topic: Topic; words?: string[] }> = {
     'one-time-dog-poop-cleanup': { q: 'How much does it cost to clean up a yard that has not been scooped in weeks?', slug: 'how-much-does-a-one-time-yard-cleanup-cost', topic: 'Cost', words: ['mess', 'huskies'] },
-    'artificial-turf-deodorizing': { q: 'How much does artificial turf deodorizing cost?', slug: 'how-much-does-artificial-turf-deodorizing-cost', topic: 'Turf and odor', words: ['turf', 'deodoriz'] },
-    'yard-deep-clean': { q: 'How much does a turf deep clean cost?', slug: 'how-much-does-a-turf-deep-clean-cost', topic: 'Turf and odor', words: ['sanitized', 'astro turf'] },
-    'weekly-turf-maintenance': { q: 'How much does weekly artificial turf maintenance cost?', slug: 'how-much-does-weekly-turf-maintenance-cost', topic: 'Turf and odor', words: ['turf'] },
+    'turf-deep-clean': { q: 'How much does a turf deep clean cost?', slug: 'how-much-does-a-turf-deep-clean-cost', topic: 'Turf and odor', words: ['sanitized', 'astro turf'] },
+    'weekly-turf-maintenance': { q: 'How much does weekly artificial turf maintenance and deodorizing cost?', slug: 'how-much-does-weekly-turf-maintenance-cost', topic: 'Turf and odor', words: ['turf', 'deodoriz'] },
     'weekly-yard-maintenance': { q: 'How much does weekly yard maintenance cost?', slug: 'how-much-does-weekly-yard-maintenance-cost', topic: 'Cost', words: ['landscap', 'backyard'] },
     'kitty-litter-exchange': { q: 'How much does a litter box cleaning service cost?', slug: 'how-much-does-litter-box-cleaning-cost', topic: 'Cost' },
     'dog-run-cleanups': { q: 'How much does a dog run cleanup cost?', slug: 'how-much-does-a-dog-run-cleanup-cost', topic: 'Cost', words: ['run'] },
@@ -392,24 +391,22 @@ function serviceCostQuestions(): Question[] {
 /** Questions that compare services, answered from more than one service's rows. */
 function choosingQuestions(): Question[] {
   const out: Question[] = [];
-  const deo = serviceBySlug('artificial-turf-deodorizing');
-  const deep = serviceBySlug('yard-deep-clean');
-  const maint = serviceBySlug('weekly-turf-maintenance');
+  const deo = serviceBySlug('weekly-turf-maintenance');
+  const deep = serviceBySlug('turf-deep-clean');
   const lowest = (slug: string) => tiersFor(slug).filter((t) => t.price_cents !== null && !t.requires_quote).sort((a, b) => (a.price_cents ?? 0) - (b.price_cents ?? 0))[0];
-  if (deo && deep && maint && lowest(deo.slug) && lowest(deep.slug) && lowest(maint.slug)) {
-    const [d, dc, m] = [lowest(deo.slug), lowest(deep.slug), lowest(maint.slug)];
+  if (deo && deep && lowest(deo.slug) && lowest(deep.slug)) {
+    const [d, dc] = [lowest(deo.slug), lowest(deep.slug)];
     out.push({
       slug: 'how-do-i-get-rid-of-dog-urine-smell-on-artificial-turf',
       q: 'How do I get rid of dog urine smell on artificial turf?',
       topic: 'Turf and odor',
-      answer: `Treat the turf with an enzyme deodorizer, which breaks down urine instead of masking it: Scoop Dogg's turf deodorizing starts at ${formatTierPrice(d)}. If the smell comes back within days, the infill is saturated and needs a deep clean first, from ${formatTierPrice(dc)}.`,
-      more: `To keep it from coming back, weekly turf maintenance sweeps and deodorizes every week, from ${formatTierPrice(m)}${m.price_suffix ?? ''}.`,
-      facts: [tierFact(d), tierFact(dc), tierFact(m)],
+      answer: `Treat the turf with an enzyme deodorizer, which breaks down urine instead of masking it: Scoop Dogg's weekly Turf Deodorizing starts at ${formatTierPrice(d)}${d.price_suffix ?? ''}. If the smell comes back within days, the infill is saturated and needs a deep clean first, from ${formatTierPrice(dc)}.`,
+      more: 'Our weekly visit clears debris, rakes leaves, sanitizes and deodorizes, so the smell does not come back.',
+      facts: [tierFact(d), tierFact(dc)],
       blocks: [
         { kind: 'table', title: 'Which turf service fits', head: ['If your turf', 'Service', 'From'], rows: [
-          ['Smells, but only sometimes', deo.name, formatTierPrice(d)],
+          ['Gets daily use from dogs, or smells now and then', deo.name, `${formatTierPrice(d)}${d.price_suffix ?? ''}`],
           ['Smells again days after cleaning', deep.name, formatTierPrice(dc)],
-          ['Gets daily use from dogs', maint.name, `${formatTierPrice(m)}${m.price_suffix ?? ''}`],
         ] },
         { kind: 'links', title: 'Read more', items: [{ href: '/resources/clean-dog-poop-artificial-turf-ventura-county', label: 'How to clean dog poop off artificial turf' }] },
       ],

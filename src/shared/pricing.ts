@@ -187,6 +187,10 @@ export function packageForTier(catalog: Catalog, tierId: string): Package | null
 }
 
 /** The cheapest monthly package of a service, for "from $65/month" on cards. */
+/** What a plan costs a week. Josue quotes the week; a month is four of them, billed monthly. */
+export const weeklyCents = (p: Pick<Package, 'monthly_price_cents' | 'visits_per_month'>) =>
+  Math.round(p.monthly_price_cents / Number(p.visits_per_month));
+
 export function lowestMonthly(catalog: Catalog, serviceSlug: string): Package | null {
   return packagesFor(catalog, serviceSlug).sort((a, b) => a.monthly_price_cents - b.monthly_price_cents)[0] ?? null;
 }
@@ -443,10 +447,11 @@ export function quoteOneTime(catalog: Catalog, tierId: string): OneTimeQuote {
 export function bookableServices(catalog: Catalog): Array<{
   service: Service; shape: 'recurring' | 'one_time' | 'quote'; fromCents: number | null;
 }> {
-  return catalog.services.map((service) => {
+  // An add-on is bought with a plan, never alone (Josue, 2026-11-01), so it is not a service to book.
+  return catalog.services.filter((s) => s.kind !== 'addon').map((service) => {
     const packages = packagesFor(catalog, service.slug);
     if (packages.length) {
-      return { service, shape: 'recurring' as const, fromCents: Math.min(...packages.map((p) => p.monthly_price_cents)) };
+      return { service, shape: 'recurring' as const, fromCents: Math.min(...packages.map((p) => weeklyCents(p))) };
     }
     const priced = catalog.tiers.filter((t) => t.service_slug === service.slug && tierPrice(t).kind === 'price');
     if (priced.length) {

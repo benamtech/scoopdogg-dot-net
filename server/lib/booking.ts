@@ -334,9 +334,15 @@ export async function createBooking(input: BookingInput, base: string) {
       [customerId, input.address, area.name, input.postal_code || null, dogsMatch ? Number(dogsMatch[1]) : null, input.gate_code || null, input.access_notes || '']);
     propertyId = prop[0].id;
 
-    const extras = quote ? quote.lines.filter((l) => l.kind === 'extra').map((l) => ({ tier_id: l.ref, label: l.label, price_cents: l.cents })) : [];
+    const extras = quote ? [
+      ...quote.lines.filter((l) => l.kind === 'extra').map((l) => ({ tier_id: l.ref, label: l.label, price_cents: l.cents })),
+      // A second plan on the same subscription (weekly scooping added to turf or yard care): same
+      // weekly visit, one Stripe subscription, `monthly_price_cents` is the sum of both.
+      ...quote.lines.filter((l) => l.kind === 'package' && l.ref !== quote.package.id).map((l) => ({ package_id: l.ref, label: l.label, monthly_cents: l.cents })),
+    ] : [];
     const offer = quote ? quote.appliedOffers[0] : undefined;
-    const priceCents = quote ? quote.package.monthly_price_cents : oneTime!.cents;
+    // Everything billed a month: the plan, and any second plan booked with it.
+    const priceCents = quote ? quote.monthlyCents : oneTime!.cents;
     const state = ready ? 'deposit_pending' : 'draft';
     // trialing is a real payment_state now (migration 022) and it is what lane B is.
     const paymentState = !ready ? 'none' : payAfter ? 'trialing' : 'pending';
@@ -351,7 +357,7 @@ export async function createBooking(input: BookingInput, base: string) {
        priceCents, quote ? quote.package.short_label : oneTime!.tier.label,
        quote ? quote.package.frequency : 'one_time', chosen.weekday, chosen.date,
        quote ? quote.package.id : null, quote ? quote.package.version : null,
-       quote ? quote.package.monthly_price_cents : null, mode === 'live', area.slug,
+       quote ? quote.monthlyCents : null, mode === 'live', area.slug,
        JSON.stringify(extras),
        offer ? JSON.stringify({ offer_id: offer.id, name: offer.name, percent_off: offer.percent_off, first_charge_cents: quote!.firstChargeCents }) : null,
        JSON.stringify({ idempotency_key: input.idempotency_key, last_cleaned: input.last_cleaned, source: input.source,
@@ -431,6 +437,10 @@ export async function createBooking(input: BookingInput, base: string) {
     const offer = quote!.appliedOffers[0];
     const couponId = offer ? await couponForOffer(mode, { id: offer.id, name: offer.name, value: offer.percent_off }, [productId]) : null;
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [{ price: priceId, quantity: 1 }];
+    for (const l of quote!.lines.filter((x) => x.kind === 'package' && x.ref !== quote!.package.id)) {
+      const other = priced.catalog.packages.find((p) => p.id === l.ref)!;
+      lineItems.push({ price: (await priceForPackage(mode, { ...other })).priceId, quantity: 1 });
+    }
     for (const l of quote!.lines.filter((x) => x.kind === 'extra')) {
       lineItems.push({ quantity: 1, price_data: { currency: 'usd', unit_amount: l.cents, product_data: { name: l.label } } });
     }
@@ -647,9 +657,14 @@ async function sendWelcome(bookingId: string) {
   const trialing = b.payment_state === 'trialing';
   const firstChargeOn: string | null = b.booking_answers?.first_charge_on ?? null;
   const startLabel = niceDate(b.starts_on);
-  const paidToday = trialing ? 0 : (b.discount?.first_charge_cents ?? b.price_cents ?? b.monthly_price_cents ?? 0);
-  // What was bought, in words. A one-time job has no package, so this used to print nothing.
-  const jobName: string = b.package_name ?? ([b.service_name, b.price_tier_label].filter(Boolean).join(' · ') || 'One-time job');
+  // What actually moved, from the invoice completeBooking wrote: a plan's price leaves out any
+  // add-on on the first charge. Falls back to the agreed numbers if no invoice row exists.
+  const { rows: inv } = await db().query(`select total_cents from invoices where subscription_id = $1 order by created_at desc limit 1`, [bookingId]);
+  const paidToday = trialing ? 0 : (inv[0]?.total_cents ?? b.discount?.first_charge_cents ?? b.price_cents ?? b.monthly_price_cents ?? 0);
+  // What was bought, in words, add-ons included: this line is how Josue knows what to do on the
+  // visit. A one-time job has no package, so this used to print nothing.
+  const added: string[] = (b.extras ?? []).map((x: { label?: string }) => x.label).filter(Boolean);
+  const jobName: string = [b.package_name ?? ([b.service_name, b.price_tier_label].filter(Boolean).join(' · ') || 'One-time job'), ...added].join(' + ');
   const paidLabel = formatCents(paidToday, { forceDecimals: paidToday % 100 !== 0 });
 
   // LANE B SAYS THE DATE, NEVER "LATER" (P16 §5). A trial the customer cannot see is a surprise
@@ -753,7 +768,7 @@ async function notifyOwner(purpose: 'booking_owner' | 'waitlist_owner', subject:
     html: shell(subject, `<p style="font-size:15px">${note}</p><table style="width:100%;border-collapse:collapse;background:#FAF8F5">
       ${row('Name', input.name)}${row('Phone', input.phone)}${row('Email', input.email)}${row('Address', [input.address, input.city].filter(Boolean).join(', '))}
       ${paid ? row('Job', paid.job) + row('Paid', paid.paid) : ''}
-      ${quote && quote.ok ? row('Plan', quote.package.name) + row('First charge', formatCents(quote.firstChargeCents)) : ''}${row('Starts', startLabel)}
+      ${quote && quote.ok ? row('Plan', quote.lines.filter((l) => l.kind !== 'discount').map((l) => l.label).join(' + ')) + row('First charge', formatCents(quote.firstChargeCents)) : ''}${row('Starts', startLabel)}
       ${row('Gate code', input.gate_code)}${row('Notes', input.access_notes)}${row('Last cleaned', input.last_cleaned)}</table>`),
   }).catch(() => undefined);
   // And the business's AI employee, in the envelope it asked for (server/lib/employee.ts). Never costs the booking.

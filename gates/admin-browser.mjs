@@ -76,8 +76,10 @@ probeLead ? ok('probe lead present', `${probeLead.name} (${probeLead.id})`)
 // contact_messages is empty before cutover, so the message screens would render an
 // empty state and prove nothing. Seed one row directly — NOT through /api/contact,
 // which emails Josue — and delete it again at the end.
-const existing = await client.query(`select id from contact_messages order by created_at desc limit 1`);
+const existing = await client.query(`select id, name from contact_messages order by created_at desc limit 1`);
 let firstMessage = existing.rows[0]?.id || null;
+// A real message now exists, so the seed never runs: the needle is that row's own name, which only a signed-in read shows.
+const messageNeedle = existing.rows[0]?.name ?? 'AMTECH SITE TEST';
 let seededMessage = null;
 if (!firstMessage) {
   const seeded = await client.query(
@@ -173,9 +175,9 @@ const esc = (x) => new RegExp(String(x ?? 'never-matches').replace(/[.*+?^${}()|
 const screens = [
   ['/admin',                          [/AMTECH SITE TEST/, /Recent Leads/],        'dashboard'],
   ['/admin/leads',                    [/AMTECH SITE TEST/],                        'leads list'],
-  ['/admin/messages',                 [/AMTECH SITE TEST/],                        'messages list'],
+  ['/admin/messages',                 [esc(messageNeedle)],                        'messages list'],
   [`/admin/leads/${probeLead?.id}`,   [/AMTECH SITE TEST/, new RegExp(leadEmail ? leadEmail.replace(/[.+]/g, '\\$&') : 'never-matches')], 'lead detail'],
-  [`/admin/messages/${firstMessage}`, [/AMTECH SITE TEST/, /Seeded by gates\/admin-browser\.mjs/], 'message detail'],
+  [`/admin/messages/${firstMessage}`, [esc(messageNeedle)],                       'message detail'],
   // The four screens elevation-2026-09-16 changed, each with a needle that only an authenticated
   // read can produce. Every server feature on that branch shipped first with NO screen reading it,
   // so the screens are checked here in a browser, signed in — not assumed from a green typecheck.

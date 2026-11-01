@@ -27,6 +27,7 @@ const SERVICE_LABELS: Record<string, string> = {
   turf: 'Turf Rescue (Surface Deodorizing)',
   'one-time': 'Turf Deep Clean (One-time)',
   'yard-deep-clean': 'Yard Deep Clean',
+  'turf-deep-clean': 'Turf Deep Clean',
   'kitty-litter': 'Kitty Litter Exchange',
   'dog-run': 'Dog Run Cleanup',
   'cat-tree': 'Cat Tree Cleaning',

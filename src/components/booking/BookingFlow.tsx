@@ -34,12 +34,12 @@
  * Summit lesson: a client:load controlled input erases pre-hydration typing).
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { quoteBooking, quoteOneTime, bookableServices, formatCents, tierPrice, catchUpFor, LAST_CLEANED, type Catalog, type Tier } from '../../shared/pricing';
+import { quoteBooking, quoteOneTime, bookableServices, formatCents, tierPrice, catchUpFor, weeklyCents, LAST_CLEANED, type Catalog, type Tier } from '../../shared/pricing';
 import { renewalTerms } from '../../shared/consent';
 import { gaLead } from '../../lib/ga';
 
 type Area = { slug: string; name: string; market: string; bookable: boolean };
-type ServiceInfo = { slug: string; name: string; what_includes: string[] };
+type ServiceInfo = { slug: string; name: string; what_includes: string[]; kind: string; related_slugs: string[] };
 type Props = {
   catalog: Catalog;
   areas: Area[];
@@ -77,22 +77,23 @@ type DateOption = { date: string; weekday: number; label: string; full: boolean 
 type Lane = 'prepay' | 'payafter';
 
 const STORE = 'sd-booking-v2';
-const VISITS_PER_MONTH = 52 / 12;
 
 const SIZE_QUESTION: Record<string, string> = {
   'weekly-pooper-scooper-service': 'How many dogs do you have?',
-  'weekly-turf-maintenance': 'How big is the turf area?',
+  'weekly-turf-maintenance': 'How big is your yard?',
   'weekly-yard-maintenance': 'Which best describes your yard?',
   'kitty-litter-exchange': 'How many litter boxes?',
   'one-time-dog-poop-cleanup': 'How much has built up?',
-  'yard-deep-clean': 'How big is the area?',
-  'artificial-turf-deodorizing': 'How big is the area?',
+  'turf-deep-clean': 'How big is your yard?',
   'dog-run-cleanups': 'How big is the run?',
   'cat-tree-cleaning': 'How many cat trees?',
   'pressure-washing': 'How big is the area?',
   'kitty-litter-robot-cleaning': 'How many Litter-Robots?',
 };
 const DEEP_CLEAN = 'one-time-dog-poop-cleanup';
+const SCOOP = 'weekly-pooper-scooper-service';
+/** Outdoor jobs where a customer is offered weekly scooping on the same visit (Josue, 2026-11-01). */
+const SCOOP_PAIRS = new Set(['weekly-turf-maintenance', 'weekly-yard-maintenance', 'turf-deep-clean', 'dog-run-cleanups', 'pressure-washing']);
 
 /** Five digits out of whatever was typed or pasted. An address still works. */
 const zipIn = (text: string) => (/\b(\d{5})\b/.exec(String(text ?? '')) ?? [])[1] ?? '';
@@ -123,6 +124,15 @@ export default function BookingFlow(props: Props) {
    * The sticky bar at the bottom of this component is that total, and it already existed.
    */
   const [addOns, setAddOns] = useState<string[]>([]);
+  /**
+   * WEEKLY SCOOPING ADDED TO ANOTHER SERVICE (Josue, 2026-11-01: "they can add poop scoop
+   * services, have the 1 dog or two dogs"). The scooping package's id. With a one-time job the
+   * plan becomes the booking and the job its first-visit extra; with another plan it is a second
+   * line on the same subscription, on the same weekly visit. Priced by quoteBooking() either way.
+   */
+  const [addScoop, setAddScoop] = useState('');
+  /** The add-on a visitor arrived for or picked first, to show it chosen at the price step. */
+  const [wantAddOn, setWantAddOn] = useState('');
   const [lane, setLane] = useState<Lane>('prepay');
   const [dates, setDates] = useState<DateOption[] | null>(null);
   const [startDate, setStartDate] = useState('');
@@ -206,7 +216,11 @@ export default function BookingFlow(props: Props) {
 
     // The service the visitor pressed a button for. A package outranks it (it names a service
     // already); an unknown slug is ignored and the picker is shown as before.
-    const svcSlug = pkg ? '' : (url.searchParams.get('service') || '');
+    const asked = pkg ? '' : (url.searchParams.get('service') || '');
+    // An add-on is booked through its plan, with the add-on already chosen at the price step.
+    const askedAddOn = props.services.find((s) => s.slug === asked && s.kind === 'addon');
+    if (askedAddOn) setWantAddOn(askedAddOn.slug);
+    const svcSlug = askedAddOn ? (askedAddOn.related_slugs[0] ?? '') : asked;
     const entry = svcSlug ? bookableServices(catalog).find((x) => x.service.slug === svcSlug) : undefined;
     if (entry) {
       if (entry.shape === 'quote') { window.location.replace(`/custom-quote?service=${entry.service.slug}`); return; }
@@ -261,41 +275,33 @@ export default function BookingFlow(props: Props) {
   const shapeOf = (slug: string) => shapes.find((s) => s.service.slug === slug)?.shape ?? 'quote';
   const pkgs = useMemo(() => catalog.packages.filter((p) => p.service_slug === service).sort((a, b) => a.sort_order - b.sort_order), [service]);
   const serviceTiers = useMemo(() => catalog.tiers.filter((t) => t.service_slug === service).sort((a, b) => a.sort_order - b.sort_order), [service]);
-  const pkg = catalog.packages.find((p) => p.id === packageId);
+  const pkg = catalog.packages.find((p) => p.id === (packageId || (tierId ? addScoop : '')));
   const oneTime = tierId ? quoteOneTime(catalog, tierId) : null;
+  const scoopPkgs = useMemo(() => catalog.packages.filter((p) => p.service_slug === SCOOP).sort((a, b) => a.sort_order - b.sort_order), []);
+  const offersScoop = SCOOP_PAIRS.has(service);
+  const addedScoop = scoopPkgs.find((p) => p.id === addScoop);
   const deepTiers = useMemo(() => catalog.tiers.filter((t) => t.service_slug === DEEP_CLEAN && !t.requires_quote && t.price_cents), []);
   /**
-   * WHAT MAY BE ADDED: the cheapest genuinely-priced tier of every OTHER service.
-   *
-   * Four exclusions and each is a rule this project already holds elsewhere:
-   *   - the service being booked (it is not an addition to itself)
-   *   - `requires_quote` — there is no price to charge
-   *   - `price_is_from` — a floor is never a final number (gates/from-price-never-final.mjs)
-   *   - the catch-up tiers, which `covers_last_cleaned` marks and the question above owns
-   * Cheapest tier per service, so this is a list of services and not a list of 34 sizes. A
-   * customer who wants the larger size says so to Josue; offering four sizes of eight services
-   * at the price step is a configurator, not an offer.
+   * WHAT MAY BE ADDED: the add-ons that belong to this plan, and nothing else. A service with
+   * `kind = 'addon'` names its plan in `related_slugs` (Yard Sanitizing with weekly scooping, an
+   * hour of extra work with yard maintenance). Until 2026-11-01 this offered the cheapest tier of
+   * every other service, eight unrelated things at the price step; Josue asked for it to be easy.
    */
-  const addOnOptions = useMemo(() => {
-    const byService = new Map<string, typeof catalog.tiers[number]>();
-    for (const t of catalog.tiers) {
-      if (t.service_slug === service) continue;
-      if (t.requires_quote || t.price_is_from || !t.price_cents) continue;
-      if (t.covers_last_cleaned?.length) continue;
-      const cur = byService.get(t.service_slug);
-      if (!cur || t.price_cents < (cur.price_cents ?? Infinity)) byService.set(t.service_slug, t);
-    }
-    return [...byService.values()].sort((a, b) => (a.price_cents ?? 0) - (b.price_cents ?? 0));
-  }, [service, catalog.tiers]);
+  const addOnServices = useMemo(() => props.services.filter((s) => s.kind === 'addon'), [props.services]);
+  const addOnGroups = useMemo(() => addOnServices
+    .filter((s) => s.related_slugs.includes(service))
+    .map((s) => ({ ...s, tiers: catalog.tiers.filter((t) => t.service_slug === s.slug && !t.requires_quote && t.price_cents).sort((a, b) => a.sort_order - b.sort_order) })),
+  [addOnServices, service]);
 
   /** Everything charged on the first invoice beyond the plan: the catch-up, then the additions. */
   const extraTierIds = useMemo(
-    () => [...(deepClean ? [deepClean] : []), ...addOns],
-    [deepClean, addOns]);
+    () => [...(deepClean ? [deepClean] : []), ...addOns, ...(tierId && addScoop ? [tierId] : [])],
+    [deepClean, addOns, tierId, addScoop]);
+  const withPackageIds = useMemo(() => (packageId && addScoop ? [addScoop] : []), [packageId, addScoop]);
 
-  const quote = pkg ? quoteBooking(catalog, { packageId: pkg.id, extraTierIds }) : null;
+  const quote = pkg ? quoteBooking(catalog, { packageId: pkg.id, extraTierIds, withPackageIds }) : null;
   const serviceInfo = props.services.find((s) => s.slug === service);
-  const isOneTime = Boolean(tierId && !packageId);
+  const isOneTime = Boolean(tierId && !pkg);
   const firstCharge = isOneTime ? (oneTime?.ok ? oneTime.cents : null) : (quote && quote.ok ? quote.firstChargeCents : null);
   /**
    * THE PRICE THE FUNNEL RECORDS IS THE PRICE OF THE THING, not the first charge.
@@ -390,7 +396,7 @@ export default function BookingFlow(props: Props) {
     try {
       const r = await fetch('/api/booking/price', {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ city, postal_code: zip, package_id: pkg?.id ?? '', tier_id: tierId, extra_tier_ids: extraTierIds }),
+        body: JSON.stringify({ city, postal_code: zip, package_id: pkg?.id ?? '', tier_id: pkg ? '' : tierId, extra_tier_ids: extraTierIds, with_package_ids: withPackageIds }),
       });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || 'Could not load days');
@@ -433,8 +439,8 @@ export default function BookingFlow(props: Props) {
         method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           address: address || `ZIP ${zip}`, city, postal_code: zip,
-          package_id: pkg?.id ?? '', tier_id: tierId,
-          extra_tier_ids: extraTierIds, last_cleaned: lastCleaned,
+          package_id: pkg?.id ?? '', tier_id: pkg ? '' : tierId,
+          extra_tier_ids: extraTierIds, with_package_ids: withPackageIds, last_cleaned: lastCleaned,
           lane: isOneTime ? 'prepay' : lane, session_id: idem.current,
           start_date: startDate, name, email, phone, gate_code: gate, access_notes: notes,
           source: document.referrer ? new URL(document.referrer).pathname : '/book',
@@ -539,7 +545,7 @@ export default function BookingFlow(props: Props) {
                   return (
                     <Choice key={s.slug} selected={service === s.slug} badge={s.slug === 'weekly-pooper-scooper-service' ? 'Most popular' : undefined}
                       onClick={() => {
-                        setService(s.slug); setPackageId(''); setTierId('');
+                        setService(s.slug); setPackageId(''); setTierId(''); setAddScoop(''); setAddOns([]); setWantAddOn('');
                         if (shape === 'quote') { window.location.href = `/custom-quote?service=${s.slug}`; return; }
                         go('size');
                       }}>
@@ -547,14 +553,29 @@ export default function BookingFlow(props: Props) {
                         <span>
                           <span className="block text-lg font-semibold text-forest-900">{info?.name ?? s.name}</span>
                           <span className="mt-1 block text-base text-ink-500">
-                            {shape === 'recurring' ? 'Every week, same day' : shape === 'one_time' ? 'A one-time visit' : 'We’ll quote it'}
+                            {shape === 'recurring' ? 'Every week, same day, billed monthly' : shape === 'one_time' ? 'A one-time visit' : 'We’ll give you one price'}
                           </span>
                         </span>
                         {fromCents != null && (
                           <span className="shrink-0 text-right text-sm text-ink-500">from
-                            <span className="block text-lg font-semibold text-forest-900">{formatCents(fromCents)}{shape === 'recurring' ? '/mo' : ''}</span>
+                            <span className="block text-lg font-semibold text-forest-900">{formatCents(fromCents)}{shape === 'recurring' ? '/week' : ''}</span>
                           </span>
                         )}
+                      </span>
+                    </Choice>
+                  );
+                })}
+                {addOnServices.filter((a) => a.slug === 'yard-sanitizing').map((a) => {
+                  const low = catalog.tiers.filter((t) => t.service_slug === a.slug && t.price_cents).sort((x, y) => (x.price_cents ?? 0) - (y.price_cents ?? 0))[0];
+                  return (
+                    <Choice key={a.slug} selected={wantAddOn === a.slug}
+                      onClick={() => { setService(a.related_slugs[0]); setPackageId(''); setTierId(''); setAddScoop(''); setAddOns([]); setWantAddOn(a.slug); go('size'); }}>
+                      <span className="flex items-start justify-between gap-4">
+                        <span>
+                          <span className="block text-lg font-semibold text-forest-900">{a.name}</span>
+                          <span className="mt-1 block text-base text-ink-500">An add-on to weekly scooping. Pick your dogs first.</span>
+                        </span>
+                        {low && <span className="shrink-0 text-right text-sm text-ink-500">from<span className="block text-lg font-semibold text-forest-900">{formatCents(low.price_cents ?? 0)}</span></span>}
                       </span>
                     </Choice>
                   );
@@ -565,13 +586,13 @@ export default function BookingFlow(props: Props) {
 
           {step === 'size' && (
             <div>
-              <Heading>{SIZE_QUESTION[service] ?? 'Which fits best?'}</Heading>
+              <Heading sub={wantAddOn ? 'Then pick your yard size for the sanitizing.' : undefined}>{SIZE_QUESTION[service] ?? 'Which fits best?'}</Heading>
               <div className="grid grid-cols-2 gap-3">
                 {shapeOf(service) === 'recurring' && pkgs.map((p) => (
                   <Choice key={p.id} selected={packageId === p.id} badge={p.featured ? 'Most booked' : undefined}
                     onClick={() => { setPackageId(p.id); setTierId(''); go('price'); }}>
                     <span className="block text-lg font-semibold text-forest-900">{p.short_label}</span>
-                    <span className="mt-1 block text-base text-ink-500">{formatCents(p.monthly_price_cents)}/month</span>
+                    <span className="mt-1 block text-base text-ink-500">{formatCents(weeklyCents(p))}/week · {formatCents(p.monthly_price_cents)}/month</span>
                   </Choice>
                 ))}
                 {shapeOf(service) === 'one_time' && serviceTiers.map((t) => {
@@ -605,10 +626,9 @@ export default function BookingFlow(props: Props) {
               {pkg && quote && quote.ok && (
                 <div className="rounded-xl border border-line bg-paper p-6 shadow-md sm:p-8">
                   <p className="text-base font-semibold text-forest-800">{pkg.name}</p>
-                  <p className="mt-2 flex items-baseline gap-2"><span className="font-serif text-h1 text-forest-900">{formatCents(pkg.monthly_price_cents)}</span><span className="text-lg text-ink-500">/month</span></p>
-                  {/* The weekly equivalent under every monthly price, always (P16 §5). */}
+                  <p className="mt-2 flex items-baseline gap-2"><span className="font-serif text-h1 text-forest-900">{formatCents(weeklyCents(pkg))}</span><span className="text-lg text-ink-500">/week</span></p>
                   <p className="mt-1 text-base text-ink-500">
-                    about {formatCents(Math.round(pkg.monthly_price_cents / VISITS_PER_MONTH / 100) * 100)} a visit · every week · cancel anytime
+                    {formatCents(pkg.monthly_price_cents)} a month, billed monthly · every week · cancel anytime
                   </p>
                   {quote.discountCents > 0 && (
                     <div className="mt-6 flex items-center justify-between rounded-md bg-amber-100 px-4 py-3">
@@ -626,41 +646,45 @@ export default function BookingFlow(props: Props) {
                 </div>
               )}
 
-              {isOneTime && oneTime && oneTime.ok && (
-                <div className="rounded-xl border border-line bg-paper p-6 shadow-md sm:p-8">
+              {tierId && oneTime && oneTime.ok && (
+                <div className="mb-4 rounded-xl border border-line bg-paper p-6 shadow-md sm:p-8">
                   <p className="text-base font-semibold text-forest-800">{oneTime.service.name}</p>
                   <p className="mt-2 font-serif text-h1 text-forest-900">{formatCents(oneTime.cents)}</p>
-                  <p className="mt-1 text-base text-ink-500">{oneTime.tier.label} · one visit, paid when you book</p>
+                  <p className="mt-1 text-base text-ink-500">{oneTime.tier.label} · {addScoop ? 'done on your first visit' : 'one visit, paid when you book'}</p>
                 </div>
               )}
 
               {/*
-                ANYTHING ELSE WHILE HE IS THERE.
-                
-                The van is already in the street and the gate is already open, so a one-time job
-                added here costs Josue the work and none of the driving — which is the whole of
-                server/lib/density.ts's argument applied to a single visit rather than a route.
-                
-                It is offered, never pre-ticked, and every line shows its own price with the
-                running total in the bar below. The evidence for that shape: itemising a secondary
-                component raises attention to it and raises demand, but partitioned prices lower
-                recalled totals and price COMPLEXITY lowers perceived fairness (Morwitz, Greenleaf
-                & Johnson 1998; meta-analysis 2018). Itemise, and keep the total on screen.
-                
-                And NOT a monthly second plan. quoteBooking() prices those correctly now, but
-                createBooking() still writes one subscriptions row, so offering a second monthly
-                plan here would take money for something the system cannot deliver. R11 §F has the
-                design; this is the half that is true today.
+                ANYTHING ELSE WHILE HE IS THERE. The van is already in the street, so an add-on
+                costs Josue the work and none of the driving. Offered, never pre-ticked, every line
+                with its own price and the running total in the bar below (Morwitz, Greenleaf &
+                Johnson 1998: itemise, and keep the total on screen).
               */}
-              {!isOneTime && pkg && addOnOptions.length > 0 && (
-                <fieldset className="mt-8">
-                  <legend className="text-lg font-semibold text-forest-900">Anything else while he's there?</legend>
-                  <p className="mt-1 text-base text-ink-500">
-                    One-time jobs on your first visit. He is already at your gate, so there is no second trip.
-                  </p>
+              {offersScoop && (
+                <fieldset className="mt-8" data-add-scoop>
+                  <legend className="text-lg font-semibold text-forest-900">Add weekly poop scooping?</legend>
+                  <p className="mt-1 text-base text-ink-500">Same visit, every week, billed monthly.</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button type="button" aria-pressed={!addScoop} onClick={() => setAddScoop('')}
+                      className={`rounded-md border px-4 py-2.5 text-base font-medium transition duration-fast ${!addScoop ? 'border-forest-600 bg-forest-600 text-white' : 'border-line-strong bg-paper text-forest-800 hover:border-forest-400'}`}>No thanks</button>
+                    {scoopPkgs.map((p) => (
+                      <button key={p.id} type="button" aria-pressed={addScoop === p.id} onClick={() => setAddScoop(p.id)}
+                        className={`rounded-md border px-4 py-2.5 text-base font-medium transition duration-fast ${addScoop === p.id ? 'border-forest-600 bg-forest-600 text-white' : 'border-line-strong bg-paper text-forest-800 hover:border-forest-400'}`}>
+                        {p.short_label} · {formatCents(weeklyCents(p))}/week
+                      </button>
+                    ))}
+                  </div>
+                  {packageId && addedScoop && quote && quote.ok && (
+                    <p className="mt-3 text-base text-forest-900">Your plans together: <strong className="font-semibold">{formatCents(quote.monthlyCents)}</strong> a month.</p>
+                  )}
+                </fieldset>
+              )}
+              {!isOneTime && pkg && addOnGroups.map((g) => (
+                <fieldset key={g.slug} className="mt-8" data-add-on={g.slug}>
+                  <legend className="text-lg font-semibold text-forest-900">Add {g.name}?</legend>
+                  <p className="mt-1 text-base text-ink-500">Done on your first visit, no second trip.{g.tiers.length > 1 ? ' Pick your yard size.' : ''}</p>
                   <div className="mt-3 space-y-2">
-                    {addOnOptions.map((t) => {
-                      const svc = props.services.find((x) => x.slug === t.service_slug);
+                    {g.tiers.map((t) => {
                       const on = addOns.includes(t.id);
                       return (
                         <label key={t.id}
@@ -669,28 +693,27 @@ export default function BookingFlow(props: Props) {
                             <input
                               type="checkbox"
                               checked={on}
-                              onChange={() => setAddOns((a) => (a.includes(t.id) ? a.filter((x) => x !== t.id) : [...a, t.id]))}
+                              onChange={() => setAddOns((a) => {
+                                // One size of one add-on: choosing a size replaces the other sizes.
+                                const others = a.filter((x) => !g.tiers.some((gt) => gt.id === x));
+                                return on ? others : [...others, t.id];
+                              })}
                               className="h-5 w-5 shrink-0 accent-forest-600"
                             />
-                            <span className="min-w-0">
-                              <span className="block text-base font-medium text-forest-900">{svc?.name ?? t.service_slug}</span>
-                              <span className="block text-sm text-ink-500">{t.label}</span>
-                            </span>
+                            <span className="min-w-0 text-base font-medium text-forest-900">{t.label}</span>
                           </span>
-                          <span className="shrink-0 text-base font-semibold text-forest-800">
-                            +{formatCents(t.price_cents ?? 0)}
-                          </span>
+                          <span className="shrink-0 text-base font-semibold text-forest-800">+{formatCents(t.price_cents ?? 0)}</span>
                         </label>
                       );
                     })}
                   </div>
-                  {addOns.length > 0 && quote && quote.ok && (
-                    <p className="mt-3 text-base text-forest-900">
-                      <strong className="font-semibold">{formatCents(quote.extrasCents)}</strong> added to your first visit.
-                      Your monthly stays {formatCents(quote.monthlyCents)}.
-                    </p>
-                  )}
                 </fieldset>
+              ))}
+              {!isOneTime && pkg && addOns.length > 0 && quote && quote.ok && (
+                <p className="mt-3 text-base text-forest-900">
+                  <strong className="font-semibold">{formatCents(quote.extrasCents)}</strong> added to your first visit.
+                  Your monthly stays {formatCents(quote.monthlyCents)}.
+                </p>
               )}
 
               {/* Add-on attach happens HERE, not after (P14 §A2 lever 3). */}
@@ -865,12 +888,12 @@ export default function BookingFlow(props: Props) {
                       Your card is saved. Your first payment is <strong className="font-semibold">{firstChargeOn ? niceDate(firstChargeOn) : 'the day after your first visit'}</strong>
                       {quote && quote.ok ? ` — ${formatCents(quote.firstChargeCents, { forceDecimals: quote.firstChargeCents % 100 !== 0 })}` : ''}.
                     </p>
-                    <p className="mt-1 text-sm text-ink-500">Then {pkg ? formatCents(pkg.monthly_price_cents) : ''} a month. Skip, pause or cancel anytime from your account.</p>
+                    <p className="mt-1 text-sm text-ink-500">Then {quote && quote.ok ? formatCents(quote.monthlyCents) : ''} a month. Skip, pause or cancel anytime from your account.</p>
                   </>
                 ) : (
                   <>
                     <p className="mt-2 flex justify-between border-t border-forest-200 pt-3 text-lg font-semibold text-forest-900"><span>Due today</span><span>{formatCents(firstCharge, { forceDecimals: firstCharge % 100 !== 0 })}</span></p>
-                    {!isOneTime && pkg && <p className="mt-1 text-sm text-ink-500">Then {formatCents(pkg.monthly_price_cents)} a month. Skip, pause or cancel anytime from your account.</p>}
+                    {!isOneTime && quote && quote.ok && <p className="mt-1 text-sm text-ink-500">Then {formatCents(quote.monthlyCents)} a month. Skip, pause or cancel anytime from your account.</p>}
                   </>
                 )}
               </div>

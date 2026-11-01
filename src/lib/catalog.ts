@@ -15,7 +15,7 @@
  * island receives its catalog as props from the page that rendered it.
  */
 import type { Catalog, Service, Tier, Package, Offer } from '../shared/pricing';
-import { lowestMonthly, packagesFor, formatCents, formatTierPrice } from '../shared/pricing';
+import { lowestMonthly, packagesFor, formatCents, formatTierPrice, weeklyCents } from '../shared/pricing';
 
 export type Faq = { q: string; a: string };
 
@@ -119,6 +119,8 @@ export const isRetiredService = (slug: string) => (data.retired_service_slugs ??
 export const areaBySlug = (slug: string) => data.areas.find((a) => a.slug === slug);
 export const tiersFor = (slug: string) => data.tiers.filter((t) => t.service_slug === slug).sort((a, b) => a.sort_order - b.sort_order);
 export const packagesForService = (slug: string) => packagesFor(catalog, slug);
+/** The add-ons sold with a plan: `kind = 'addon'`, and `related_slugs` names the plan. */
+export const addOnsFor = (slug: string) => data.services.filter((s) => s.kind === 'addon' && (s.related_slugs ?? []).includes(slug));
 
 /**
  * Ben, 2026-09-16: "dont limit it to ventura county in the copy. they serve Ventura and Santa
@@ -154,7 +156,7 @@ export function regionSentence(): string {
 }
 
 /**
- * How a service's price reads on a card: the monthly package when one exists, else the tier.
+ * How a service's price reads on a card: the week when it is a plan, else the tier.
  *
  * `cents` comes back alongside the text so a caller can emit `data-price-cents`. That attribute
  * is not decoration: `gates/price-four-places.mjs` uses it to find a price on a page and check
@@ -163,7 +165,7 @@ export function regionSentence(): string {
  */
 export function headlinePrice(slug: string): { text: string; per: string; cents: number; derived: boolean } | null {
   const pkg = lowestMonthly(catalog, slug);
-  if (pkg) return { text: formatCents(pkg.monthly_price_cents), per: '/month', cents: pkg.monthly_price_cents, derived: pkg.source === 'derived_from_published' };
+  if (pkg) return { text: formatCents(weeklyCents(pkg)), per: '/week', cents: weeklyCents(pkg), derived: pkg.source === 'derived_from_published' };
   const priced = tiersFor(slug).filter((t) => t.price_cents !== null && !t.requires_quote);
   if (!priced.length) return null;
   const low = priced.sort((a, b) => (a.price_cents ?? 0) - (b.price_cents ?? 0))[0];

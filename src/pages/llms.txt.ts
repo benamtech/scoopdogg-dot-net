@@ -9,6 +9,7 @@ import {
   services, packagesForService, tiersFor, formatCents, formatTierPrice, headlineOffer, markets, regionSentence,
   business, trust, reviewSummary,
 } from '../lib/catalog';
+import { weeklyCents } from '../shared/pricing';
 import { questions, TOPICS } from '../lib/questions';
 import { ARTICLES } from '../lib/articles';
 import { SITE_URL } from '../lib/constants';
@@ -31,7 +32,7 @@ export const GET: APIRoute = () => {
     const tiers = tiersFor(s.slug);
     L.push(`### ${s.name}`, '');
     if (s.intro) L.push(firstSentence(s.intro));
-    if (pk.length) L.push(`Monthly plans (weekly visits): ${pk.map((p) => `${p.short_label} ${formatCents(p.monthly_price_cents)}/month`).join('; ')}`);
+    if (pk.length) L.push(`Weekly plans, billed monthly: ${pk.map((p) => `${p.short_label} ${formatCents(weeklyCents(p))}/week (${formatCents(p.monthly_price_cents)}/month)`).join('; ')}`);
     if (tiers.length) L.push(`${pk.length ? 'Per visit' : 'Prices'}: ${tiers.map((t) => `${t.label} ${formatTierPrice(t, 'custom quote')}`).join('; ')}`);
     L.push(`Details: ${SITE_URL}/services/${s.slug}`, '');
   }

@@ -70,7 +70,7 @@ export const ARTICLES: ArticleData[] = [
           text: 'In warm inland areas, waste left for more than 48 hours produces 3-4x more volatile odor compounds than waste removed within the first day.',
         },
         internalLinks: [
-          { to: '/services/artificial-turf-deodorizing', label: 'Artificial Turf Deodorizing Service' },
+          { to: '/services/weekly-turf-maintenance', label: 'Turf Deodorizing Service' },
         ],
       },
       {
@@ -537,7 +537,7 @@ export const ARTICLES: ArticleData[] = [
           'Rinsing helps briefly but does not solve the smell',
         ],
         internalLinks: [
-          { to: '/services/artificial-turf-deodorizing', label: 'Artificial Turf Deodorizing' },
+          { to: '/services/weekly-turf-maintenance', label: 'Turf Deodorizing' },
           { to: '/services/yard-deep-clean', label: 'Yard Deep Clean' },
           { to: '/services/one-time-dog-poop-cleanup', label: 'One-Time Dog Poop Cleanup' },
         ],
@@ -696,7 +696,7 @@ export const ARTICLES: ArticleData[] = [
           'Deodorize if the smell returns.',
         ],
         internalLinks: [
-          { to: '/services/artificial-turf-deodorizing', label: 'Artificial Turf Deodorizing' },
+          { to: '/services/weekly-turf-maintenance', label: 'Turf Deodorizing' },
         ],
       },
       {
@@ -1088,7 +1088,7 @@ export const ARTICLES: ArticleData[] = [
           'Check the product instructions for whatever turf was installed. Some infill materials have specific care requirements.',
         ],
         internalLinks: [
-          { to: '/services/artificial-turf-deodorizing', label: 'Artificial Turf Deodorizing Service' },
+          { to: '/services/weekly-turf-maintenance', label: 'Turf Deodorizing Service' },
         ],
       },
       {
@@ -1141,7 +1141,7 @@ export const ARTICLES: ArticleData[] = [
         internalLinks: [
           { to: '/services/yard-deep-clean', label: 'Yard Deep Clean' },
           { to: '/services/weekly-pooper-scooper-service', label: 'Weekly Pooper Scooper Service' },
-          { to: '/services/artificial-turf-deodorizing', label: 'Artificial Turf Deodorizing' },
+          { to: '/services/weekly-turf-maintenance', label: 'Turf Deodorizing' },
         ],
       },
     ],

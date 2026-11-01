@@ -1,23 +1,20 @@
 ---
 /**
- * The monthly packages of one service, straight from the rows, priced by the shared
- * resolver. The monthly price is the headline; the per-visit equivalent sits under it so a
- * visitor comparing against "$15 a week" elsewhere can see it is the same money (R5 §7).
+ * The plans of one service, straight from the rows, priced by the shared resolver. The week is
+ * the headline, as Josue quotes it, and what the card bills a month sits under it (2026-11-01).
  *
  * The featured package is drawn on the brand green with white text and raised: people read the
  * highlighted, central option as the popular one (R6 §A3, Valenzuela & Raghubir 2009). The
  * label only appears on the row flagged `featured`, so it stays true.
  */
 import { packagesForService, formatCents } from '../../lib/catalog';
-import { offersFor } from '../../shared/pricing';
+import { offersFor, weeklyCents } from '../../shared/pricing';
 import { catalog } from '../../lib/catalog';
 
 export interface Props { service: string; compact?: boolean }
 const { service, compact = false } = Astro.props;
 const list = packagesForService(service);
 const offer = offersFor(catalog, service, [service]).sort((a, b) => b.value - a.value)[0];
-const perVisit = (cents: number, visits: number) => formatCents(Math.round(cents / visits / 100) * 100);
-const freq = { weekly: 'every week', biweekly: 'every other week', twice_weekly: 'twice a week', monthly: 'once a month' } as const;
 const cols = list.length >= 4 ? 'lg:grid-cols-4' : list.length === 3 ? 'lg:grid-cols-3' : '';
 ---
 {list.length > 0 && (
@@ -41,10 +38,10 @@ const cols = list.length >= 4 ? 'lg:grid-cols-4' : list.length === 3 ? 'lg:grid-
           )}
           <p class="text-base font-semibold text-tone-heading">{p.short_label}</p>
           <p class="mt-3 flex items-baseline gap-1">
-            <span class="font-serif text-h2 leading-none text-tone-heading" data-price-cents={p.monthly_price_cents}>{formatCents(p.monthly_price_cents)}</span>
-            <span class="text-sm text-tone-muted sm:text-base">/mo</span>
+            <span class="font-serif text-h2 leading-none text-tone-heading">{formatCents(weeklyCents(p))}</span>
+            <span class="text-sm text-tone-muted sm:text-base">/week</span>
           </p>
-          <p class="mt-2 text-sm text-tone-muted">About {perVisit(p.monthly_price_cents, p.visits_per_month)} a visit<span class="hidden sm:inline">, {freq[p.frequency]}</span></p>
+          <p class="mt-2 text-sm text-tone-muted"><span data-price-cents={p.monthly_price_cents}>{formatCents(p.monthly_price_cents)}</span> a month, billed monthly</p>
           {first !== null && !compact && (
             <p class={`mt-4 border-t pt-4 text-sm ${hot ? 'border-white/15 text-white' : 'border-line text-ink-700'}`}>
               First month <span class={`font-semibold ${hot ? 'text-amber-400' : 'text-orange-700'}`}>{formatCents(first, { forceDecimals: first % 100 !== 0 })}</span><span class="hidden sm:inline"> — half off</span>
