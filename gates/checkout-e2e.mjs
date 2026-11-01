@@ -133,6 +133,7 @@ async function walk(shape) {
     await page.fill('#bk-address', '123 Main St');
     await page.fill('#bk-email', person.email);
     await page.fill('#bk-phone', person.phone);
+    await page.locator('[data-optional-details] summary').click();
     await page.fill('#bk-notes', 'Automated end-to-end gate. Not a real customer.');
     await page.getByRole('button', { name: /review and book/i }).click();
     await page.getByRole('heading', { name: /review your booking/i }).waitFor();

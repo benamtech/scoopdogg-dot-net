@@ -40,9 +40,7 @@ const fresh = async () => { const ctx = await browser.newContext({ viewport: { w
   await page.locator('[data-service-card="pressure-washing"], a[data-cta="service-pressure-washing"]').first().scrollIntoViewIfNeeded();
   await page.locator('a[data-cta="service-pressure-washing"]').first().click();
   await page.waitForURL(/\/book\?service=pressure-washing/); await page.waitForTimeout(900);
-  check(await page.locator('[data-entry-service="pressure-washing"]').count() === 1, 'home card: the ZIP step names the service', await heading(page));
-  await page.fill('#bk-zip', '93003'); await page.keyboard.press('Enter'); await page.waitForFunction(() => !/Where's your yard/.test(document.querySelector('main h1')?.textContent || ''), null, { timeout: 15000 }).catch(() => {});
-  check(/How big is the area/.test(await heading(page)), 'home card: after the ZIP the next question is about that service', await heading(page));
+  check(/How big is the area/.test(await heading(page)), 'home card: the first question is about that service, with nothing typed', await heading(page));
   await page.getByRole('button', { name: 'Back' }).click(); await page.waitForTimeout(500);
   check(/What do you need/.test(await heading(page)), 'home card: Back reaches the full list', await heading(page));
   await ctx.close(); }

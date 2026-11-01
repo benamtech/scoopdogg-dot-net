@@ -462,7 +462,9 @@ export function bookableServices(catalog: Catalog): Array<{
     if (priced.length) {
       return { service, shape: 'one_time' as const, fromCents: Math.min(...priced.map((t) => t.price_cents as number)) };
     }
-    return { service, shape: 'quote' as const, fromCents: null };
+    // A quoted job can still say where it starts: a price up front beats "call us".
+    const floors = catalog.tiers.filter((t) => t.service_slug === service.slug && tierPrice(t).kind === 'from');
+    return { service, shape: 'quote' as const, fromCents: floors.length ? Math.min(...floors.map((t) => t.price_cents as number)) : null };
   });
 }
 
