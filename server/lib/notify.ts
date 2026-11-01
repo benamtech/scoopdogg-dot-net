@@ -51,6 +51,8 @@ export type SendEmailArgs = {
     | 'quote_receipt' | 'quote_sent' | 'quote_accepted'
     // The daily run (server/lib/daily.ts): the owner's list of quotes to follow up.
     | 'quote_follow_up'
+    // What the owner is told about money and plans after the booking (server/lib/comms.ts).
+    | 'owner_payment' | 'owner_notice'
     // The automatic production checks (scripts/after-merge.mjs, .github/workflows): a failure, to Ben.
     | 'ops_alert';
   /** Settings key holding the recipient list, or an explicit address for a sign-in code. */
@@ -208,7 +210,7 @@ async function writeOutbox(row: {
  */
 export async function sendEmail(args: SendEmailArgs): Promise<SendEmailResult> {
   const fromKey = args.fromSettingKey ?? 'notify.from_address';
-  const keys = ['demo.mode', 'demo.address', fromKey];
+  const keys = ['demo.mode', 'demo.address', fromKey, 'notify.lead_recipients'];
   if ('settingKey' in args.recipients) keys.push(args.recipients.settingKey);
   if (args.ccSettingKey) keys.push(args.ccSettingKey);
 
@@ -260,6 +262,12 @@ export async function sendEmail(args: SendEmailArgs): Promise<SendEmailResult> {
   // the file: it happens once, for every message, whatever the caller remembered to do.
   const to = demo.mode && !args.toRequesterInDemo ? [demo.address as string] : requestedTo;
   const cc = demo.mode ? [] : requestedCc;
+  /**
+   * A REPLY REACHES THE OWNER. The From address is on AMTECH's sending domain, which also takes
+   * inbound mail for the platform, so a customer pressing Reply on "You're booked" would write to
+   * a mailbox Josue never sees. With no reply-to of its own, a message answers to his inbox.
+   */
+  const replyTo = args.replyTo ? [args.replyTo] : demo.mode ? [] : asStringArray(settings.get('notify.lead_recipients'));
 
   const payload = {
     subject: args.subject,
@@ -267,7 +275,7 @@ export async function sendEmail(args: SendEmailArgs): Promise<SendEmailResult> {
     requested_to: requestedTo,
     requested_cc: requestedCc,
     to, cc,
-    reply_to: args.replyTo ?? null,
+    reply_to: replyTo,
     demo: demo.mode,
     mark: args.mark ?? null,
     ...(args.about ?? {}),
@@ -290,29 +298,36 @@ export async function sendEmail(args: SendEmailArgs): Promise<SendEmailResult> {
   let providerId: string | null = null;
   let error: string | null = null;
 
-  try {
-    const res = await resendFetch('/emails', {
-      method: 'POST',
-      body: JSON.stringify({
-        from: `${args.fromName ?? 'Scoop Dogg'} <${from}>`,
-        to,
-        ...(cc.length ? { cc } : {}),
-        ...(args.replyTo ? { reply_to: args.replyTo } : {}),
-        subject,
-        html,
-      }),
-    });
-    const body = (await res.json().catch(() => ({}))) as { id?: string; name?: string };
-    if (res.ok && body.id) {
-      // ACCEPTED. Not delivered - delivery.ts decides that from an observed event.
-      state = 'delivering';
-      providerId = body.id;
-    } else {
-      error = `resend_${res.status}${body.name ? `_${body.name}` : ''}`;
+  // Two tries, a second apart. A notice about money must not be lost to one bad second at the
+  // provider; a refusal that is about the message itself (4xx) is not retried.
+  for (let attempt = 0; attempt < 2 && state !== 'delivering'; attempt++) {
+    if (attempt) await new Promise((r) => setTimeout(r, 1000));
+    try {
+      const res = await resendFetch('/emails', {
+        method: 'POST',
+        body: JSON.stringify({
+          from: `${args.fromName ?? 'Scoop Dogg'} <${from}>`,
+          to,
+          ...(cc.length ? { cc } : {}),
+          ...(replyTo.length ? { reply_to: replyTo } : {}),
+          subject,
+          html,
+        }),
+      });
+      const body = (await res.json().catch(() => ({}))) as { id?: string; name?: string };
+      if (res.ok && body.id) {
+        // ACCEPTED. Not delivered - delivery.ts decides that from an observed event.
+        state = 'delivering';
+        providerId = body.id;
+        error = null;
+      } else {
+        error = `resend_${res.status}${body.name ? `_${body.name}` : ''}`;
+        if (res.status < 500 && res.status !== 429) break;
+      }
+    } catch (e) {
+      safeError('notify:send', e);
+      error = 'resend_unreachable';
     }
-  } catch (e) {
-    safeError('notify:send', e);
-    error = 'resend_unreachable';
   }
 
   if (outboxId !== null) {

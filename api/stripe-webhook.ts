@@ -11,7 +11,8 @@ import { db } from '../server/lib/db.js';
 import { stripeFor, probeAccount, publishPricesWhenReady, type StripeMode } from '../server/lib/stripe.js';
 import { completeBooking } from '../server/lib/booking.js';
 import { appendEvent } from '../server/lib/events.js';
-import { sendPaymentFailed } from '../server/lib/comms.js';
+import { sendPaymentFailed, tellOwner } from '../server/lib/comms.js';
+import { formatCents } from '../src/shared/pricing.js';
 import { CARD_EVENTS, handleCardEvent, markDefaultCard } from '../server/lib/cards.js';
 import { claimEvent, handleInvoicePaid } from '../server/lib/renewals.js';
 import { confirmQuotePayment } from '../server/lib/quotes.js';
@@ -57,6 +58,12 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       // A renewal writes its invoice AND its payment, with the fee Stripe actually took.
       const r = await handleInvoicePaid(db(), stripeFor(mode), { mode, account: event.account ?? null, invoice: obj as unknown as Stripe.Invoice });
       console.log(`[stripe-webhook] invoice.paid -> ${r.recorded ? `recorded, fee ${r.feeCents}` : `skipped: ${r.reason}`}`);
+      // Every payment reaches the owner's inbox, not only the first one.
+      if (r.recorded && r.subscriptionId && mode === 'live') {
+        const paid = formatCents(Number((obj as { amount_paid?: number }).amount_paid ?? 0));
+        await tellOwner(r.subscriptionId, 'owner_payment', (name, job) => `${paid} paid: ${name} — ${job}`, `Monthly payment received: ${paid}.`)
+          .catch((e) => safeError('webhook:owner-paid', e));
+      }
     }
     if (event.type === 'invoice.payment_failed') {
       const inv = obj as unknown as Stripe.Invoice;

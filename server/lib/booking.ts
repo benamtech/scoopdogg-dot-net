@@ -17,7 +17,7 @@
 import type Stripe from 'stripe';
 import { db } from './db.js';
 import { tellEmployee } from './employee.js';
-import { sendEmail } from './notify.js';
+import { sendEmail, demoMode } from './notify.js';
 import { appendEvent } from './events.js';
 import { loadCatalog } from './catalog-db.js';
 import { currentMode, resolve, priceForPackage, couponForOffer, connection, probeAccount, probeIsFresh, stripeFor, type StripeMode } from './stripe.js';
@@ -31,7 +31,7 @@ import { renewalTerms, acknowledgmentHtml } from '../../src/shared/consent.js';
 import { recordConsent } from './consent.js';
 import { openSessionForCustomer } from './customer-auth.js';
 import { quoteBooking, quoteOneTime, startDates, formatCents, weekdayName, catchUpFor } from '../../src/shared/pricing.js';
-import type { ApiResponse } from './http.js';
+import { safeError, type ApiResponse } from './http.js';
 
 export type BookingInput = {
   address: string;
@@ -519,6 +519,16 @@ export async function completeBooking(bookingId: string, sessionId: string | nul
     const periodEnd = stripeSub?.items?.data?.[0]?.current_period_end ?? null;
     const intent = oneTime ? (session.payment_intent as Stripe.PaymentIntent | null) : null;
 
+    /**
+     * WHO WON. The return page and the webhook both land here, in whichever order the internet
+     * delivers them, and exactly one of them moves the row. That one sends the mail.
+     *
+     * Until 2026-11-01 only the return page sent it, behind a check that it had a browser to answer. When
+     * the webhook arrived first it completed the booking with no `res`, the return page then found
+     * the row already active, and neither mail ever went. That is what happened to the first live
+     * paid booking (Oct 29, $179): Josue heard about it from the customer's phone call.
+     */
+    let won = false;
     const client = await db().connect();
     try {
       await client.query('begin');
@@ -532,6 +542,7 @@ export async function completeBooking(bookingId: string, sessionId: string | nul
           where id = $1 and state <> 'active'`,
         [bookingId, stripeSub?.id ?? null, periodEnd, trialing ? 'trialing' : 'ok']);
       if (rowCount) {
+        won = true;
         // MONEY ROWS ONLY WHERE MONEY MOVED. A trial collects a card and charges nothing, so
         // writing a zero invoice and a zero payment would put a payment in the books that never
         // happened - and the growth board reads those rows.
@@ -574,7 +585,11 @@ export async function completeBooking(bookingId: string, sessionId: string | nul
     } finally {
       client.release();
     }
-    if (res) await sendWelcome(bookingId);
+    // After the commit, and never able to fail the caller: the money is recorded by now, and a
+    // webhook answered 500 here would retry into a no-op anyway. The daily run picks up a miss.
+    // A test-mode booking is AMTECH's walk: Stripe posts its webhook to production too, where demo
+    // mode is off, so without this our own verifiers would mail Josue. Demo runs mail the demo inbox.
+    if (won && (sub.livemode || (await demoMode()).mode)) await sendWelcome(bookingId).catch((e) => safeError('booking:welcome', e));
   }
 
   if (res) await openSessionForCustomer(res, sub.customer_id);
@@ -622,10 +637,10 @@ const shell = (title: string, body: string) => `<div style="font-family:system-u
 async function sendWelcome(bookingId: string) {
   const { rows } = await db().query(
     `select s.starts_on::text as starts_on, s.service_weekday, s.monthly_price_cents, s.price_cents, s.frequency,
-            s.discount, s.extras, s.payment_state, s.booking_answers, c.name, c.email, c.phone,
-            p.address, p.city, pk.name as package_name
+            s.discount, s.extras, s.payment_state, s.booking_answers, s.customer_id, s.price_tier_label, c.name, c.email, c.phone,
+            p.address, p.city, p.gate_code, p.access_notes, pk.name as package_name, sv.name as service_name
        from subscriptions s join customers c on c.id = s.customer_id join properties p on p.id = s.property_id
-       left join packages pk on pk.id = s.package_id where s.id = $1`, [bookingId]);
+       left join packages pk on pk.id = s.package_id left join services sv on sv.slug = s.service_slug where s.id = $1`, [bookingId]);
   const b = rows[0];
   if (!b) return;
   const oneTime = b.frequency === 'one_time';
@@ -633,6 +648,9 @@ async function sendWelcome(bookingId: string) {
   const firstChargeOn: string | null = b.booking_answers?.first_charge_on ?? null;
   const startLabel = niceDate(b.starts_on);
   const paidToday = trialing ? 0 : (b.discount?.first_charge_cents ?? b.price_cents ?? b.monthly_price_cents ?? 0);
+  // What was bought, in words. A one-time job has no package, so this used to print nothing.
+  const jobName: string = b.package_name ?? ([b.service_name, b.price_tier_label].filter(Boolean).join(' · ') || 'One-time job');
+  const paidLabel = formatCents(paidToday, { forceDecimals: paidToday % 100 !== 0 });
 
   // LANE B SAYS THE DATE, NEVER "LATER" (P16 §5). A trial the customer cannot see is a surprise
   // charge, and a surprise charge is a chargeback with a story attached.
@@ -681,13 +699,14 @@ async function sendWelcome(bookingId: string) {
 
   await sendEmail({
     purpose: 'booking_welcome',
+    about: { subscription_id: bookingId, customer_id: b.customer_id },
     recipients: { explicit: [b.email] },
     fromName: 'Scoop Dogg',
     subject: oneTime ? `You're booked — ${startLabel}` : `You're booked — first visit ${startLabel}`,
     html: shell(`You're booked, ${String(b.name).split(' ')[0]}.`, `
       ${opening}
       <table style="width:100%;border-collapse:collapse;background:#F3F7F4;border-radius:12px;margin:20px 0">
-        <tr><td style="padding:10px 16px;color:#5B6660">${oneTime ? 'Job' : 'Plan'}</td><td style="padding:10px 16px;font-weight:600">${b.package_name ?? ''}</td></tr>
+        <tr><td style="padding:10px 16px;color:#5B6660">${oneTime ? 'Job' : 'Plan'}</td><td style="padding:10px 16px;font-weight:600">${jobName}</td></tr>
         <tr><td style="padding:10px 16px;color:#5B6660">Address</td><td style="padding:10px 16px">${b.address}, ${b.city}</td></tr>
         ${moneyRows}
       </table>
@@ -695,16 +714,37 @@ async function sendWelcome(bookingId: string) {
       ${acknowledgment}
       <p><a href="${process.env.PUBLIC_SITE_URL ?? 'https://scoopdogg.vercel.app'}/account" style="display:inline-block;background:#F4A024;color:#0F2A1F;font-weight:600;padding:12px 20px;border-radius:10px;text-decoration:none">Go to your account</a></p>`),
   });
-  await notifyOwner('booking_owner', `New customer: ${b.name} — ${b.package_name ?? 'one-time job'}`,
-    { name: b.name, email: b.email, phone: b.phone, address: b.address, city: b.city } as BookingInput, null, startLabel,
+  await notifyOwner('booking_owner',
+    trialing ? `New customer, card saved: ${b.name} — ${jobName}` : `${paidLabel} paid: ${b.name} — ${jobName}`,
+    { name: b.name, email: b.email, phone: b.phone, address: b.address, city: b.city, gate_code: b.gate_code, access_notes: b.access_notes } as BookingInput, null, startLabel,
     trialing ? `Card saved, nothing charged yet. First payment ${firstChargeOn ? niceDate(firstChargeOn) : 'after visit one'}.`
-             : oneTime ? 'Paid online. One-time job.' : 'Paid online. First month collected.');
+             : oneTime ? `Paid online: ${paidLabel}. One-time job, on your schedule for ${startLabel}.` : `Paid online: ${paidLabel}, the first month. Visits are on your schedule from ${startLabel}.`,
+    { job: jobName, paid: trialing ? null : paidLabel, subscriptionId: bookingId, customerId: b.customer_id });
 }
 
-async function notifyOwner(purpose: 'booking_owner' | 'waitlist_owner', subject: string, input: Partial<BookingInput>, quote: Priced['quote'] | null, startLabel: string | null, note: string) {
+/**
+ * A paid booking whose mail never went: a crash between the commit and the send, or the provider
+ * down for the whole of it. The daily run sends it, so a miss is a late email and not a silence.
+ * Live bookings only, from the last three days, and it reads the outbox row the sender writes.
+ */
+export async function sendMissedBookingNotices(q: { query: (text: string, values?: unknown[]) => Promise<{ rows: any[] }> } = db()) {
+  const { rows } = await q.query(
+    `select s.id from subscriptions s
+      where s.livemode and s.state = 'active' and s.activated_at between now() - interval '3 days' and now() - interval '10 minutes'
+        and exists (select 1 from events e where e.subject_kind = 'subscription' and e.subject_id = s.id
+                     and e.event_type in ('onetime.charged', 'booking.trial_started', 'subscription.activated'))
+        and not exists (select 1 from outbox o where o.purpose = 'booking_owner' and o.state <> 'failed'
+                         and o.payload->>'subscription_id' = s.id::text)`);
+  for (const r of rows) await sendWelcome(r.id);
+  return { sent: rows.length };
+}
+
+async function notifyOwner(purpose: 'booking_owner' | 'waitlist_owner', subject: string, input: Partial<BookingInput>, quote: Priced['quote'] | null, startLabel: string | null, note: string,
+  paid?: { job: string; paid: string | null; subscriptionId: string; customerId: string }) {
   const row = (k: string, v: unknown) => (v ? `<tr><td style="padding:6px 12px;color:#5B6660">${k}</td><td style="padding:6px 12px;font-weight:600">${String(v).replace(/</g, '&lt;')}</td></tr>` : '');
   await sendEmail({
     purpose,
+    ...(paid ? { about: { subscription_id: paid.subscriptionId, customer_id: paid.customerId } } : {}),
     recipients: { settingKey: 'notify.lead_recipients' },
     ccSettingKey: 'notify.lead_cc',
     fromName: 'Scoop Dogg Bookings',
@@ -712,6 +752,7 @@ async function notifyOwner(purpose: 'booking_owner' | 'waitlist_owner', subject:
     subject,
     html: shell(subject, `<p style="font-size:15px">${note}</p><table style="width:100%;border-collapse:collapse;background:#FAF8F5">
       ${row('Name', input.name)}${row('Phone', input.phone)}${row('Email', input.email)}${row('Address', [input.address, input.city].filter(Boolean).join(', '))}
+      ${paid ? row('Job', paid.job) + row('Paid', paid.paid) : ''}
       ${quote && quote.ok ? row('Plan', quote.package.name) + row('First charge', formatCents(quote.firstChargeCents)) : ''}${row('Starts', startLabel)}
       ${row('Gate code', input.gate_code)}${row('Notes', input.access_notes)}${row('Last cleaned', input.last_cleaned)}</table>`),
   }).catch(() => undefined);

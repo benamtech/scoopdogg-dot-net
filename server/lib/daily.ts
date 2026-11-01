@@ -26,6 +26,8 @@ import { appendEvent } from './events.js';
 import { expireDuePauses } from './account.js';
 import { runCommsSweeps, sendCustomJobReviewRequests } from './comms.js';
 import { sendEmail } from './notify.js';
+import { reconcileOutbox } from './delivery.js';
+import { sendMissedBookingNotices } from './booking.js';
 import { safeError } from './http.js';
 
 export type Queryable = { query: (text: string, values?: unknown[]) => Promise<{ rows: any[]; rowCount?: number | null }> };
@@ -109,6 +111,29 @@ export async function markNudged(q: Queryable, quoteId: string, by: string) {
   await appendEvent(q as never, { subjectKind: 'quote', subjectId: quoteId, type: 'quote.nudged', actorKind: 'owner', payload: { by } });
 }
 
+/**
+ * A MESSAGE TO JOSUE THAT DID NOT ARRIVE IS AMTECH'S TO FIX, AND AMTECH HEARS IT THE SAME DAY.
+ * `delivering` used to sit for ever on every row because nothing read the provider on a schedule;
+ * the step above does now, and this turns a bounce or a refusal into one email to us.
+ */
+export async function alertUndelivered(q: Queryable = db()) {
+  const { rows } = await q.query(
+    `select purpose, coalesce(last_error, last_event, state) as why, count(*)::int as n from outbox
+      where state in ('failed', 'abandoned') and created_at > now() - interval '25 hours'
+        and purpose in ('lead', 'contact', 'quote_request', 'quote_accepted', 'booking_owner', 'waitlist_owner', 'subscription_change', 'owner_payment', 'owner_notice', 'booking_welcome')
+      group by 1, 2`);
+  if (!rows.length) return { undelivered: 0 };
+  const total = rows.reduce((a: number, r: any) => a + r.n, 0);
+  await sendEmail({
+    purpose: 'ops_alert',
+    recipients: { settingKey: 'notify.lead_cc' },
+    fromName: 'Scoop Dogg site',
+    subject: `Scoop Dogg: ${total} message${total === 1 ? '' : 's'} did not arrive`,
+    html: `<ul>${rows.map((r: any) => `<li>${esc(r.purpose)}: ${r.n} (${esc(String(r.why))})</li>`).join('')}</ul>`,
+  });
+  return { undelivered: total };
+}
+
 type Step = [string, () => Promise<unknown>];
 
 export async function runDaily(opts: { base?: string; by: string }) {
@@ -121,6 +146,10 @@ export async function runDaily(opts: { base?: string; by: string }) {
     ['quote_follow_ups', () => quoteFollowUps(db(), base)],
     ['job_review', () => sendCustomJobReviewRequests()],
     ['comms', () => runCommsSweeps()],
+    // Mail last, so it reads what the steps above just sent.
+    ['missed_booking_notices', () => sendMissedBookingNotices()],
+    ['delivery', () => reconcileOutbox(200)],
+    ['undelivered_alert', () => alertUndelivered()],
   ];
   for (const [name, fn] of steps) {
     try { out[name] = (await fn()) ?? { ok: true }; }

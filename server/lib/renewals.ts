@@ -105,7 +105,7 @@ export async function recordRenewal(q: Q, r: {
  */
 export async function handleInvoicePaid(q: Q, stripe: Stripe, e: {
   mode: StripeMode; account: string | null; invoice: Stripe.Invoice;
-}): Promise<{ recorded: boolean; reason?: string; feeCents?: number }> {
+}): Promise<{ recorded: boolean; reason?: string; feeCents?: number; subscriptionId?: string }> {
   const inv = e.invoice;
   const subRef = inv.parent?.subscription_details?.subscription;
   const stripeSubId = typeof subRef === 'string' ? subRef : subRef?.id ?? null;
@@ -129,7 +129,7 @@ export async function handleInvoicePaid(q: Q, stripe: Stripe, e: {
     subjectKind: 'subscription', subjectId: sub.id, type: 'invoice.paid', actorKind: 'system',
     payload: { invoice: inv.id, amount: inv.amount_paid, fee: fee.feeCents, billing_reason: inv.billing_reason },
   });
-  return { recorded: true, feeCents: fee.feeCents };
+  return { recorded: true, feeCents: fee.feeCents, subscriptionId: sub.id };
 }
 
 /**
