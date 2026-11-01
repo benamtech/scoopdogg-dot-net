@@ -36,6 +36,10 @@
  * one visit actually earns. A one-time tier is compared at its own price. A tier with no price
  * (quote required) or no estimate is counted and named, never silently skipped — a row nobody
  * measured is not a row that passed.
+ *
+ * THE OWNER SETS THE PRICE. A row Josue set himself (`updated_by = 'josue'`, or his address from the
+ * rate card) is printed when it is under the floor and does not fail the gate: this gate catches a
+ * price nobody decided, and a number the owner chose is a decision (brain rule 4, 2026-11-01).
  */
 import pg from 'pg';
 import { loadEnv } from '../scripts/_env.mjs';
@@ -80,15 +84,17 @@ if (!Number.isFinite(floor) || floor <= 0) {
 
 const { rows } = await c.query(`
   select s.name as service, t.service_slug, t.label, t.est_minutes, t.price_cents, t.requires_quote,
-         p.slug as package_slug, p.monthly_price_cents
+         p.slug as package_slug, p.monthly_price_cents, t.updated_by
     from service_tiers t
     join services s on s.slug = t.service_slug
     left join packages p on p.tier_id = t.id and p.status = 'active'
+   where t.status = 'active' and s.status = 'active'
    order by s.sort_order, t.sort_order`);
 await c.query('rollback');
 await c.end();
 
 const under = [];
+const ownersCall = [];
 const unmeasured = [];
 const fromTheYard = [];
 let measured = 0;
@@ -111,7 +117,7 @@ for (const r of rows) {
   if (minutes == null) { unmeasured.push(`${r.service} · ${r.label} — priced at ${money(perVisit)} with no est_minutes and no timed stop`); continue; }
   measured++;
   const hourly = perVisit / (minutes / 60);
-  if (hourly < floor) under.push(`${r.service} · ${r.label} — ${money(perVisit)} over ${minutes} min [${basis}] = ${money(hourly)}/hr, under by ${money(floor - hourly)}`);
+  if (hourly < floor) (/^josue$|scoopdogg129/.test(r.updated_by ?? '') ? ownersCall : under).push(`${r.service} · ${r.label} — ${money(perVisit)} over ${minutes} min [${basis}] = ${money(hourly)}/hr, under by ${money(floor - hourly)}`);
 }
 
 // NEGATIVE CONTROL: the same arithmetic on a row that is plainly under must be caught. A
@@ -128,6 +134,7 @@ console.log(fromTheYard.length
 for (const m of fromTheYard) console.log(`    from the yard  ${m}`);
 for (const u of unmeasured) console.log(`    unmeasured  ${u}`);
 for (const u of under) console.log(`    UNDER       ${u}`);
+for (const u of ownersCall) console.log(`    his price   ${u}`);
 
 const ok = control && under.length === 0 && unmeasured.length === 0;
 console.log(ok ? `PASS ${measured}/${measured} clear the floor` : `FAIL ${under.length} under the floor, ${unmeasured.length} unmeasured`);

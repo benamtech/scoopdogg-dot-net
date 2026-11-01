@@ -178,7 +178,7 @@ test('every service in the catalog has a shape the funnel can render', () => {
   assert.equal(shapes.find((s) => s.service.slug === yardDeep.slug)?.shape, 'one_time');
   // The cheapest number a card may advertise comes from the same place the booking charges.
   assert.equal(shapes.find((s) => s.service.slug === yardDeep.slug)?.fromCents, 9900);
-  assert.equal(shapes.find((s) => s.service.slug === scoop.slug)?.fromCents, 8700);
+  assert.equal(shapes.find((s) => s.service.slug === scoop.slug)?.fromCents, 2009);
 });
 
 test('a service with only quote tiers is still offered, as a quote', () => {

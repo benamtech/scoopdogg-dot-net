@@ -1,5 +1,5 @@
 {
-  "pulled_at": "2026-09-27T19:56:54.036Z",
+  "pulled_at": "2026-11-01T22:27:12.401Z",
   "source": "database",
   "services": [
     {
@@ -9,7 +9,7 @@
       "kind": "recurring",
       "price_basis": "dogs",
       "basis_label": "How many dogs?",
-      "pricing_note": "No sign-up fees. Cancel or pause anytime.",
+      "pricing_note": "One price a week by how many dogs you have, billed monthly. No sign-up fees. Cancel or pause anytime.",
       "sort_order": 10,
       "meta_title": "Weekly Pooper Scooper Service in Ventura County | Scoop Dogg",
       "meta_description": "Scheduled weekly dog poop cleaning in Ventura & Santa Barbara Counties. We scoop, bag and haul off all waste, priced by how many dogs you have. Cancel anytime.",
@@ -46,9 +46,9 @@
         }
       ],
       "related_slugs": [
-        "artificial-turf-deodorizing",
+        "yard-sanitizing",
         "one-time-dog-poop-cleanup",
-        "yard-deep-clean"
+        "weekly-turf-maintenance"
       ]
     },
     {
@@ -96,71 +96,60 @@
       ],
       "related_slugs": [
         "weekly-pooper-scooper-service",
-        "yard-deep-clean",
-        "artificial-turf-deodorizing"
+        "turf-deep-clean",
+        "weekly-turf-maintenance"
       ]
     },
     {
-      "slug": "artificial-turf-deodorizing",
-      "name": "Artificial Turf Deodorizing",
-      "short_name": "Turf Deodorizing",
-      "kind": "one_time",
+      "slug": "yard-sanitizing",
+      "name": "Yard Sanitizing",
+      "short_name": "Sanitizing",
+      "kind": "addon",
       "price_basis": "sqft",
-      "basis_label": "Roughly how big is the area, in square feet?",
-      "pricing_note": "Add to weekly service or book standalone. Often paired with a Turf Deep Clean for maximum results.",
-      "sort_order": 30,
-      "meta_title": "Artificial Turf Deodorizing in Ventura County | Scoop Dogg",
-      "meta_description": "Enzyme-based turf deodorizing that eliminates pet urine odor from artificial grass, gravel and concrete. Pet-safe, 100% natural, and priced by the size of the area.",
-      "h1": "Artificial Turf Deodorizing in Ventura County",
-      "intro": "Artificial turf looks great — until your dogs use it as a bathroom. Urine seeps into the infill and backing, creating persistent odor that water alone cannot fix. Our enzyme-based deodorizing treatment breaks down the bacteria causing the smell at a molecular level. It works on turf, gravel, concrete, patios, and natural grass. 100% pet-safe — dogs can use the yard immediately after application.",
+      "basis_label": "Roughly how big is the yard?",
+      "pricing_note": "An add-on to weekly poop scooping, priced by the size of your yard.",
+      "sort_order": 25,
+      "meta_title": "Yard Sanitizing Add-On for Weekly Scooping | Scoop Dogg",
+      "meta_description": "Add yard sanitizing to your weekly poop scooping. Pet-safe treatment that kills odor and germs where your dog goes. Priced by the size of your yard.",
+      "h1": "Yard Sanitizing for Weekly Scooping Customers",
+      "intro": "Scooping takes away what you can see. Sanitizing takes care of what you cannot. We treat the areas your dog uses most with a pet-safe sanitizer that breaks down odor and germs, so the yard smells as clean as it looks. It is an add-on to weekly poop scooping: pick your dogs, pick your yard size, and it is done on your first visit. Want it again later? Just ask Josue.",
       "what_includes": [
-        "Surface debris removal and rinse",
-        "Professional enzyme deodorizer application",
-        "Bacteria and odor elimination at the source",
-        "Works on artificial turf, gravel, concrete, and natural grass",
-        "Safe for pets immediately after treatment"
+        "Pet-safe sanitizer on the areas your dog uses most",
+        "Odor and germs treated at the source",
+        "Done on the same visit as your scooping",
+        "Works on turf, grass, gravel and concrete"
       ],
-      "who_its_for": "Homeowners with artificial turf or hardscape areas where dog urine has created persistent odor. Especially common in newer Ventura County homes where turf replaced water-hungry lawns.",
+      "who_its_for": "Weekly scooping customers who want the yard to smell clean too, especially with more than one dog or in hot weather.",
       "faqs": [
         {
-          "a": "Yes, 100%. The enzymes are natural and non-toxic. Your dogs can use the yard immediately after application.",
-          "q": "Is the deodorizer safe for dogs?"
+          "a": "Sanitizing is an add-on to weekly poop scooping. If you only need the odor taken care of on turf, look at Turf Deodorizing.",
+          "q": "Can I get sanitizing without scooping?"
         },
         {
-          "a": "Results are immediate and typically last 2-4 weeks depending on how frequently your dogs use the area. Most clients add it to their weekly service.",
-          "q": "How long does the treatment last?"
+          "a": "Yes. It is pet-safe.",
+          "q": "Is it safe for my dog?"
         },
         {
-          "a": "Yes. The enzyme treatment works on artificial turf, gravel, concrete, pavers, and natural grass.",
-          "q": "Does it work on real grass too?"
-        },
-        {
-          "a": "Absolutely. Many of our weekly clients add deodorizing as a regular add-on, especially during warmer months when odor is worse.",
-          "q": "Can I combine this with weekly scooping?"
-        },
-        {
-          "a": "In most cases, yes. For heavily saturated turf that has never been treated, we may recommend a Turf Deep Clean first to reset the surface before ongoing enzyme maintenance.",
-          "q": "Will it remove all the smell?"
+          "a": "Small is up to 300 sq ft, medium is 300 to 500, and large is 500 to 800. A rough guess is fine.",
+          "q": "How do I know my yard size?"
         }
       ],
       "related_slugs": [
-        "yard-deep-clean",
-        "weekly-pooper-scooper-service",
-        "one-time-dog-poop-cleanup"
+        "weekly-pooper-scooper-service"
       ]
     },
     {
-      "slug": "yard-deep-clean",
-      "name": "Yard Deep Clean",
-      "short_name": "Deep Clean",
+      "slug": "turf-deep-clean",
+      "name": "Turf Deep Clean",
+      "short_name": "Turf Deep Clean",
       "kind": "one_time",
       "price_basis": "sqft",
       "basis_label": "Roughly how big is the area, in square feet?",
-      "pricing_note": "Often combined with ongoing weekly service + enzyme deodorizing for long-term results.",
-      "sort_order": 40,
-      "meta_title": "Yard & Turf Deep Clean in Ventura County | Scoop Dogg",
-      "meta_description": "Full turf and yard deep clean: brush, vacuum, pressure wash and heavy deodorizer. Ideal for seasonal resets and new homeowners. Priced by the size of the area.",
-      "h1": "Yard & Turf Deep Clean in Ventura County",
+      "pricing_note": "A one-time job, priced by the size of your turf. For weekly care after, sign up for Turf Deodorizing.",
+      "sort_order": 38,
+      "meta_title": "Artificial Turf Deep Clean in Ventura County | Scoop Dogg",
+      "meta_description": "One-time artificial turf deep clean: brush, vacuum, pressure wash and heavy deodorizer. Ideal for seasonal resets and new homeowners. Priced by the size of your turf.",
+      "h1": "Turf Deep Clean in Ventura County",
       "intro": "A full reset for your outdoor surface. We deep-brush the turf to loosen embedded debris, vacuum the infill, pressure wash the surface, and apply a heavy-duty deodorizer and sanitizer. This is not a quick spray — it is a thorough restoration that leaves your turf looking and smelling like the day it was installed. Recommended 2-3 times per year or when you are inheriting a yard from a previous owner.",
       "what_includes": [
         "Deep brush to loosen embedded waste and debris",
@@ -176,8 +165,8 @@
           "q": "How often should I get a deep clean?"
         },
         {
-          "a": "No. A deep clean includes physical cleaning (brush, vacuum, pressure wash) plus deodorizing. Regular deodorizing is enzyme treatment only.",
-          "q": "Is this the same as regular deodorizing?"
+          "a": "No. A deep clean is a one-time job with physical cleaning: brush, vacuum and pressure wash, plus deodorizing. Turf Deodorizing is the weekly service that keeps it fresh afterward.",
+          "q": "Is this the same as Turf Deodorizing?"
         },
         {
           "a": "Most standard properties take 1-2 hours. Larger or heavily soiled areas may take longer.",
@@ -186,61 +175,105 @@
         {
           "a": "We recommend waiting 1-2 hours for the surface to dry after pressure washing. The deodorizer is pet-safe immediately.",
           "q": "Can I walk on the turf right after?"
-        },
-        {
-          "a": "Yes. While this service is designed for turf and hardscape, we can address natural grass areas and general yard debris as part of a custom quote.",
-          "q": "Do you also handle natural grass and yard debris?"
         }
       ],
       "related_slugs": [
-        "artificial-turf-deodorizing",
-        "weekly-pooper-scooper-service",
+        "weekly-turf-maintenance",
+        "yard-deep-clean",
+        "weekly-pooper-scooper-service"
+      ]
+    },
+    {
+      "slug": "yard-deep-clean",
+      "name": "Yard Deep Clean",
+      "short_name": "Yard Deep Clean",
+      "kind": "one_time",
+      "price_basis": "flat",
+      "basis_label": "Tell us about the yard",
+      "pricing_note": "Every yard is different, so this one is a custom quote. Call or send the details and you get one price.",
+      "sort_order": 40,
+      "meta_title": "Yard Deep Clean & Overgrowth Clean-Up in Ventura County | Scoop Dogg",
+      "meta_description": "One-time yard clean-up for overgrowth, debris and built-up pet waste across Ventura County. Call or send the details for one custom price.",
+      "h1": "Yard Deep Clean in Ventura County",
+      "intro": "A yard deep clean is a one-time reset for a yard that has gotten away from you: overgrown plants, weeds, piles of leaves and debris, and pet waste that has built up. It is different from weekly yard maintenance. We do the heavy lifting once, and if you want it kept that way, you can sign up for weekly maintenance separately. Every yard is different, so call or send the details and we will give you one simple price.",
+      "what_includes": [
+        "Overgrown plants and weeds cut back",
+        "Leaves, debris and yard waste hauled off",
+        "Built-up pet waste cleaned up",
+        "The whole yard walked and left tidy"
+      ],
+      "who_its_for": "Anyone with an overgrown yard, a rental between tenants, a new home, or a yard that needs a fresh start before weekly service.",
+      "faqs": [
+        {
+          "a": "It depends on the yard, so we give you a custom quote. Call, or send a few details and photos, and you get one simple price.",
+          "q": "How much does a yard deep clean cost?"
+        },
+        {
+          "a": "No. A deep clean is a one-time job for a yard that needs a reset. Weekly yard maintenance is mowing, blowing and raking to keep it looking good, and you sign up for that separately.",
+          "q": "Is this the same as weekly yard maintenance?"
+        },
+        {
+          "a": "Artificial turf has its own one-time job, the Turf Deep Clean, priced by size.",
+          "q": "What about artificial turf?"
+        },
+        {
+          "a": "Yes. If there is poop or other waste built up, tell us and it goes in the quote.",
+          "q": "Can you take care of pet waste too?"
+        }
+      ],
+      "related_slugs": [
+        "weekly-yard-maintenance",
+        "turf-deep-clean",
         "one-time-dog-poop-cleanup"
       ]
     },
     {
       "slug": "weekly-turf-maintenance",
-      "name": "Weekly Turf Maintenance",
-      "short_name": "Turf Maintenance",
+      "name": "Turf Deodorizing",
+      "short_name": "Turf Deodorizing",
       "kind": "recurring",
       "price_basis": "sqft",
       "basis_label": "Roughly how big is the area, in square feet?",
-      "pricing_note": "Best results when paired with a deep clean 2-3 times per year. First month half off when combined with weekly poop scooping.",
+      "pricing_note": "Weekly care priced by the size of your turf, billed monthly. Add weekly poop scooping when you book, same visit.",
       "sort_order": 50,
-      "meta_title": "Weekly Turf Maintenance Service in Ventura County | Scoop Dogg",
-      "meta_description": "Ongoing artificial turf sweeping and deodorizing. We use the SwipeSmith turf sweeper for leaf, debris and pet hair removal plus enzyme treatment. Priced by the size of the area.",
-      "h1": "Weekly Turf Maintenance in Ventura County",
-      "intro": "After a deep clean, your turf needs regular upkeep to stay fresh. We come back weekly with the SwipeSmith artificial turf sweeper to pick up leaves, twigs, pet hair, and debris that collect between visits. Each visit includes an enzyme deodorizer application to keep odor at zero. This is the ongoing maintenance that keeps your turf looking and smelling like it did on installation day.",
+      "meta_title": "Weekly Turf Deodorizing & Maintenance in Ventura County | Scoop Dogg",
+      "meta_description": "Weekly artificial turf deodorizing and maintenance: debris cleared, leaves raked, turf sanitized and deodorized. Priced by the size of your turf.",
+      "h1": "Weekly Turf Deodorizing & Maintenance in Ventura County",
+      "intro": "Artificial turf looks great until your dogs use it as a bathroom. Turf Deodorizing is our weekly turf maintenance visit: we clear debris, rake up leaves, sanitize the turf and treat it with an enzyme deodorizer that breaks down the odor at the source. It works on turf that has dogs on it and turf that just collects leaves, dust and pollen, and it keeps your yard looking and smelling like the day it was installed.",
       "what_includes": [
-        "SwipeSmith turf sweeper pass over entire surface",
-        "Leaf, twig, and pet hair removal",
-        "Enzyme deodorizer application",
-        "Infill redistribution as needed",
-        "Visual inspection for wear or drainage issues"
+        "Debris and pet hair cleared from the whole surface",
+        "Leaves raked and hauled off",
+        "Turf sanitized",
+        "Enzyme deodorizer on the areas your dog uses",
+        "Quick check for wear or drainage issues"
       ],
       "who_its_for": "Homeowners with artificial turf who want consistent weekly care. Whether you have dogs using the turf or just want it looking pristine, this service keeps debris from building up and odor from taking hold.",
       "faqs": [
         {
-          "a": "It is a specialized grooming mower designed for artificial turf. It brushes fibers upright, picks up embedded debris, and redistributes infill — all without damaging the turf surface.",
-          "q": "What is the SwipeSmith turf sweeper?"
+          "a": "Yes. The enzymes are natural and non-toxic, and your dogs can use the yard right after.",
+          "q": "Is the deodorizer safe for dogs?"
         },
         {
-          "a": "We recommend starting with a deep clean if your turf has not been professionally cleaned before. After that, weekly maintenance keeps it in peak condition between deep cleans.",
+          "a": "Yes. Turf Deodorizing is our weekly turf maintenance service under its new name.",
+          "q": "Is this the same as turf maintenance?"
+        },
+        {
+          "a": "Only if the turf has never been professionally cleaned or the smell has set in. A one-time Turf Deep Clean resets it, then weekly visits keep it fresh.",
           "q": "Do I need a deep clean first?"
         },
         {
-          "a": "No. Turf collects leaves, pollen, dust, and debris regardless of pets. Weekly maintenance benefits anyone with artificial turf who wants it looking its best.",
-          "q": "Is this just for pet owners?"
+          "a": "Yes. Add weekly poop scooping when you book, and pick how many dogs you have.",
+          "q": "Can you scoop the poop on the same visit?"
         },
         {
-          "a": "Enzyme deodorizing is a standalone odor treatment. Weekly turf maintenance includes the sweeper pass, debris removal, AND enzyme treatment — it is a complete turf care visit.",
-          "q": "How is this different from the enzyme deodorizing service?"
+          "a": "No. Turf collects leaves, pollen, dust and debris with or without pets.",
+          "q": "Is this just for pet owners?"
         }
       ],
       "related_slugs": [
-        "yard-deep-clean",
-        "artificial-turf-deodorizing",
-        "weekly-pooper-scooper-service"
+        "turf-deep-clean",
+        "weekly-pooper-scooper-service",
+        "yard-deep-clean"
       ]
     },
     {
@@ -250,42 +283,70 @@
       "kind": "recurring",
       "price_basis": "choice",
       "basis_label": "Which best describes it?",
-      "pricing_note": "Pricing based on property size and services needed. We provide a custom quote after seeing your property.",
+      "pricing_note": "One price for a small or medium yard. Need something special? Add extra work by the hour. Big hedges get a custom quote.",
       "sort_order": 60,
       "meta_title": "Weekly Yard Maintenance & Landscaping in Ventura County | Scoop Dogg",
-      "meta_description": "Weekly yard maintenance in Ventura County — mowing, trimming, edging, and cleanup. Keep your property looking sharp every week. Custom quotes based on property size.",
+      "meta_description": "Weekly yard maintenance in Ventura County: mowing, blowing, debris removal and raking at one simple price for small and medium yards.",
       "h1": "Weekly Yard Maintenance in Ventura County",
-      "intro": "Ongoing yard maintenance tailored to what your property actually needs. Mowing, edging, hedge trimming, leaf cleanup, or a combination — we keep things looking sharp between deep cleans so your outdoor space is always guest-ready. Same reliable team, same day every week.",
+      "intro": "Keep your yard looking good without thinking about it. Each week we mow, blow, clear debris and rake up leaves, the same day every week, and you pay one simple price for a small or medium yard. Need something special while we are there, like a little gardening? Add extra work by the hour. Big hedges and larger jobs are a different size of job, so call or send the details for a custom quote.",
       "what_includes": [
-        "Lawn mowing and edging",
-        "Hedge and shrub trimming",
-        "Leaf and debris cleanup",
-        "Walkway and patio sweeping",
-        "Customizable service based on your property"
+        "Lawn mowing",
+        "Blowing walkways and patios clean",
+        "Debris removal",
+        "Leaves raked and hauled off"
       ],
       "who_its_for": "Homeowners who want a consistently clean and maintained yard without managing multiple contractors. Great as a follow-up to a yard deep clean or overgrowth reset.",
       "faqs": [
         {
-          "a": "It depends on your property. Most clients get mowing, edging, and basic trimming. We can add leaf cleanup, shrub shaping, and other tasks based on what you need.",
+          "a": "Mowing, blowing, debris removal and raking. Need something special? Add extra work by the hour when you book.",
           "q": "What does weekly maintenance include?"
         },
         {
-          "a": "Absolutely. Many clients pair weekly yard maintenance with weekly poop scooping — same visit, same team.",
-          "q": "Can I combine this with poop scooping?"
+          "a": "Big hedges and bigger trimming jobs need a custom quote. Call or send the details and you get one price.",
+          "q": "Do you trim big hedges?"
         },
         {
-          "a": "Yes. Our Yard Deep Clean service handles one-time restoration and overgrowth. Weekly maintenance is for ongoing upkeep after the heavy lifting is done.",
-          "q": "Do you do one-time landscaping jobs too?"
+          "a": "No. A Yard Deep Clean is a one-time reset for an overgrown yard, quoted to the job. Weekly maintenance is ongoing upkeep.",
+          "q": "Is this the same as a Yard Deep Clean?"
         },
         {
-          "a": "Book through our form and describe your property. We will follow up same day with a custom quote based on yard size and the services you need.",
-          "q": "How do I get a quote?"
+          "a": "Yes. Add weekly poop scooping when you book, and pick how many dogs you have.",
+          "q": "Can you scoop the poop on the same visit?"
         }
       ],
       "related_slugs": [
         "yard-deep-clean",
         "weekly-pooper-scooper-service",
-        "pressure-washing"
+        "extra-yard-work"
+      ]
+    },
+    {
+      "slug": "extra-yard-work",
+      "name": "Extra Yard Work",
+      "short_name": "Extra Work",
+      "kind": "addon",
+      "price_basis": "flat",
+      "basis_label": "How much extra work?",
+      "pricing_note": "Need something special on top of your weekly visit? Extra work is charged by the hour.",
+      "sort_order": 65,
+      "meta_title": "Extra Yard Work by the Hour | Scoop Dogg",
+      "meta_description": "Need something special on top of your weekly yard maintenance? Add extra gardening or yard work, charged by the hour. Big hedges get a custom quote.",
+      "h1": "Extra Yard Work, by the Hour",
+      "intro": "Sometimes a yard needs a little more than the usual mow and blow. Add an hour of extra work to your weekly yard maintenance visit for gardening, small trims or anything else on your list. Tell us what you need when you book and it gets done while we are there. Big hedges and larger jobs are a different size of job, so call or send the details for a custom quote.",
+      "what_includes": [
+        "Gardening and small trims",
+        "Extra debris or leaf clean-up",
+        "Anything else on your list, as time allows"
+      ],
+      "who_its_for": "Weekly yard maintenance customers who want a little extra done on a visit.",
+      "faqs": [
+        {
+          "a": "Big hedges and bigger trimming jobs need a custom quote. Call or send the details and we will give you one price.",
+          "q": "What about big hedges?"
+        }
+      ],
+      "related_slugs": [
+        "weekly-yard-maintenance"
       ]
     },
     {
@@ -295,7 +356,7 @@
       "kind": "one_time",
       "price_basis": "boxes",
       "basis_label": "How many litter boxes?",
-      "pricing_note": "Litter not included unless requested. Add-on to existing service or book standalone.",
+      "pricing_note": "Priced per box, per visit, billed monthly. Litter not included unless requested.",
       "sort_order": 70,
       "meta_title": "Kitty Litter Exchange Service in Ventura County | Scoop Dogg",
       "meta_description": "Fresh litter box service for cat owners in Ventura County. We remove used litter, refresh the box, and keep indoor pet areas cleaner. Book today.",
@@ -303,10 +364,9 @@
       "intro": "Fresh litter box service for cat owners who want the dirty work handled. We remove used litter, refresh the box, and help keep indoor pet areas cleaner. No more putting it off, no more smell building up — just a clean box on a schedule that works for you.",
       "what_includes": [
         "Used litter removed and bagged for disposal",
-        "Box wiped down and refreshed with clean litter",
-        "Surrounding area tidied if needed",
-        "Flexible scheduling — weekly or as-needed",
-        "Safe, odor-controlled handling"
+        "Box cleaned, sanitized and refreshed with clean litter",
+        "Surrounding area cleaned",
+        "Flexible scheduling"
       ],
       "who_its_for": "Cat owners who want to stay on top of litter box hygiene without the hassle. Great for busy households, people with mobility limitations, multi-cat homes, and anyone who just hates doing it.",
       "faqs": [
@@ -365,7 +425,7 @@
       ],
       "related_slugs": [
         "weekly-pooper-scooper-service",
-        "artificial-turf-deodorizing",
+        "weekly-turf-maintenance",
         "pressure-washing"
       ]
     },
@@ -447,7 +507,7 @@
       "related_slugs": [
         "dog-run-cleanups",
         "yard-deep-clean",
-        "artificial-turf-deodorizing"
+        "weekly-turf-maintenance"
       ]
     },
     {
@@ -457,7 +517,7 @@
       "kind": "one_time",
       "price_basis": "units",
       "basis_label": "How many units?",
-      "pricing_note": "Includes carbon filter refresh. Compatible with Litter-Robot 3, 4, and similar automatic units.",
+      "pricing_note": "Starting prices for one and two robots. Every cleaning includes careful technical maintenance.",
       "sort_order": 110,
       "meta_title": "Kitty Litter Robot Cleaning Service in Ventura County | Scoop Dogg",
       "meta_description": "Professional Litter-Robot cleaning in Ventura & Santa Barbara Counties. We deep clean automatic self-cleaning litter boxes, remove buildup and odor, and keep your smart box working properly.",
@@ -501,48 +561,6 @@
     }
   ],
   "tiers": [
-    {
-      "id": "0cc64607-a1f3-4488-a59d-68d6e3bf7661",
-      "service_slug": "artificial-turf-deodorizing",
-      "label": "Small area (under 200 sq ft)",
-      "min_qty": null,
-      "max_qty": 200,
-      "price_cents": 3000,
-      "price_suffix": "",
-      "requires_quote": false,
-      "price_is_from": false,
-      "est_minutes": 20,
-      "sort_order": 10,
-      "covers_last_cleaned": null
-    },
-    {
-      "id": "72a67a19-7a7a-4468-bb1c-8f8925d21975",
-      "service_slug": "artificial-turf-deodorizing",
-      "label": "Medium area (200-500 sq ft)",
-      "min_qty": 200,
-      "max_qty": 500,
-      "price_cents": 4500,
-      "price_suffix": "",
-      "requires_quote": false,
-      "price_is_from": false,
-      "est_minutes": 30,
-      "sort_order": 20,
-      "covers_last_cleaned": null
-    },
-    {
-      "id": "758c470e-9185-4066-8892-b3318a369d08",
-      "service_slug": "artificial-turf-deodorizing",
-      "label": "Large area (500+ sq ft)",
-      "min_qty": 500,
-      "max_qty": null,
-      "price_cents": 7000,
-      "price_suffix": "",
-      "requires_quote": false,
-      "price_is_from": true,
-      "est_minutes": 45,
-      "sort_order": 30,
-      "covers_last_cleaned": null
-    },
     {
       "id": "ff673ade-b551-4045-af7b-ed8c9bec99d5",
       "service_slug": "cat-tree-cleaning",
@@ -628,12 +646,26 @@
       "covers_last_cleaned": null
     },
     {
+      "id": "1bced604-d879-4622-abe3-f835bd95b97e",
+      "service_slug": "extra-yard-work",
+      "label": "One hour of extra work",
+      "min_qty": null,
+      "max_qty": null,
+      "price_cents": 6000,
+      "price_suffix": "/hour",
+      "requires_quote": false,
+      "price_is_from": false,
+      "est_minutes": 60,
+      "sort_order": 10,
+      "covers_last_cleaned": null
+    },
+    {
       "id": "fcd966f0-6fd9-4949-92ae-64f8d1f9b29d",
       "service_slug": "kitty-litter-exchange",
       "label": "1 litter box",
       "min_qty": 1,
       "max_qty": 1,
-      "price_cents": 1600,
+      "price_cents": 2000,
       "price_suffix": "/visit",
       "requires_quote": false,
       "price_is_from": false,
@@ -647,7 +679,7 @@
       "label": "2 litter boxes",
       "min_qty": 2,
       "max_qty": 2,
-      "price_cents": 2300,
+      "price_cents": 4000,
       "price_suffix": "/visit",
       "requires_quote": false,
       "price_is_from": false,
@@ -675,7 +707,7 @@
       "label": "1 Litter-Robot",
       "min_qty": 1,
       "max_qty": 1,
-      "price_cents": 4500,
+      "price_cents": 15000,
       "price_suffix": "",
       "requires_quote": false,
       "price_is_from": false,
@@ -689,7 +721,7 @@
       "label": "2 Litter-Robots",
       "min_qty": 2,
       "max_qty": 2,
-      "price_cents": 7500,
+      "price_cents": 30000,
       "price_suffix": "",
       "requires_quote": false,
       "price_is_from": false,
@@ -765,8 +797,8 @@
       "service_slug": "pressure-washing",
       "label": "Small patio or run (under 200 sq ft)",
       "min_qty": null,
-      "max_qty": 200,
-      "price_cents": 6900,
+      "max_qty": 250,
+      "price_cents": 15000,
       "price_suffix": "",
       "requires_quote": false,
       "price_is_from": false,
@@ -778,9 +810,9 @@
       "id": "904dfec9-41fd-4cc7-b084-dc46c7985c98",
       "service_slug": "pressure-washing",
       "label": "Medium area (200-500 sq ft)",
-      "min_qty": 200,
+      "min_qty": 250,
       "max_qty": 500,
-      "price_cents": 10900,
+      "price_cents": 25000,
       "price_suffix": "",
       "requires_quote": false,
       "price_is_from": false,
@@ -803,12 +835,68 @@
       "covers_last_cleaned": null
     },
     {
+      "id": "be225a4c-d403-483b-9737-370eb4f22aaa",
+      "service_slug": "turf-deep-clean",
+      "label": "Small yard (up to 300 sq ft)",
+      "min_qty": null,
+      "max_qty": 300,
+      "price_cents": 17900,
+      "price_suffix": "",
+      "requires_quote": false,
+      "price_is_from": false,
+      "est_minutes": 120,
+      "sort_order": 10,
+      "covers_last_cleaned": null
+    },
+    {
+      "id": "0691e980-0241-446d-9dfd-b2758ad74a9f",
+      "service_slug": "turf-deep-clean",
+      "label": "Medium yard (300-500 sq ft)",
+      "min_qty": 300,
+      "max_qty": 500,
+      "price_cents": 35000,
+      "price_suffix": "",
+      "requires_quote": false,
+      "price_is_from": false,
+      "est_minutes": 180,
+      "sort_order": 20,
+      "covers_last_cleaned": null
+    },
+    {
+      "id": "fd1e3099-31a4-49aa-8bd1-ca7b3cccd114",
+      "service_slug": "turf-deep-clean",
+      "label": "Large yard (500-800 sq ft)",
+      "min_qty": 500,
+      "max_qty": 800,
+      "price_cents": 50000,
+      "price_suffix": "",
+      "requires_quote": false,
+      "price_is_from": false,
+      "est_minutes": 240,
+      "sort_order": 30,
+      "covers_last_cleaned": null
+    },
+    {
+      "id": "dcab7172-ef1c-490a-b57c-fe7434133834",
+      "service_slug": "turf-deep-clean",
+      "label": "Over 800 sq ft",
+      "min_qty": 800,
+      "max_qty": null,
+      "price_cents": null,
+      "price_suffix": "",
+      "requires_quote": true,
+      "price_is_from": false,
+      "est_minutes": 300,
+      "sort_order": 40,
+      "covers_last_cleaned": null
+    },
+    {
       "id": "c20d2bba-0759-487a-88ed-c6296947af79",
       "service_slug": "weekly-pooper-scooper-service",
       "label": "1 dog",
       "min_qty": 1,
       "max_qty": 1,
-      "price_cents": 2300,
+      "price_cents": 2000,
       "price_suffix": "/week",
       "requires_quote": false,
       "price_is_from": false,
@@ -822,7 +910,7 @@
       "label": "2 dogs",
       "min_qty": 2,
       "max_qty": 2,
-      "price_cents": 2800,
+      "price_cents": 2500,
       "price_suffix": "/week",
       "requires_quote": false,
       "price_is_from": false,
@@ -836,7 +924,7 @@
       "label": "3 dogs",
       "min_qty": 3,
       "max_qty": 3,
-      "price_cents": 3000,
+      "price_cents": 2800,
       "price_suffix": "/week",
       "requires_quote": false,
       "price_is_from": false,
@@ -850,7 +938,7 @@
       "label": "4+ dogs",
       "min_qty": 4,
       "max_qty": null,
-      "price_cents": 3700,
+      "price_cents": 3000,
       "price_suffix": "/week",
       "requires_quote": false,
       "price_is_from": false,
@@ -861,11 +949,11 @@
     {
       "id": "271f9843-7cdb-4754-aa39-8cb6056956ef",
       "service_slug": "weekly-turf-maintenance",
-      "label": "Small area (under 300 sq ft)",
+      "label": "Small yard (up to 300 sq ft)",
       "min_qty": null,
       "max_qty": 300,
       "price_cents": 3500,
-      "price_suffix": "/visit",
+      "price_suffix": "/week",
       "requires_quote": false,
       "price_is_from": false,
       "est_minutes": 20,
@@ -875,11 +963,11 @@
     {
       "id": "20382e00-fb8c-43f1-8cb9-7b526e06c9b1",
       "service_slug": "weekly-turf-maintenance",
-      "label": "Medium area (300-600 sq ft)",
+      "label": "Medium yard (300-500 sq ft)",
       "min_qty": 300,
-      "max_qty": 600,
+      "max_qty": 500,
       "price_cents": 5000,
-      "price_suffix": "/visit",
+      "price_suffix": "/week",
       "requires_quote": false,
       "price_is_from": false,
       "est_minutes": 30,
@@ -889,43 +977,43 @@
     {
       "id": "2d643c45-8f00-493b-af41-fd2d79206259",
       "service_slug": "weekly-turf-maintenance",
-      "label": "Large area (600+ sq ft)",
-      "min_qty": 600,
-      "max_qty": null,
-      "price_cents": null,
-      "price_suffix": "",
-      "requires_quote": true,
+      "label": "Large yard (500-800 sq ft)",
+      "min_qty": 500,
+      "max_qty": 800,
+      "price_cents": 6000,
+      "price_suffix": "/week",
+      "requires_quote": false,
       "price_is_from": false,
       "est_minutes": 45,
       "sort_order": 30,
       "covers_last_cleaned": null
     },
     {
-      "id": "e0fca44e-edcd-4090-876d-0f831eff5092",
-      "service_slug": "weekly-yard-maintenance",
-      "label": "Small yard (basic mow & edge)",
-      "min_qty": null,
+      "id": "f6cb00e8-4be2-4eb2-82da-642e137c2a1e",
+      "service_slug": "weekly-turf-maintenance",
+      "label": "Over 800 sq ft",
+      "min_qty": 800,
       "max_qty": null,
-      "price_cents": 7000,
-      "price_suffix": "/visit",
-      "requires_quote": false,
-      "price_is_from": true,
-      "est_minutes": 45,
-      "sort_order": 10,
+      "price_cents": null,
+      "price_suffix": "",
+      "requires_quote": true,
+      "price_is_from": false,
+      "est_minutes": 60,
+      "sort_order": 40,
       "covers_last_cleaned": null
     },
     {
-      "id": "3c987fac-5de3-4767-b33f-dd48b3d95f33",
+      "id": "e0fca44e-edcd-4090-876d-0f831eff5092",
       "service_slug": "weekly-yard-maintenance",
-      "label": "Medium yard (mow, edge, trim)",
+      "label": "Small or medium yard",
       "min_qty": null,
       "max_qty": null,
-      "price_cents": 11000,
+      "price_cents": 6000,
       "price_suffix": "/visit",
       "requires_quote": false,
-      "price_is_from": true,
-      "est_minutes": 75,
-      "sort_order": 20,
+      "price_is_from": false,
+      "est_minutes": 45,
+      "sort_order": 10,
       "covers_last_cleaned": null
     },
     {
@@ -943,45 +1031,73 @@
       "covers_last_cleaned": null
     },
     {
-      "id": "be225a4c-d403-483b-9737-370eb4f22aaa",
-      "service_slug": "yard-deep-clean",
-      "label": "Standard turf area (under 500 sq ft)",
-      "min_qty": null,
-      "max_qty": 500,
-      "price_cents": 17900,
-      "price_suffix": "",
-      "requires_quote": false,
-      "price_is_from": false,
-      "est_minutes": 120,
-      "sort_order": 10,
-      "covers_last_cleaned": null
-    },
-    {
-      "id": "0691e980-0241-446d-9dfd-b2758ad74a9f",
-      "service_slug": "yard-deep-clean",
-      "label": "Large turf area (500-1000 sq ft)",
-      "min_qty": 500,
-      "max_qty": 1000,
-      "price_cents": 26900,
-      "price_suffix": "",
-      "requires_quote": false,
-      "price_is_from": false,
-      "est_minutes": 180,
-      "sort_order": 20,
-      "covers_last_cleaned": null
-    },
-    {
       "id": "c92a7e68-477d-47b2-96b3-14afdf04818b",
       "service_slug": "yard-deep-clean",
-      "label": "Extra large (1000+ sq ft)",
-      "min_qty": 1000,
+      "label": "Every yard is different",
+      "min_qty": null,
       "max_qty": null,
       "price_cents": null,
       "price_suffix": "",
       "requires_quote": true,
       "price_is_from": false,
       "est_minutes": 240,
+      "sort_order": 10,
+      "covers_last_cleaned": null
+    },
+    {
+      "id": "07027ec6-fbaa-449d-babb-f5df275696cb",
+      "service_slug": "yard-sanitizing",
+      "label": "Small yard (up to 300 sq ft)",
+      "min_qty": null,
+      "max_qty": 300,
+      "price_cents": 2500,
+      "price_suffix": "",
+      "requires_quote": false,
+      "price_is_from": false,
+      "est_minutes": 15,
+      "sort_order": 10,
+      "covers_last_cleaned": null
+    },
+    {
+      "id": "3dd27cf3-ffe4-4b3d-8246-514e78ed32c7",
+      "service_slug": "yard-sanitizing",
+      "label": "Medium yard (300-500 sq ft)",
+      "min_qty": 300,
+      "max_qty": 500,
+      "price_cents": 3500,
+      "price_suffix": "",
+      "requires_quote": false,
+      "price_is_from": false,
+      "est_minutes": 20,
+      "sort_order": 20,
+      "covers_last_cleaned": null
+    },
+    {
+      "id": "f412ce3b-d366-4991-a345-cdad7876ce4d",
+      "service_slug": "yard-sanitizing",
+      "label": "Large yard (500-800 sq ft)",
+      "min_qty": 500,
+      "max_qty": 800,
+      "price_cents": 4500,
+      "price_suffix": "",
+      "requires_quote": false,
+      "price_is_from": false,
+      "est_minutes": 25,
       "sort_order": 30,
+      "covers_last_cleaned": null
+    },
+    {
+      "id": "c148f9f3-d4f7-4e81-be32-beada2d49104",
+      "service_slug": "yard-sanitizing",
+      "label": "Over 800 sq ft",
+      "min_qty": 800,
+      "max_qty": null,
+      "price_cents": null,
+      "price_suffix": "",
+      "requires_quote": true,
+      "price_is_from": false,
+      "est_minutes": 30,
+      "sort_order": 40,
       "covers_last_cleaned": null
     }
   ],
@@ -994,13 +1110,13 @@
       "name": "Weekly poop scooping · 1 dog",
       "short_label": "1 dog",
       "frequency": "weekly",
-      "visits_per_month": 4.33,
-      "monthly_price_cents": 10000,
-      "derivation": "floor:$85/hr on-site at est_minutes, rounded up to $10",
+      "visits_per_month": 4,
+      "monthly_price_cents": 8000,
+      "derivation": "Josue, 2026-11-01: $20 a week, four weeks",
       "source": "confirmed",
       "confirmed_at": "2026-09-19T04:00:30.765Z",
       "badge": "Most requested",
-      "version": 3,
+      "version": 4,
       "featured": false,
       "sort_order": 10
     },
@@ -1012,13 +1128,13 @@
       "name": "Weekly poop scooping · 2 dogs",
       "short_label": "2 dogs",
       "frequency": "weekly",
-      "visits_per_month": 4.33,
-      "monthly_price_cents": 12000,
-      "derivation": "floor:$85/hr on-site at est_minutes, rounded up to $10",
+      "visits_per_month": 4,
+      "monthly_price_cents": 10000,
+      "derivation": "Josue, 2026-11-01: $25 a week, four weeks",
       "source": "confirmed",
       "confirmed_at": "2026-09-19T04:00:30.765Z",
       "badge": null,
-      "version": 3,
+      "version": 6,
       "featured": true,
       "sort_order": 20
     },
@@ -1030,13 +1146,13 @@
       "name": "Weekly poop scooping · 3 dogs",
       "short_label": "3 dogs",
       "frequency": "weekly",
-      "visits_per_month": 4.33,
-      "monthly_price_cents": 13000,
-      "derivation": "floor:$85/hr on-site at est_minutes, rounded to $10",
+      "visits_per_month": 4,
+      "monthly_price_cents": 11200,
+      "derivation": "Josue, 2026-11-01: $28 a week, four weeks",
       "source": "confirmed",
       "confirmed_at": "2026-09-19T03:01:11.284Z",
       "badge": null,
-      "version": 2,
+      "version": 4,
       "featured": false,
       "sort_order": 30
     },
@@ -1048,13 +1164,13 @@
       "name": "Weekly poop scooping · 4+ dogs",
       "short_label": "4+ dogs",
       "frequency": "weekly",
-      "visits_per_month": 4.33,
-      "monthly_price_cents": 16000,
-      "derivation": "floor:$85/hr on-site at est_minutes, rounded up to $10",
+      "visits_per_month": 4,
+      "monthly_price_cents": 12000,
+      "derivation": "Josue, 2026-11-01: $30 a week, four weeks",
       "source": "confirmed",
       "confirmed_at": "2026-09-19T04:00:30.765Z",
       "badge": null,
-      "version": 3,
+      "version": 6,
       "featured": false,
       "sort_order": 40
     },
@@ -1063,16 +1179,16 @@
       "slug": "turf-weekly-small-area",
       "service_slug": "weekly-turf-maintenance",
       "tier_id": "271f9843-7cdb-4754-aa39-8cb6056956ef",
-      "name": "Weekly turf maintenance · Small area",
-      "short_label": "Small area",
+      "name": "Turf deodorizing · Small yard",
+      "short_label": "Small yard",
       "frequency": "weekly",
-      "visits_per_month": 4.33,
-      "monthly_price_cents": 15000,
-      "derivation": "floor:$85/hr on-site at est_minutes, rounded to $10",
+      "visits_per_month": 4,
+      "monthly_price_cents": 14000,
+      "derivation": "Josue, 2026-11-01: $35 a week, four weeks",
       "source": "confirmed",
       "confirmed_at": "2026-09-19T03:01:11.284Z",
       "badge": null,
-      "version": 2,
+      "version": 3,
       "featured": false,
       "sort_order": 110
     },
@@ -1081,54 +1197,54 @@
       "slug": "turf-weekly-medium-area",
       "service_slug": "weekly-turf-maintenance",
       "tier_id": "20382e00-fb8c-43f1-8cb9-7b526e06c9b1",
-      "name": "Weekly turf maintenance · Medium area",
-      "short_label": "Medium area",
+      "name": "Turf deodorizing · Medium yard",
+      "short_label": "Medium yard",
       "frequency": "weekly",
-      "visits_per_month": 4.33,
-      "monthly_price_cents": 22000,
-      "derivation": "floor:$85/hr on-site at est_minutes, rounded to $10",
+      "visits_per_month": 4,
+      "monthly_price_cents": 20000,
+      "derivation": "Josue, 2026-11-01: $50 a week, four weeks",
       "source": "confirmed",
       "confirmed_at": "2026-09-19T03:01:11.284Z",
       "badge": null,
-      "version": 2,
+      "version": 3,
       "featured": false,
       "sort_order": 120
+    },
+    {
+      "id": "76ccea99-446a-44cc-9370-6e86f677e147",
+      "slug": "turf-weekly-large-area",
+      "service_slug": "weekly-turf-maintenance",
+      "tier_id": "2d643c45-8f00-493b-af41-fd2d79206259",
+      "name": "Turf deodorizing · Large yard",
+      "short_label": "Large yard",
+      "frequency": "weekly",
+      "visits_per_month": 4,
+      "monthly_price_cents": 24000,
+      "derivation": "Josue, 2026-11-01: $60 a week, four weeks",
+      "source": "confirmed",
+      "confirmed_at": "2026-11-01T22:15:14.874Z",
+      "badge": null,
+      "version": 1,
+      "featured": false,
+      "sort_order": 121
     },
     {
       "id": "2bf2a0b8-44ce-42ba-b354-fde0aa9fc70b",
       "slug": "yard-weekly-small-yard",
       "service_slug": "weekly-yard-maintenance",
       "tier_id": "e0fca44e-edcd-4090-876d-0f831eff5092",
-      "name": "Weekly yard maintenance · Small yard",
-      "short_label": "Small yard",
+      "name": "Weekly yard maintenance",
+      "short_label": "Small or medium yard",
       "frequency": "weekly",
-      "visits_per_month": 4.33,
-      "monthly_price_cents": 30000,
-      "derivation": "floor:$85/hr on-site at est_minutes, rounded to $10",
+      "visits_per_month": 4,
+      "monthly_price_cents": 24000,
+      "derivation": "Josue, 2026-11-01: $60 a visit, four visits",
       "source": "confirmed",
       "confirmed_at": "2026-09-19T03:01:11.284Z",
       "badge": null,
-      "version": 2,
+      "version": 3,
       "featured": false,
       "sort_order": 210
-    },
-    {
-      "id": "da566322-5660-4119-ac8d-4d0ff889a2a0",
-      "slug": "yard-weekly-medium-yard",
-      "service_slug": "weekly-yard-maintenance",
-      "tier_id": "3c987fac-5de3-4767-b33f-dd48b3d95f33",
-      "name": "Weekly yard maintenance · Medium yard",
-      "short_label": "Medium yard",
-      "frequency": "weekly",
-      "visits_per_month": 4.33,
-      "monthly_price_cents": 48000,
-      "derivation": "floor:$85/hr on-site at est_minutes, rounded to $10",
-      "source": "confirmed",
-      "confirmed_at": "2026-09-19T03:01:11.284Z",
-      "badge": null,
-      "version": 2,
-      "featured": false,
-      "sort_order": 220
     },
     {
       "id": "4b9c2ef5-3df0-401f-934c-19aee54a605d",
@@ -1138,13 +1254,13 @@
       "name": "Weekly litter box service · 1 litter box",
       "short_label": "1 litter box",
       "frequency": "weekly",
-      "visits_per_month": 4.33,
-      "monthly_price_cents": 7000,
-      "derivation": "floor:$85/hr on-site at est_minutes, rounded to $10",
+      "visits_per_month": 4,
+      "monthly_price_cents": 8000,
+      "derivation": "Josue, 2026-11-01: $20 a box, four visits",
       "source": "confirmed",
       "confirmed_at": "2026-09-19T03:01:11.284Z",
       "badge": null,
-      "version": 2,
+      "version": 3,
       "featured": false,
       "sort_order": 310
     },
@@ -1156,13 +1272,13 @@
       "name": "Weekly litter box service · 2 litter boxes",
       "short_label": "2 litter boxes",
       "frequency": "weekly",
-      "visits_per_month": 4.33,
-      "monthly_price_cents": 10000,
-      "derivation": "floor:$85/hr on-site at est_minutes, rounded to $10",
+      "visits_per_month": 4,
+      "monthly_price_cents": 16000,
+      "derivation": "Josue, 2026-11-01: $20 a box, four visits",
       "source": "confirmed",
       "confirmed_at": "2026-09-19T03:01:11.284Z",
       "badge": null,
-      "version": 2,
+      "version": 3,
       "featured": false,
       "sort_order": 320
     }
@@ -1182,7 +1298,7 @@
     },
     {
       "id": "1b8b7bfc-c624-42c9-9e4a-5a0a95010605",
-      "name": "Turf maintenance: first month half off with scooping",
+      "name": "Turf Deodorizing: first month half off with scooping",
       "description": "Published on the site: \"First month half off when combined with weekly poop scooping.\"",
       "kind": "percent_off",
       "value": 50,
@@ -2342,13 +2458,14 @@
     "reviews.google_count": 42,
     "reviews.google_rating": 5,
     "reviews.google_checked_on": "2026-09-23",
-    "analytics.measurement_id": "G-SNLVJNSP05",
-    "trust.insured_confirmed": true,
     "quote.reply_promise": "within one business day",
     "quote.typical_range": "Custom jobs usually start around $500.",
     "quote.photos_max": 6,
     "business.license_number": null,
     "business.license_class": null,
-    "google.site_verification": "CPNh_fSu8eFn9gpkFHhnFXltHYHpcfIkkcks7w2nvbI"
+    "trust.background_checked_confirmed": true,
+    "trust.insured_confirmed": true,
+    "google.site_verification": "CPNh_fSu8eFn9gpkFHhnFXltHYHpcfIkkcks7w2nvbI",
+    "analytics.measurement_id": "G-SNLVJNSP05"
   }
 }

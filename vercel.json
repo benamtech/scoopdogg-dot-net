@@ -50,6 +50,16 @@
       "permanent": true
     },
     {
+      "source": "/questions/how-much-does-artificial-turf-deodorizing-cost",
+      "destination": "/questions/how-much-does-weekly-turf-maintenance-cost",
+      "permanent": true
+    },
+    {
+      "source": "/services/artificial-turf-deodorizing",
+      "destination": "/services/weekly-turf-maintenance",
+      "permanent": true
+    },
+    {
       "source": "/areas/westlake",
       "destination": "/areas/westlake-village",
       "permanent": true

@@ -12,32 +12,41 @@ import PackageCards from '../components/site/PackageCards.astro';
 import GuaranteeStamp from '../components/site/GuaranteeStamp.astro';
 import Faq from '../components/site/Faq.astro';
 import CloseCta from '../components/site/CloseCta.astro';
-import { services, packagesForService, tiersFor, formatTierPrice, trust, headlineOffer } from '../lib/catalog';
+import { services, packagesForService, tiersFor, formatTierPrice, trust, headlineOffer, addOnsFor } from '../lib/catalog';
 const plans = services.filter((s) => packagesForService(s.slug).length);
-const oneTime = services.filter((s) => !packagesForService(s.slug).length);
+const oneTime = services.filter((s) => s.kind !== 'addon' && !packagesForService(s.slug).length);
+/** A quote-only service has no number to show, so its card says what to do instead. */
+const quoteOnly = (slug: string) => tiersFor(slug).every((t) => t.requires_quote || t.price_cents === null);
 const offer = headlineOffer?.name;
 const faqs = [
   { q: 'When am I charged?', a: `Your first month is charged when you book${offer ? ` (${offer.toLowerCase()} on weekly scooping)` : ''}. After that, your plan renews monthly on the same card until you pause or cancel.` },
-  { q: 'Why monthly instead of per visit?', a: 'One simple payment a month, no invoices to chase, and your price already averages in the months with five visits.' },
+  { q: 'How does the weekly price work?', a: 'A month is four weekly visits, billed once a month. One simple payment, no invoices to chase, and a month with a fifth visit costs the same.' },
   { q: 'Can I skip a week or pause?', a: 'Yes. Skip any visit or pause for vacation from your account. You are not charged while paused.' },
   { q: 'Are there sign-up fees or contracts?', a: 'No sign-up fees and no contracts. Cancel anytime from your account.' },
+  { q: 'How big is a small, medium or large yard?', a: 'Small is up to 300 sq ft, medium is 300 to 500, and large is 500 to 800. A rough guess is fine.' },
   { q: 'What if I have a big yard or lots of pets?', a: 'Larger or custom properties get a quick custom quote — request one and we will get back to you within a day.' },
 ];
 ---
-<Site title="Pricing | Monthly Dog Poop Cleanup Plans | Scoop Dogg" description={`Simple monthly plans for weekly dog poop scooping, turf maintenance, yard care and litter boxes, plus one-time cleanups.${offer ? ` ${offer}.` : ''}`} canonicalPath="/pricing" jsonLd={{ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faqs.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) }}>
-  <PageHero eyebrow="Pricing" title="Simple monthly plans. No surprises." lede={`Every plan covers a visit every week, priced up front.${offer ? ` ${offer} on weekly scooping.` : ''} Cancel anytime.`} form source="pricing-hero" />
+<Site title="Pricing | Weekly Dog Poop Cleanup Plans | Scoop Dogg" description={`Simple weekly plans for dog poop scooping, turf deodorizing, yard care and litter boxes, billed monthly, plus one-time cleanups.${offer ? ` ${offer}.` : ''}`} canonicalPath="/pricing" jsonLd={{ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faqs.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) }}>
+  <PageHero eyebrow="Pricing" title="Simple weekly plans. No surprises." lede={`One price a week, billed monthly, and you see it before you book.${offer ? ` ${offer} on weekly scooping.` : ''} Cancel anytime.`} form source="pricing-hero" />
   <ProofBar tone="sage" />
   {plans.map((s, i) => (
     <Section tone={(["white", "sand", "cream"] as const)[i % 3]} labelledby={`p-${s.slug}`}>
       <div class="flex flex-col justify-between gap-4 md:flex-row md:items-end">
         <div class="max-w-narrow">
-          <p class="eyebrow mb-4">Monthly plan</p>
+          <p class="eyebrow mb-4">Weekly plan</p>
           <h2 id={`p-${s.slug}`} class="text-h2 text-forest-900">{s.name}</h2>
           {s.pricing_note && <p class="mt-3 text-lg text-ink-500">{s.pricing_note}</p>}
         </div>
         <a href={`/services/${s.slug}`} class="link shrink-0 text-base">What's included</a>
       </div>
       <div class="mt-12"><PackageCards service={s.slug} /></div>
+      {addOnsFor(s.slug).map((a) => (
+        <p class="mt-8 max-w-3xl text-lg text-ink-700">
+          <a href={`/services/${a.slug}`} class="font-semibold text-forest-900 hover:text-forest-600">Add-on: {a.name}.</a>{' '}
+          {tiersFor(a.slug).filter((t) => !t.requires_quote).map((t) => `${t.label.split(' (')[0]} ${formatTierPrice(t)}${t.price_suffix ?? ''}`).join(' · ')}
+        </p>
+      ))}
     </Section>
   ))}
   <Section tone="forest" labelledby="onetime">
@@ -49,9 +58,11 @@ const faqs = [
         <div class="tone-white flex flex-col rounded-xl bg-paper p-6 shadow-md">
           <a href={`/services/${s.slug}`} class="text-xl font-semibold text-forest-900 hover:text-forest-600">{s.name}</a>
           <dl class="mt-4 flex-1 divide-y divide-line">
-            {tiersFor(s.slug).map((t) => <div class="flex justify-between gap-4 py-2 text-base"><dt class="text-ink-700">{t.label}</dt><dd class="shrink-0 font-semibold text-forest-900">{formatTierPrice(t)}</dd></div>)}
+            {quoteOnly(s.slug)
+              ? <div class="py-2 text-base text-ink-700">{s.pricing_note}</div>
+              : tiersFor(s.slug).map((t) => <div class="flex justify-between gap-4 py-2 text-base"><dt class="text-ink-700">{t.label}</dt><dd class="shrink-0 font-semibold text-forest-900">{formatTierPrice(t)}</dd></div>)}
           </dl>
-          <a href={`/services/${s.slug}`} class="link mt-5 text-base">Details</a>
+          <a href={quoteOnly(s.slug) ? `/custom-quote?service=${s.slug}` : `/services/${s.slug}`} class="link mt-5 text-base">{quoteOnly(s.slug) ? 'Get a quote' : 'Details'}</a>
         </div>
       ))}
     </div>

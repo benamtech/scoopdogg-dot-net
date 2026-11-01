@@ -18,7 +18,7 @@ import Faq from '../../components/site/Faq.astro';
 import ReviewQuotes from '../../components/site/ReviewQuotes.astro';
 import CloseCta from '../../components/site/CloseCta.astro';
 import ProofBar from '../../components/site/ProofBar.astro';
-import { services, serviceBySlug, isRetiredService, tiersFor, packagesForService, formatTierPrice, headlinePrice, trust, headlineOffer } from '../../lib/catalog';
+import { services, serviceBySlug, isRetiredService, tiersFor, packagesForService, formatTierPrice, headlinePrice, trust, headlineOffer, addOnsFor, business } from '../../lib/catalog';
 import { questions } from '../../lib/questions';
 import { SITE_URL } from '../../lib/constants';
 
@@ -55,9 +55,13 @@ const serviceQuestions = questions().filter((q) => q.service === s.slug);
  * quoted tiers goes to the custom-quote lane, which does read `service`.
  */
 const priced = tiers.some((t) => t.price_cents && !t.requires_quote && !t.price_is_from);
+const addOn = s.kind === 'addon';
+const parent = addOn ? serviceBySlug(s.related_slugs?.[0] ?? '') : undefined;
 const shape: 'recurring' | 'one_time' | 'quote' = pkgs.length ? 'recurring' : priced ? 'one_time' : 'quote';
-const bookHref = shape === 'quote' ? `/custom-quote?service=${s.slug}` : `/book?service=${s.slug}`;
-const bookLabel = shape === 'recurring' ? 'See my price' : shape === 'one_time' ? 'Book this service' : 'Get a quote';
+// An add-on is bought with its plan, so its button goes to the booking with the add-on already chosen.
+const bookHref = addOn ? `/book?service=${s.slug}` : shape === 'quote' ? `/custom-quote?service=${s.slug}` : `/book?service=${s.slug}`;
+const bookLabel = addOn ? `Add it to ${parent?.short_name ?? 'your plan'}` : shape === 'recurring' ? 'See my price' : shape === 'one_time' ? 'Book this service' : 'Get a quote';
+const addOns = addOnsFor(s.slug);
 // Ben, 2026-09-16: the copy must not limit Scoop Dogg to one county.
 const widen = (t: string) => t.replace(/ in Ventura County\b/g, ' in Ventura & Santa Barbara Counties').replace(/\bServing Ventura County\b/g, 'Serving Ventura & Santa Barbara Counties').replace(/ across Ventura County\b/g, ' across Ventura & Santa Barbara Counties');
 const title = widen(s.meta_title || `${s.name} | Scoop Dogg`);
@@ -79,16 +83,16 @@ const jsonLd = [
 ---
 <Site title={title} description={description} canonicalPath={`/services/${s.slug}`} jsonLd={jsonLd} mobileCtaHref={bookHref} mobileCtaLabel={bookLabel}>
   <PageHero
-    eyebrow={shape === 'recurring' ? 'Monthly plan' : 'One-time service'}
+    eyebrow={addOn ? 'Add-on' : shape === 'recurring' ? 'Weekly plan' : 'One-time service'}
     title={heading}
     lede={intro}
     crumbs={[{ href: '/services', label: 'Services' }]}
-    form={shape !== 'quote'}
+    form={!addOn && shape !== 'quote'}
     formService={s.slug}
     formTitle={shape === 'recurring' ? 'See your price in a minute' : 'Book online in a minute'}
     source={`service-${s.slug}`}
   >
-    {shape === 'quote' && (
+    {(shape === 'quote' || addOn) && (
       <div class="mt-8 flex flex-wrap items-center gap-5">
         <a href={bookHref} class="btn-primary btn-lg">{bookLabel}</a>
         {price && <p class="text-xl font-semibold text-white" data-price-cents={price.cents}>{price.text}{price.per}</p>}
@@ -104,7 +108,12 @@ const jsonLd = [
       <a slot="action" href="/pricing" class="link text-base">All pricing</a>
     </SectionHeading>
     <div class="mt-12">
-      {pkgs.length > 0 ? <PackageCards service={s.slug} /> : (
+      {pkgs.length > 0 ? <PackageCards service={s.slug} /> : shape === 'quote' ? (
+        <div class="flex flex-wrap items-center gap-5">
+          <a href={bookHref} class="btn-primary btn-lg">Get a quote</a>
+          <a href={business.phoneHref} class="link text-lg">Or call {business.phone}</a>
+        </div>
+      ) : (
         <dl class="max-w-3xl divide-y divide-line border-y border-line">
           {tiers.map((t) => (
             <div class="flex items-center justify-between gap-6 py-5" data-tier={t.id} data-price-cents={t.price_cents ?? undefined}>
@@ -116,6 +125,12 @@ const jsonLd = [
           ))}
         </dl>
       )}
+      {addOns.map((a) => (
+        <p class="mt-8 max-w-3xl text-lg text-ink-700">
+          <a href={`/services/${a.slug}`} class="font-semibold text-forest-900 hover:text-forest-600">Add-on: {a.name}.</a>{' '}
+          {tiersFor(a.slug).filter((t) => !t.requires_quote).map((t) => `${t.label.split(' (')[0]} ${formatTierPrice(t)}${t.price_suffix ?? ''}`).join(' · ')}
+        </p>
+      ))}
     </div>
   </Section>
 
