@@ -51,11 +51,11 @@ export default function AdminCustomersPage() {
   };
 
   const status = (c: CustomerRow) => {
-    if (c.state === 'active') return { label: 'On the rail', cls: 'bg-success-100 text-success' };
-    if (c.state === 'deposit_pending') return { label: 'Adding a card', cls: 'bg-amber-100 text-amber-700' };
+    if (c.state === 'active') return { label: 'Active', cls: 'bg-success-100 text-success' };
+    if (c.state === 'deposit_pending') return { label: 'Waiting on a card', cls: 'bg-amber-100 text-amber-700' };
     if (c.invite_id && !c.accepted_at) return { label: 'Invited', cls: 'bg-forest-50 text-forest-800' };
     if (c.state === 'cancelled') return { label: 'Cancelled', cls: 'bg-line text-ink-500' };
-    return { label: 'Off the rail', cls: 'bg-line text-ink-500' };
+    return { label: 'No plan', cls: 'bg-line text-ink-500' };
   };
 
   return (
@@ -132,8 +132,8 @@ export default function AdminCustomersPage() {
                           <span className="block text-ink-500">{c.phone}{c.email ? ` · ${c.email}` : ''}</span>
                         </td>
                         <td className="px-4 py-3 text-ink-700">{c.address ?? '—'}{c.area_name ? `, ${c.area_name}` : ''}</td>
-                        <td className="px-4 py-3 text-ink-700">{c.service_weekday == null ? '—' : DAYS[c.service_weekday]}</td>
-                        <td className="px-4 py-3 tabular-nums text-forest-900">{money(c.monthly_price_cents)}</td>
+                        <td className="px-4 py-3 text-ink-700">{c.frequency === 'one_time' ? 'One time' : c.service_weekday == null ? '—' : DAYS[c.service_weekday]}</td>
+                        <td className="px-4 py-3 tabular-nums text-forest-900">{c.frequency === 'one_time' ? `${money(c.price_cents)} once` : money(c.monthly_price_cents)}</td>
                         <td className="px-4 py-3"><span className={`rounded-sm px-2 py-1 text-micro font-semibold uppercase ${s.cls}`}>{s.label}</span></td>
                       </tr>
                     );

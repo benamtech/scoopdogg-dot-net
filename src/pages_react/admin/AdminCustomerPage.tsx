@@ -76,7 +76,7 @@ export default function AdminCustomerPage() {
                   {d.subscriptions.map((s: any) => (
                     <li key={s.id} className="px-4 py-3 text-sm text-ink-700">
                       <p className="text-base text-forest-900">{s.service_name ?? s.service_slug} <span className="text-sm text-ink-500">— {s.state}{s.payment_state && s.payment_state !== 'ok' ? `, payment ${s.payment_state}` : ''}</span></p>
-                      <p>{s.monthly_price_cents ? `${money(s.monthly_price_cents)} a month` : s.price_cents ? money(s.price_cents) : ''}{s.service_weekday != null ? ` · ${DAYS[s.service_weekday]}` : ''}{s.starts_on ? ` · since ${date(s.starts_on)}` : ''}</p>
+                      <p>{s.monthly_price_cents ? `${money(s.monthly_price_cents)} a month` : s.price_cents ? money(s.price_cents) : ''}{s.frequency === 'one_time' ? ' · One-time job' : s.service_weekday != null ? ` · ${DAYS[s.service_weekday]}` : ''}{s.starts_on ? ` · since ${date(s.starts_on)}` : ''}</p>
                       <p className="text-ink-500">{s.visits_done} visit{s.visits_done === 1 ? '' : 's'} done{s.next_visit ? ` · next ${date(s.next_visit)}` : ''}{s.paused_until ? ` · paused until ${date(s.paused_until)}` : ''}{s.discount?.name ? ` · ${s.discount.name}` : ''}</p>
                     </li>
                   ))}

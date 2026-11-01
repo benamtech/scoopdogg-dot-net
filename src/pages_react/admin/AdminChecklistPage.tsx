@@ -71,7 +71,7 @@ export default function AdminChecklistPage() {
       <div className="max-w-4xl">
         <h1 className="font-serif text-h2 text-forest-900">Your setup</h1>
         <p className="mt-2 text-base text-ink-500">
-          Six things only you can answer. Nothing here is required — the site works without them and
+          A few things only you can answer. Nothing here is required — the site works without them and
           simply says less. {data && <strong className="font-semibold text-forest-900">{data.done} of {data.measurable} done.</strong>}
         </p>
         {error && <p role="alert" className="mt-4 rounded-md bg-danger-100 px-4 py-3 text-danger">{error}</p>}

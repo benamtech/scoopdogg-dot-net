@@ -14,6 +14,7 @@ function formatDate(iso: string) {
 
 export default function AdminDashboardPage() {
   const navigate = useNavigate();
+  const [customers, setCustomers] = useState(0);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -21,8 +22,9 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [leadsRes, summary] = await Promise.all([adminApi.leads(), adminApi.summary()]);
+        const [leadsRes, summary, people] = await Promise.all([adminApi.leads(), adminApi.summary(), adminApi.customers().catch(() => null)]);
         setLeads(leadsRes.leads as never[]);
+        setCustomers(people ? people.customers.filter((c: { state?: string | null }) => c.state === 'active').length : 0);
         setUnreadMessages(summary.unread_messages);
       } catch {
         // Not signed in, or the session expired. ProtectedRoute sends them to login.
@@ -38,13 +40,12 @@ export default function AdminDashboardPage() {
 
   const total = leads.length;
   const newLeads = leads.filter((l) => l.status === 'new').length;
-  const active = leads.filter((l) => l.status === 'active').length;
   const thisMonth = leads.filter((l) => l.created_at >= thisMonthStart).length;
 
   const stats = [
     { label: 'Total Leads', value: total, icon: Users, color: 'text-forest', bg: 'bg-sage-light', onClick: () => navigate('/admin/leads') },
     { label: 'New Leads', value: newLeads, icon: AlertCircle, color: 'text-amber-hover', bg: 'bg-amber/10', badge: true, onClick: () => navigate('/admin/leads') },
-    { label: 'Active Customers', value: active, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50', onClick: () => navigate('/admin/leads') },
+    { label: 'Active Customers', value: customers, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50', onClick: () => navigate('/admin/customers') },
     { label: "This Month's Leads", value: thisMonth, icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50', onClick: () => navigate('/admin/leads') },
     { label: 'Unread Messages', value: unreadMessages, icon: MessageSquare, color: 'text-amber-hover', bg: 'bg-amber/10', badge: true, onClick: () => navigate('/admin/messages') },
   ];
@@ -55,7 +56,11 @@ export default function AdminDashboardPage() {
     <AdminLayout>
       <div className="mb-6 md:mb-8">
         <h1 className="font-serif text-2xl md:text-3xl text-dark">Dashboard</h1>
-        <p className="text-dark/50 text-sm mt-1">Overview of your Scoop Dogg leads</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <a href="/admin/today" className="btn-primary btn-sm">Today's stops</a>
+          <a href="/admin/leads" className="btn-ghost btn-sm">New leads{newLeads ? ` (${newLeads})` : ''}</a>
+          <a href="/admin/setup" className="btn-ghost btn-sm">Your setup</a>
+        </div>
       </div>
 
       {/* P16 §7 calls this "the admin's top block", and the admin's top is where the owner

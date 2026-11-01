@@ -52,7 +52,8 @@ export default function AdminLeadDetailPage() {
         setLead(data as never);
         setPhotos(ph ?? []);
         setQuotes(qs ?? []);
-        setNotes(data.notes || '');
+        // The customer's own message is shown above as what they asked for; this box is Josue's.
+        setNotes(data.kind === 'custom' ? '' : data.notes || '');
       } catch { /* handled by ProtectedRoute */ }
       setLoading(false);
     };
@@ -116,7 +117,11 @@ export default function AdminLeadDetailPage() {
             <div className="flex items-start justify-between mb-6">
               <div>
                 <h1 className="font-serif text-2xl text-dark">{lead.name}</h1>
-                <p className="text-dark/50 text-sm mt-1">{lead.city}, CA</p>
+                <p className="text-dark/50 text-sm mt-1">{/^\d{5}$/.test(lead.city ?? '') ? `ZIP ${lead.city}` : lead.city}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <a href={`tel:${lead.phone}`} className="btn-primary btn-sm">Call</a>
+                  <a href={`sms:${lead.phone}`} className="btn-ghost btn-sm">Text</a>
+                </div>
               </div>
               <StatusBadge status={lead.status} />
             </div>
@@ -124,12 +129,11 @@ export default function AdminLeadDetailPage() {
             <InfoRow label="Email" value={lead.email} />
             <InfoRow label="Phone" value={lead.phone} />
             <InfoRow label="Address" value={lead.address} />
-            <InfoRow label="City" value={lead.city} />
+            <InfoRow label={/^\d{5}$/.test(lead.city ?? '') ? 'ZIP' : 'City'} value={lead.city} />
             <InfoRow label="Service" value={serviceLabel(lead.service_slug)} />
             <InfoRow label="Yard Size" value={lead.yard_size ? lead.yard_size.charAt(0).toUpperCase() + lead.yard_size.slice(1) : undefined} />
             <InfoRow label="Number of Dogs" value={lead.num_dogs} />
             <InfoRow label="Frequency" value={lead.frequency ? lead.frequency.charAt(0).toUpperCase() + lead.frequency.slice(1) : undefined} />
-            <InfoRow label="Source Page" value={lead.source_page} />
             <InfoRow label="Submitted" value={formatDateTime(lead.created_at)} />
             <InfoRow label="Last Updated" value={formatDateTime(lead.updated_at)} />
           </div>

@@ -9,6 +9,7 @@ export type AdminRole = 'superadmin' | 'admin' | 'crew';
 export interface AdminUser { id: string; teamId: string; name: string; email: string; role: AdminRole }
 
 export interface Lead {
+  kind?: string | null;
   id: string; name: string; phone: string; email: string; address: string; city: string;
   service_slug: string; yard_size: string | null; num_dogs: number | null; notes: string;
   source_page: string; status: string; created_at: string; updated_at: string;
@@ -357,6 +358,7 @@ export interface UnfinishedRow {
   started_at: string; last_seen_at: string; sms_href: string | null; sms_body: string;
 }
 export interface CustomerRow {
+  frequency?: string | null; price_cents?: number | null;
   id: string; name: string; email: string | null; phone: string; created_at: string;
   subscription_id: string | null; state: string | null; payment_state: string | null;
   monthly_price_cents: number | null; starts_on: string | null; service_weekday: number | null;
@@ -396,7 +398,7 @@ export interface CompletionReadiness {
 export interface Stop {
   id: string; scheduled_for: string; state: string; crew_notes: string;
   customer_name: string; phone: string; address: string; city: string;
-  gate_code: string | null; access_notes: string;
+  gate_code: string | null; access_notes: string; service_name?: string | null;
   /** The stop clock. Null means not tapped, which is allowed — never a zero. */
   en_route_at: string | null; arrived_at: string | null; completed_at: string | null;
 }

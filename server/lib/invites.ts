@@ -318,7 +318,7 @@ export async function customerList() {
   const { rows } = await db().query(`
     select c.id, c.name, c.email, c.phone, c.created_at,
            s.id as subscription_id, s.state, s.payment_state, s.monthly_price_cents, s.starts_on::text as starts_on,
-           s.service_weekday, s.source, p.address, a.name as area_name,
+           s.service_weekday, s.frequency, s.price_cents, s.source, p.address, a.name as area_name,
            i.id as invite_id, i.sent_at, i.accepted_at
       from customers c
       left join lateral (select * from subscriptions x where x.customer_id = c.id order by x.created_at desc limit 1) s on true

@@ -28,12 +28,13 @@ export default function AdminVisitPage() {
               {v.phone && <a className="btn-secondary btn-sm" href={`tel:${v.phone}`}>Call</a>}
               <a className="btn-ghost btn-sm" href={`https://maps.google.com/?q=${encodeURIComponent(`${v.address}, ${v.city}`)}`} target="_blank" rel="noreferrer">Map</a>
               <a className="btn-ghost btn-sm" href={`/admin/customers/${v.customer_id}`}>Customer</a>
+              {v.state === 'scheduled' && <a className="btn-primary btn-sm" href="/admin/today">Mark done on Today</a>}
             </div>
             <dl className="mt-6 grid gap-2 rounded-lg border border-line bg-paper p-4 text-sm text-ink-700">
               <div><dt className="inline text-ink-500">Address </dt><dd className="inline">{v.address}, {v.city}</dd></div>
               {v.gate_code && <div><dt className="inline text-ink-500">Gate </dt><dd className="inline">{v.gate_code}</dd></div>}
-              {v.access_notes && <div><dt className="inline text-ink-500">Getting in </dt><dd className="inline">{v.access_notes}</dd></div>}
-              <div><dt className="inline text-ink-500">Dogs </dt><dd className="inline">{v.num_dogs}{v.yard_size ? ` · ${v.yard_size} yard` : ''}</dd></div>
+              {v.access_notes && v.access_notes !== v.address && <div><dt className="inline text-ink-500">Getting in </dt><dd className="inline">{v.access_notes}</dd></div>}
+              {(v.num_dogs || v.yard_size) && <div><dt className="inline text-ink-500">{v.num_dogs ? 'Dogs ' : 'Yard '}</dt><dd className="inline">{[v.num_dogs, v.yard_size ? `${v.yard_size} yard` : null].filter(Boolean).join(' · ')}</dd></div>}
               <div><dt className="inline text-ink-500">Status </dt><dd className="inline">{v.state.replace(/_/g, ' ')}
                 {at(v.en_route_at) ? ` · left ${at(v.en_route_at)}` : ''}{at(v.arrived_at) ? ` · arrived ${at(v.arrived_at)}` : ''}{at(v.completed_at) ? ` · done ${at(v.completed_at)}` : ''}{v.completed_by_name ? ` by ${v.completed_by_name}` : ''}</dd></div>
               {v.customer_note && <div><dt className="inline text-ink-500">Customer's note </dt><dd className="inline">{v.customer_note}</dd></div>}
