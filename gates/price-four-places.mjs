@@ -85,7 +85,7 @@ for (const p of pkgs) {
 }
 // ── tiers
 const { loadCatalog } = await import(path.join(build, 'server/lib/catalog-db.js'));
-const { quoteOneTime } = await import(path.join(build, 'src/shared/pricing.js'));
+const { quoteOneTime, quoteBooking } = await import(path.join(build, 'src/shared/pricing.js'));
 const live = await loadCatalog();
 const tierPrinted = new Map();
 for (const f of pages) {
@@ -111,7 +111,11 @@ for (const t of priced) {
   const onPages = tierPrinted.get(t.id) ?? [];
   const viaPlan = soldAsPlans.has(t.service_slug);
   const pageOk = viaPlan ? onPages.every((v) => v === t.price_cents) : (onPages.length > 0 && onPages.every((v) => v === t.price_cents));
-  const q = quoteOneTime(live, t.id);
+  // An add-on is never sold alone: it is priced the way it is charged, as an extra on its plan.
+  const addon = live.services.find((x) => x.slug === t.service_slug)?.kind === 'addon';
+  const plan = addon ? live.packages[0] : null;
+  const asExtra = plan ? quoteBooking(live, { packageId: plan.id, extraTierIds: [t.id] }) : null;
+  const q = asExtra ? (asExtra.ok ? { ok: true, cents: asExtra.extrasCents } : asExtra) : quoteOneTime(live, t.id);
   const serverOk = t.price_is_from ? (!q.ok && q.reason === 'from_price') : (q.ok && q.cents === t.price_cents);
   const ok = pageOk && serverOk;
   if (!ok) tierFailed++;

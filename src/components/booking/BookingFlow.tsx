@@ -267,16 +267,6 @@ export default function BookingFlow(props: Props) {
 
   useEffect(() => { headingRef.current?.focus({ preventScroll: true }); window.scrollTo({ top: 0, behavior: 'smooth' }); }, [step]);
 
-  // Anything on the first charge beyond the plan means no pay-after (server/lib/booking.ts says why).
-  useEffect(() => { if (lane === 'payafter' && quote && quote.ok && quote.extrasCents) setLane('prepay'); }, [lane, quote]);
-
-  // Someone who came for an add-on with one size has it chosen for them; with sizes, it is marked.
-  useEffect(() => {
-    if (step !== 'price' || !wantAddOn) return;
-    const g = addOnGroups.find((x) => x.slug === wantAddOn);
-    if (g?.tiers.length === 1) setAddOns((a) => (a.includes(g.tiers[0].id) ? a : [...a, g.tiers[0].id]));
-  }, [step, wantAddOn, addOnGroups]);
-
   const go = (next: Step) => { setError(''); setHistory((h) => [...h, step]); setStep(next); };
   const back = () => { setError(''); setHistory((h) => { const copy = [...h]; const prev = copy.pop(); if (prev) setStep(prev); return copy; }); };
 
@@ -312,6 +302,16 @@ export default function BookingFlow(props: Props) {
   const quote = pkg ? quoteBooking(catalog, { packageId: pkg.id, extraTierIds, withPackageIds }) : null;
   const serviceInfo = props.services.find((s) => s.slug === service);
   const isOneTime = Boolean(tierId && !pkg);
+
+  // Anything on the first charge beyond the plan means no pay-after (server/lib/booking.ts says why).
+  useEffect(() => { if (lane === 'payafter' && quote && quote.ok && quote.extrasCents) setLane('prepay'); }, [lane, quote]);
+
+  // Someone who came for an add-on with one size has it chosen for them; with sizes, it is marked.
+  useEffect(() => {
+    if (step !== 'price' || !wantAddOn) return;
+    const g = addOnGroups.find((x) => x.slug === wantAddOn);
+    if (g?.tiers.length === 1) setAddOns((a) => (a.includes(g.tiers[0].id) ? a : [...a, g.tiers[0].id]));
+  }, [step, wantAddOn, addOnGroups]);
   const firstCharge = isOneTime ? (oneTime?.ok ? oneTime.cents : null) : (quote && quote.ok ? quote.firstChargeCents : null);
   /**
    * THE PRICE THE FUNNEL RECORDS IS THE PRICE OF THE THING, not the first charge.
