@@ -43,7 +43,7 @@ const navItems = [
  * as the save purges the page cache.
  */
 function DemoBanner() {
-  const { demoMode, demoAddress, refresh } = useAuth();
+  const { demoMode, demoAddress, refresh, user } = useAuth();
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
 
@@ -65,6 +65,8 @@ function DemoBanner() {
   };
 
   if (!demoMode) {
+    // The switch decides who gets every message, so it is AMTECH's, not one more button on Josue's screen.
+    if (user?.role !== 'superadmin') return null;
     return (
       <div className="bg-white border-b border-black/10 px-4 py-2 flex items-center justify-between gap-3 text-xs">
         <span className="text-dark/60">

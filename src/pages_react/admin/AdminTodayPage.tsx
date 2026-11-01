@@ -157,8 +157,9 @@ export default function AdminTodayPage() {
                 <div className="min-w-0 flex-1">
                   <p className="text-lg font-semibold text-forest-900">{s.address}</p>
                   <p className="text-base text-ink-700">{s.city} · {s.customer_name}</p>
+                  {s.service_name && <p className="mt-1 text-base font-semibold text-forest-800">{s.service_name}</p>}
                   {s.gate_code && <p className="mt-2 text-base text-forest-800">Gate code: <strong className="font-semibold">{s.gate_code}</strong></p>}
-                  {s.access_notes && <p className="mt-1 text-base text-ink-700">{s.access_notes}</p>}
+                  {s.access_notes && s.access_notes !== s.address && <p className="mt-1 text-base text-ink-700">{s.access_notes}</p>}
                   <a href={`tel:${String(s.phone ?? '').replace(/\D/g, '')}`} className="link mt-2 inline-block text-base">{s.phone}</a>
 
                   {(s.en_route_at || s.arrived_at) && (
@@ -228,6 +229,12 @@ export default function AdminTodayPage() {
                         >
                           {busy[s.id] ? 'Saving…' : 'Mark done'}
                         </button>
+                        {data.completion.ready && data.completion.requiresPhoto && !photos[s.id]?.length && (
+                          <p className="mt-2 w-full text-sm text-ink-500">Take a photo first, then Mark done.</p>
+                        )}
+                        {!data.completion.ready && data.completion.reason && (
+                          <p className="mt-2 w-full text-sm text-ink-500">{data.completion.reason}</p>
+                        )}
                       </>
                     )}
                     {said[s.id] && <p className="mt-2 text-base text-ink-700">{said[s.id]}</p>}

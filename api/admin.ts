@@ -151,9 +151,11 @@ async function route(req: ApiRequest, res: ApiResponse) {
       const { rows } = await db().query(
         `select v.id, v.scheduled_for::text as scheduled_for, v.state, v.crew_notes,
                 v.en_route_at, v.arrived_at, v.completed_at,
-                c.name as customer_name, c.phone, p.address, p.city, p.gate_code, p.access_notes
+                c.name as customer_name, c.phone, p.address, p.city, p.gate_code, p.access_notes,
+                coalesce(sv.name, '') || coalesce((select ' + ' || string_agg(x->>'label', ' + ') from jsonb_array_elements(s.extras) x where x ? 'package_id' or v.scheduled_for = s.starts_on), '') as service_name
            from visits v
            join subscriptions s on s.id = v.subscription_id
+           left join services sv on sv.slug = s.service_slug
            join customers c on c.id = s.customer_id
            join properties p on p.id = v.property_id
           where v.scheduled_for = current_date and v.state not in ('cancelled','skipped')

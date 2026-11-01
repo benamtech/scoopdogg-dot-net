@@ -99,8 +99,9 @@ export default function AdminRateCardPage() {
     if (!card) return [];
     return card.services.map((s) => ({
       ...s,
-      tiers: card.tiers.filter((t) => t.service_slug === s.slug),
-      packages: card.packages.filter((p) => p.service_slug === s.slug),
+      // What he sells today. Anything retired stays in the database and off this screen.
+      tiers: card.tiers.filter((t) => t.service_slug === s.slug && t.status !== 'retired'),
+      packages: card.packages.filter((p) => p.service_slug === s.slug && p.status !== 'retired'),
     })).filter((s) => s.tiers.length || s.packages.length);
   }, [card]);
 
@@ -182,9 +183,10 @@ export default function AdminRateCardPage() {
           <div className="mt-8 h-40 animate-pulse rounded-lg bg-line/50" />
         ) : (
           <>
-            {byService.map((s) => (
-              <section key={s.slug} className="mt-10">
-                <h2 className="font-serif text-h3 text-forest-900">{s.name}</h2>
+            <p className="mt-6 text-base text-ink-500">Tap a service to open its prices.</p>
+            {byService.map((s, i) => (
+              <details key={s.slug} open={i === 0} className="mt-4 rounded-lg border border-line bg-paper p-4 sm:p-5">
+                <summary className="cursor-pointer font-serif text-h3 text-forest-900">{s.name}</summary>
 
                 {s.packages.length > 0 && (
                   <div className="mt-4 overflow-x-auto rounded-lg border border-line bg-paper">
@@ -252,7 +254,7 @@ export default function AdminRateCardPage() {
 
                 {s.tiers.length > 0 && (
                   <ul className="mt-4 divide-y divide-line rounded-lg border border-line bg-paper">
-                    {s.tiers.map((t) => {
+                    {s.tiers.filter((t) => t.status !== 'retired').map((t) => {
                       const key = `tier:${t.id}`;
                       const value = draft[key] ?? dollars(t.price_cents);
                       const cents = toCents(value);
@@ -366,7 +368,7 @@ export default function AdminRateCardPage() {
                 ) : (
                   <button type="button" className="mt-3 py-1.5 text-sm font-medium text-forest-700 hover:text-forest-900" onClick={() => { setAdding(s.slug); setFresh({ label: '', price: '', suffix: '', quote: false, from: false, min: '', max: '' }); }}>+ Add a tier to {s.name}</button>
                 )}
-              </section>
+              </details>
             ))}
 
             {/* What was changed, and what it was before. The catalog rows only ever hold the
@@ -385,9 +387,9 @@ export default function AdminRateCardPage() {
                   {card.changes.map((c, i) => (
                     <li key={`${c.entity_id}-${c.changed_at}-${i}`} className="px-5 py-3 text-sm text-ink-700">
                       <span className="text-forest-900">{c.entity_label}</span>{' — '}
-                      {c.field.replace(/_/g, ' ')}{' '}
-                      {c.old_value !== null && <>was <span className="tabular-nums">{c.old_value}</span>, </>}
-                      now <span className="tabular-nums text-forest-900">{c.new_value ?? '—'}</span>
+                      {c.field.replace(/_cents$/, '').replace(/_/g, ' ')}{' '}
+                      {c.old_value !== null && <>was <span className="tabular-nums">{/_cents$/.test(c.field) ? money(Number(c.old_value)) : c.old_value}</span>, </>}
+                      now <span className="tabular-nums text-forest-900">{c.new_value === null ? '—' : /_cents$/.test(c.field) ? money(Number(c.new_value)) : c.new_value}</span>
                       <span className="ml-2 text-micro text-ink-500">
                         {new Date(c.changed_at).toLocaleDateString()} · {c.changed_by}
                       </span>

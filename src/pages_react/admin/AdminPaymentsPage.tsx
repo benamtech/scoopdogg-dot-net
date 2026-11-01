@@ -31,7 +31,7 @@
  */
 import { useEffect, useState } from 'react';
 import AdminLayout from '../../components/admin/AdminLayout';
-import type { ModeStatus, PaymentsData as Data } from '../../lib/adminApi';
+import { adminApi, type AdminInvoice, type ModeStatus, type PaymentsData as Data } from '../../lib/adminApi';
 
 const money = (c: number) => `$${(c / 100).toFixed(0)}`;
 
@@ -58,6 +58,8 @@ export default function AdminPaymentsPage() {
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
   const load = async () => { try { setData(await call('payments')); } catch (e) { setError((e as Error).message); } };
+  const [paid, setPaid] = useState<AdminInvoice[] | null>(null);
+  useEffect(() => { adminApi.invoices().then((r) => setPaid(r.invoices.filter((i) => i.state === 'paid').slice(0, 12))).catch(() => setPaid([])); }, []);
   useEffect(() => {
     const result = new URLSearchParams(window.location.search).get('connect');
     const said = result ? CONNECT_RESULT[result] : undefined;
@@ -159,9 +161,24 @@ export default function AdminPaymentsPage() {
         <p className="mt-2 text-base text-ink-500">Customers pay their first month when they book, then monthly. Money goes to your Stripe account.</p>
         {error && <p role="alert" className="mt-4 rounded-md bg-danger-100 px-4 py-3 text-danger">{error}</p>}
         {note && <p className="mt-4 rounded-md bg-success-100 px-4 py-3 text-success">{note}</p>}
+        <h2 className="mt-8 text-xl font-semibold text-forest-900">Money in</h2>
+        {!paid ? <div className="mt-3 h-16 animate-pulse rounded-lg bg-line/50" /> : paid.length === 0 ? <p className="mt-3 text-base text-ink-700">No payments yet.</p> : (
+          <ul className="mt-3 divide-y divide-line rounded-lg border border-line bg-paper" data-money-in>
+            {paid.map((i) => (
+              <li key={i.id} className="flex items-center justify-between gap-4 px-4 py-3 text-base">
+                <a className="min-w-0 text-forest-900 underline" href={`/admin/customers/${i.customer_id}`}>{i.name}</a>
+                <span className="shrink-0 text-sm text-ink-500">{new Date(i.paid_at ?? i.issued_at ?? '').toLocaleDateString()}</span>
+                <span className="shrink-0 font-semibold tabular-nums text-forest-900">${(i.total_cents / 100).toFixed(2).replace(/\.00$/, '')}</span>
+              </li>
+            ))}
+          </ul>
+        )}
         {!data ? <div className="mt-8 h-40 animate-pulse rounded-lg bg-line/50" /> : (
           <>
-            <div className="mt-8 grid gap-4 md:grid-cols-2"><Mode mode="live" s={data.status.live} /><Mode mode="test" s={data.status.test} /></div>
+            <details className="mt-10 rounded-lg border border-line bg-paper p-4">
+              <summary className="cursor-pointer text-base font-medium text-forest-800">Your Stripe connection</summary>
+              <div className="mt-4 grid gap-4 md:grid-cols-2"><Mode mode="live" s={data.status.live} /><Mode mode="test" s={data.status.test} /></div>
+            </details>
             <h2 className="mt-12 text-xl font-semibold text-forest-900">Monthly plans</h2>
             <p className="mt-1 text-sm text-ink-500">Prices marked "derived" are arithmetic on your published prices, waiting for confirmation.</p>
             <div className="mt-4 overflow-x-auto rounded-lg border border-line bg-paper">
