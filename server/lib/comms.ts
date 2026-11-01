@@ -207,6 +207,35 @@ export async function sendVisitComplete(visitId: string): Promise<{ sent: boolea
  * this system does not read it. It says what is true: the card was declined, and here is where
  * to change it.
  */
+/**
+ * ONE LINE TO THE OWNER ABOUT A CUSTOMER'S PLAN: money in, a declined card, a cancellation.
+ * He runs the business from his phone and does not open an admin, so whatever he needs to act on
+ * reaches his inbox. Reply goes to the customer. Live only: test-mode events are ours.
+ */
+export async function tellOwner(subscriptionId: string, purpose: 'owner_payment' | 'owner_notice', subject: (name: string, job: string) => string, sentence: string) {
+  const { rows } = await db().query(
+    `select c.id as customer_id, c.name, c.email, c.phone, p.address, p.city, coalesce(pk.name, sv.name, 'plan') as job
+       from subscriptions s join customers c on c.id = s.customer_id join properties p on p.id = s.property_id
+       left join packages pk on pk.id = s.package_id left join services sv on sv.slug = s.service_slug
+      where s.id = $1`, [subscriptionId]);
+  const s = rows[0];
+  if (!s) return;
+  const row = (k: string, v: unknown) => (v ? `<tr><td style="padding:6px 12px;color:#5B6660">${k}</td><td style="padding:6px 12px;font-weight:600">${esc(String(v))}</td></tr>` : '');
+  await sendEmail({
+    purpose,
+    about: { subscription_id: subscriptionId, customer_id: s.customer_id },
+    recipients: { settingKey: 'notify.lead_recipients' },
+    ccSettingKey: 'notify.lead_cc',
+    fromName: 'Scoop Dogg Bookings',
+    replyTo: s.email,
+    subject: subject(s.name, s.job),
+    html: shell(subject(s.name, s.job), `<p style="font-size:15px">${esc(sentence)}</p>
+      <table style="width:100%;border-collapse:collapse;background:#FAF8F5">
+        ${row('Name', s.name)}${row('Phone', s.phone)}${row('Email', s.email)}${row('Address', [s.address, s.city].filter(Boolean).join(', '))}${row('Plan', s.job)}
+      </table>`),
+  });
+}
+
 export async function sendPaymentFailed(subscriptionId: string, invoiceId: string): Promise<{ sent: boolean; reason?: string }> {
   const { rows } = await db().query(
     `select s.id, s.monthly_price_cents, c.id as customer_id, c.name, c.email
@@ -229,6 +258,8 @@ export async function sendPaymentFailed(subscriptionId: string, invoiceId: strin
       <p style="font-size:16px;line-height:1.6"><a href="${SITE()}/account" style="color:#24593F"><strong>Update your card</strong></a> and we will carry on as normal. Your visits are still on the calendar.</p>
       ${signoff(b.phone, b.email)}`),
   });
+  await tellOwner(s.id, 'owner_notice', (name) => `Card declined: ${name}`,
+    `Their ${formatCents(s.monthly_price_cents)} monthly payment was declined. They have been emailed a link to update the card.`).catch((e) => safeError('comms:owner-declined', e));
   if (r.state !== 'failed') {
     await appendEvent(db(), {
       subjectKind: 'subscription', subjectId: s.id, type: 'notice.payment_failed',
@@ -322,6 +353,8 @@ export async function sendCancelConfirmation(subscriptionId: string): Promise<{ 
       <p style="font-size:15px;line-height:1.6">Thanks for having us in your yard.</p>
       ${signoff(b.phone, b.email)}`),
   });
+  await tellOwner(s.id, 'owner_notice', (name, job) => `Plan cancelled: ${name} — ${job}`,
+    `They cancelled their plan${ends ? `. Their last covered day is ${ends}` : ''}. Visits after that are off the schedule.`).catch((e) => safeError('comms:owner-cancelled', e));
   if (r.state !== 'failed') {
     await appendEvent(db(), {
       subjectKind: 'subscription', subjectId: s.id, type: 'notice.cancel_confirmation',

@@ -48,6 +48,20 @@ const account = readFileSync('server/lib/account.ts', 'utf8');
 const growth = readFileSync('server/lib/growth.ts', 'utf8');
 const catalogDb = readFileSync('server/lib/catalog-db.ts', 'utf8');
 
+// ------------------------------------------- 0. a paid booking tells both people, whoever arrives first
+console.log('0. a paid booking sends its mail whichever of the webhook and the return page arrives first');
+{
+  const booking = readFileSync('server/lib/booking.ts', 'utf8');
+  check(!/if \(res\) await sendWelcome/.test(booking), 'the send does not depend on the browser having come back',
+    'Oct 29: the webhook won, the mail was skipped, a $179 booking reached nobody');
+  check(/if \(won\b[^\n]*sendWelcome\(bookingId\)/.test(booking), 'whoever moved the row sends it');
+  check(/about: \{ subscription_id: bookingId/.test(booking) && /purpose = 'booking_owner'[\s\S]{0,120}subscription_id/.test(booking),
+    'the sweep reads the key the owner notice writes');
+  check(/sendMissedBookingNotices/.test(readFileSync('server/lib/daily.ts', 'utf8')), 'the daily run picks up a miss');
+  check(/asStringArray\(settings\.get\('notify\.lead_recipients'\)\)/.test(notify) && /reply_to: replyTo/.test(notify),
+    'a reply to any message reaches the owner, not the sending domain');
+}
+
 // ---------------------------------------------------- A. a sender, and something that calls it
 console.log('A. every loop has a sender and a trigger');
 {
