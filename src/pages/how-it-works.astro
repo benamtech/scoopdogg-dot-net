@@ -14,7 +14,7 @@ import { trust, setting, headlineOffer } from '../lib/catalog';
 const startDays = setting<number>('schedule.new_customer_start_days', 3);
 const steps = [
   { t: 'Enter your address', d: 'Tell us where your yard is. We check it is on one of our routes and show you the days we are in your city.' },
-  { t: 'See your price', d: `Pick how many dogs you have. Your monthly price${headlineOffer ? ` and your ${headlineOffer.name.toLowerCase()}` : ''} are on the screen before we ask for your details.` },
+  { t: 'See your price', d: `Pick how many dogs you have. Your weekly price${headlineOffer ? ` and your ${headlineOffer.name.toLowerCase()}` : ''} are on the screen before we ask for your details.` },
   { t: 'Pick your day and pay', d: `Choose a start day as soon as ${startDays} days from now. Pay your first month securely with card, Apple Pay or Google Pay.` },
   { t: 'We show up every week', d: 'Same day every week. We walk the whole yard, scoop every pile, bag it, haul it away and close the gate behind us.' },
   { t: 'Run it from your account', d: 'See your next visit, skip a week, pause for vacation, update your card or cancel — all without a phone call.' },
