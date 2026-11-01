@@ -233,6 +233,9 @@ export type Quote = {
   flags: { priceIsDerived: boolean; containsFromPrice: boolean };
 } | { ok: false; reason: 'unknown_package' | 'extra_requires_quote' | 'unknown_extra' | 'duplicate_package' };
 
+/** Every plan in a booking, by name: what the renewal terms say the customer is agreeing to. */
+export const planNames = (q: Extract<Quote, { ok: true }>) => q.lines.filter((l) => l.kind === 'package').map((l) => l.label).join(' + ');
+
 export function offersFor(catalog: Catalog, serviceSlug: string, bookedServiceSlugs: string[]): Offer[] {
   return catalog.offers.filter((o) =>
     o.status === 'active' &&
@@ -275,7 +278,8 @@ export function quoteBooking(catalog: Catalog, input: BookingInput): Quote {
    */
   const others = (input.withPackageIds ?? []).map((id) => catalog.packages.find((p) => p.id === id)).filter(Boolean) as Package[];
   if (others.length !== (input.withPackageIds ?? []).length) return { ok: false, reason: 'unknown_package' };
-  if (others.some((p) => p.id === pkg.id)) return { ok: false, reason: 'duplicate_package' };
+  // Two plans of one service are not a bundle: the same product twice would both take its coupon.
+  if (others.some((p) => p.service_slug === pkg.service_slug)) return { ok: false, reason: 'duplicate_package' };
   const booked = [pkg.service_slug, ...others.map((p) => p.service_slug)];
 
   const lines: QuoteLine[] = [{
@@ -434,7 +438,8 @@ export function quoteOneTime(catalog: Catalog, tierId: string): OneTimeQuote {
   const tier = catalog.tiers.find((t) => t.id === tierId);
   if (!tier) return { ok: false, reason: 'unknown_tier' };
   const service = catalog.services.find((s) => s.slug === tier.service_slug);
-  if (!service) return { ok: false, reason: 'unknown_tier' };
+  // An add-on goes with a plan. A request naming its tier alone is not a booking.
+  if (!service || service.kind === 'addon') return { ok: false, reason: 'unknown_tier' };
   const p = tierPrice(tier);
   if (p.kind === 'quote') return { ok: false, reason: 'requires_quote' };
   // A floor presented as a final number is the one thing gates/from-price-never-final.mjs exists

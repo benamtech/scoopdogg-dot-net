@@ -34,7 +34,7 @@
  * Summit lesson: a client:load controlled input erases pre-hydration typing).
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { quoteBooking, quoteOneTime, bookableServices, formatCents, tierPrice, catchUpFor, weeklyCents, LAST_CLEANED, type Catalog, type Tier } from '../../shared/pricing';
+import { quoteBooking, quoteOneTime, bookableServices, formatCents, tierPrice, catchUpFor, weeklyCents, planNames, LAST_CLEANED, type Catalog, type Tier } from '../../shared/pricing';
 import { renewalTerms } from '../../shared/consent';
 import { gaLead } from '../../lib/ga';
 
@@ -267,6 +267,16 @@ export default function BookingFlow(props: Props) {
 
   useEffect(() => { headingRef.current?.focus({ preventScroll: true }); window.scrollTo({ top: 0, behavior: 'smooth' }); }, [step]);
 
+  // Anything on the first charge beyond the plan means no pay-after (server/lib/booking.ts says why).
+  useEffect(() => { if (lane === 'payafter' && quote && quote.ok && quote.extrasCents) setLane('prepay'); }, [lane, quote]);
+
+  // Someone who came for an add-on with one size has it chosen for them; with sizes, it is marked.
+  useEffect(() => {
+    if (step !== 'price' || !wantAddOn) return;
+    const g = addOnGroups.find((x) => x.slug === wantAddOn);
+    if (g?.tiers.length === 1) setAddOns((a) => (a.includes(g.tiers[0].id) ? a : [...a, g.tiers[0].id]));
+  }, [step, wantAddOn, addOnGroups]);
+
   const go = (next: Step) => { setError(''); setHistory((h) => [...h, step]); setStep(next); };
   const back = () => { setError(''); setHistory((h) => { const copy = [...h]; const prev = copy.pop(); if (prev) setStep(prev); return copy; }); };
 
@@ -311,7 +321,7 @@ export default function BookingFlow(props: Props) {
    * and the growth board compares it across sessions; recording the promotional figure would
    * make every plan look like a different product. The discount is a discount ON this.
    */
-  const priceSeen = isOneTime ? (oneTime?.ok ? oneTime.cents : null) : (pkg ? pkg.monthly_price_cents : null);
+  const priceSeen = isOneTime ? (oneTime?.ok ? oneTime.cents : null) : (quote && quote.ok ? quote.monthlyCents : null);
 
   /**
    * THE RENEWAL TERMS, from the same function the server writes into `consents.text_shown`.
@@ -329,12 +339,12 @@ export default function BookingFlow(props: Props) {
       monthlyCents: quote.monthlyCents,
       firstChargeCents: quote.firstChargeCents,
       firstChargeOn: lane === 'payafter' ? firstChargeOn : null,
-      packageName: quote.package.name,
+      packageName: planNames(quote),
       priceMayChange: quote.flags.containsFromPrice,
       cancelEmail: props.businessEmail,
       businessName: props.businessName,
     });
-  }, [isOneTime, quote?.ok && quote.package.id, quote?.ok && quote.firstChargeCents, lane, firstChargeOn]);
+  }, [isOneTime, quote?.ok && quote.package.id, quote?.ok && quote.firstChargeCents, quote?.ok && quote.monthlyCents, quote?.ok && planNames(quote), lane, firstChargeOn]);
 
   /**
    * THE CATCH-UP, derived from the answer rather than chosen from a menu.
@@ -441,10 +451,12 @@ export default function BookingFlow(props: Props) {
           address: address || `ZIP ${zip}`, city, postal_code: zip,
           package_id: pkg?.id ?? '', tier_id: pkg ? '' : tierId,
           extra_tier_ids: extraTierIds, with_package_ids: withPackageIds, last_cleaned: lastCleaned,
-          lane: isOneTime ? 'prepay' : lane, session_id: idem.current,
+          lane: isOneTime || (quote && quote.ok && quote.extrasCents) ? 'prepay' : lane, session_id: idem.current,
           start_date: startDate, name, email, phone, gate_code: gate, access_notes: notes,
           source: document.referrer ? new URL(document.referrer).pathname : '/book',
-          idempotency_key: idem.current,
+          // The key names the selection too: a customer who backs out of Stripe, changes what they
+          // want and pays again must get a new checkout, not the old session at the old price.
+          idempotency_key: `${idem.current}:${[pkg?.id, tierId, ...extraTierIds, ...withPackageIds].join('').replace(/-/g, '').split('').reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7).toString(36)}`,
           // The sentence the customer actually read. The server re-renders it from its own rows
           // and refuses the booking if the two differ, so this is a witness and not an input —
           // a browser cannot talk itself into a cheaper set of terms by sending nicer words.
@@ -545,7 +557,7 @@ export default function BookingFlow(props: Props) {
                   return (
                     <Choice key={s.slug} selected={service === s.slug} badge={s.slug === 'weekly-pooper-scooper-service' ? 'Most popular' : undefined}
                       onClick={() => {
-                        setService(s.slug); setPackageId(''); setTierId(''); setAddScoop(''); setAddOns([]); setWantAddOn('');
+                        setService(s.slug); setPackageId(''); setTierId(''); setAddScoop(''); setAddOns([]); setWantAddOn(''); setLastCleaned(''); setDeepClean('');
                         if (shape === 'quote') { window.location.href = `/custom-quote?service=${s.slug}`; return; }
                         go('size');
                       }}>
@@ -569,7 +581,7 @@ export default function BookingFlow(props: Props) {
                   const low = catalog.tiers.filter((t) => t.service_slug === a.slug && t.price_cents).sort((x, y) => (x.price_cents ?? 0) - (y.price_cents ?? 0))[0];
                   return (
                     <Choice key={a.slug} selected={wantAddOn === a.slug}
-                      onClick={() => { setService(a.related_slugs[0]); setPackageId(''); setTierId(''); setAddScoop(''); setAddOns([]); setWantAddOn(a.slug); go('size'); }}>
+                      onClick={() => { setService(a.related_slugs[0]); setPackageId(''); setTierId(''); setAddScoop(''); setAddOns([]); setWantAddOn(a.slug); setLastCleaned(''); setDeepClean(''); go('size'); }}>
                       <span className="flex items-start justify-between gap-4">
                         <span>
                           <span className="block text-lg font-semibold text-forest-900">{a.name}</span>
@@ -586,7 +598,7 @@ export default function BookingFlow(props: Props) {
 
           {step === 'size' && (
             <div>
-              <Heading sub={wantAddOn ? 'Then pick your yard size for the sanitizing.' : undefined}>{SIZE_QUESTION[service] ?? 'Which fits best?'}</Heading>
+              <Heading sub={wantAddOn === 'yard-sanitizing' ? 'Then pick your yard size for the sanitizing.' : undefined}>{SIZE_QUESTION[service] ?? 'Which fits best?'}</Heading>
               <div className="grid grid-cols-2 gap-3">
                 {shapeOf(service) === 'recurring' && pkgs.map((p) => (
                   <Choice key={p.id} selected={packageId === p.id} badge={p.featured ? 'Most booked' : undefined}
@@ -636,7 +648,7 @@ export default function BookingFlow(props: Props) {
                       <span className="text-base text-amber-700"><s className="mr-2 opacity-70">{formatCents(pkg.monthly_price_cents)}</s><strong>{formatCents(pkg.monthly_price_cents - quote.discountCents, { forceDecimals: true })}</strong></span>
                     </div>
                   )}
-                  {serviceInfo && serviceInfo.what_includes.length > 0 && (
+                  {!tierId && serviceInfo && serviceInfo.what_includes.length > 0 && (
                     <ul className="mt-6 grid gap-2 text-base text-ink-700 sm:grid-cols-2">
                       {serviceInfo.what_includes.slice(0, 6).map((w) => (
                         <li key={w} className="flex gap-2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="mt-1 shrink-0 text-forest-500" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>{w}</li>
@@ -680,7 +692,7 @@ export default function BookingFlow(props: Props) {
                 </fieldset>
               )}
               {!isOneTime && pkg && addOnGroups.map((g) => (
-                <fieldset key={g.slug} className="mt-8" data-add-on={g.slug}>
+                <fieldset key={g.slug} className={`mt-8 ${wantAddOn === g.slug && !addOns.some((x) => g.tiers.some((t) => t.id === x)) ? 'rounded-lg border-2 border-amber-400 p-4' : ''}`} data-add-on={g.slug}>
                   <legend className="text-lg font-semibold text-forest-900">Add {g.name}?</legend>
                   <p className="mt-1 text-base text-ink-500">Done on your first visit, no second trip.{g.tiers.length > 1 ? ' Pick your yard size.' : ''}</p>
                   <div className="mt-3 space-y-2">
@@ -778,7 +790,7 @@ export default function BookingFlow(props: Props) {
 
               {/* THE TWO LANES (P16 §5). Prepay is the default; pay-after is what keeps faith with
                   the "No credit card required" this site has promised for years. */}
-              {!isOneTime && payAfterOffered && quote && quote.ok && (
+              {!isOneTime && payAfterOffered && quote && quote.ok && !quote.extrasCents && (
                 <fieldset className="mt-8">
                   <legend className="text-lg font-semibold text-forest-900">How would you like to start?</legend>
                   <div className="mt-3 grid gap-3">
@@ -996,7 +1008,7 @@ export default function BookingFlow(props: Props) {
           </dl>
           {firstCharge !== null && (
             <div className="mt-5 border-t border-line pt-5">
-              {!isOneTime && pkg && <p className="flex items-baseline justify-between"><span className="text-base text-ink-500">Monthly</span><span className="font-serif text-h3 text-forest-900">{formatCents(pkg.monthly_price_cents)}</span></p>}
+              {!isOneTime && pkg && <p className="flex items-baseline justify-between"><span className="text-base text-ink-500">Monthly</span><span className="font-serif text-h3 text-forest-900">{formatCents(quote && quote.ok ? quote.monthlyCents : pkg.monthly_price_cents)}</span></p>}
               <p className="mt-1 flex justify-between text-base">
                 <span className="text-ink-500">Due today</span>
                 <span className="font-semibold text-forest-900">{!isOneTime && lane === 'payafter' ? 'Nothing' : formatCents(firstCharge, { forceDecimals: firstCharge % 100 !== 0 })}</span>
@@ -1016,7 +1028,7 @@ export default function BookingFlow(props: Props) {
         {firstCharge !== null && ['price', 'day', 'details'].includes(step) && (
           <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-paper/95 px-5 py-3 backdrop-blur lg:hidden">
             <p className="flex items-center justify-between text-base">
-              <span className="text-ink-700">{isOneTime ? (oneTime && oneTime.ok ? oneTime.tier.label : '') : `${pkg?.short_label} · ${pkg ? formatCents(pkg.monthly_price_cents) : ''}/mo`}</span>
+              <span className="text-ink-700">{isOneTime ? (oneTime && oneTime.ok ? oneTime.tier.label : '') : `${pkg?.short_label} · ${pkg ? formatCents(quote && quote.ok ? quote.monthlyCents : pkg.monthly_price_cents) : ''}/mo`}</span>
               <span className="font-semibold text-forest-900">Today {!isOneTime && lane === 'payafter' ? 'nothing' : formatCents(firstCharge, { forceDecimals: firstCharge % 100 !== 0 })}</span>
             </p>
           </div>

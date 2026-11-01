@@ -168,7 +168,7 @@ export async function week(q: Queryable = db(), from?: string) {
   const start = from && /^\d{4}-\d{2}-\d{2}$/.test(from) ? from : null;
   const { rows: visits } = await q.query(
     `select v.id, v.scheduled_for::text as day, v.state, v.completed_at, v.charge_cents,
-            c.id as customer_id, c.name, p.address, p.city, s.service_slug, sv.name as service_name, a.name as area_name,
+            c.id as customer_id, c.name, p.address, p.city, s.service_slug, coalesce(sv.name, '') || coalesce((select ' + ' || string_agg(x->>'label', ' + ') from jsonb_array_elements(s.extras) x where x ? 'package_id' or v.scheduled_for = s.starts_on), '') as service_name, a.name as area_name,
             (select count(*)::int from visit_photos ph where ph.visit_id = v.id) as photos
        from visits v
        join subscriptions s on s.id = v.subscription_id
@@ -195,7 +195,7 @@ export async function visitDetail(q: Queryable, id: string) {
     `select v.id, v.scheduled_for::text as day, v.state, v.en_route_at, v.arrived_at, v.completed_at, v.crew_notes, v.customer_note,
             v.charge_cents, v.chargeable, t.name as completed_by_name,
             c.id as customer_id, c.name, c.phone, p.address, p.city, p.gate_code, p.access_notes, p.num_dogs, p.yard_size,
-            s.id as subscription_id, s.service_slug, sv.name as service_name, s.state as subscription_state
+            s.id as subscription_id, s.service_slug, coalesce(sv.name, '') || coalesce((select ' + ' || string_agg(x->>'label', ' + ') from jsonb_array_elements(s.extras) x where x ? 'package_id' or v.scheduled_for = s.starts_on), '') as service_name, s.state as subscription_state
        from visits v
        join subscriptions s on s.id = v.subscription_id
        join customers c on c.id = s.customer_id

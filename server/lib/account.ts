@@ -55,7 +55,7 @@ export async function overview(customerId: string) {
   const { rows: subs } = await db().query(
     `select s.id, s.state, s.service_slug, s.frequency, s.service_weekday, s.starts_on::text as starts_on, s.monthly_price_cents,
             s.current_period_end, s.cancel_at_period_end, s.payment_state, s.paused_from::text as paused_from, s.paused_until::text as paused_until,
-            s.livemode, s.resume_catch_up_cents, s.resume_catch_up_tier_id, pk.name as package_name, pk.short_label, p.address, p.city, p.gate_code is not null as has_gate_code, p.access_notes
+            s.livemode, s.resume_catch_up_cents, s.resume_catch_up_tier_id, pk.name || coalesce((select ' + ' || string_agg(x->>'label', ' + ') from jsonb_array_elements(s.extras) x where x ? 'package_id'), '') as package_name, pk.short_label, p.address, p.city, p.gate_code is not null as has_gate_code, p.access_notes
        from subscriptions s join properties p on p.id = s.property_id left join packages pk on pk.id = s.package_id
       where s.customer_id = $1 and s.state in ('active','paused','deposit_pending','draft')
       order by s.created_at desc`, [customerId]);

@@ -30,7 +30,7 @@ import { resolveZip, sessionConverted } from './funnel.js';
 import { renewalTerms, acknowledgmentHtml } from '../../src/shared/consent.js';
 import { recordConsent } from './consent.js';
 import { openSessionForCustomer } from './customer-auth.js';
-import { quoteBooking, quoteOneTime, startDates, formatCents, weekdayName, catchUpFor } from '../../src/shared/pricing.js';
+import { quoteBooking, quoteOneTime, startDates, formatCents, weekdayName, catchUpFor, planNames } from '../../src/shared/pricing.js';
 import { safeError, type ApiResponse } from './http.js';
 
 export type BookingInput = {
@@ -254,7 +254,9 @@ export async function createBooking(input: BookingInput, base: string) {
   // LANE B ONLY EXISTS WHEN THE SETTINGS SAY SO, and only for a recurring plan: a one-time job
   // has no second month to trial into. `booking.lanes_enabled` is a row (migration 018).
   const lanesEnabled = String((await loadCatalog()).settings.get('booking.lanes_enabled') ?? 'prepay');
-  const payAfter = Boolean(quote) && input.lane === 'payafter' && lanesEnabled.includes('payafter');
+  // Pay-after is for a plan with nothing else on the first charge. Stripe bills one-time items the
+  // day a trial starts, so an add-on or a job here would take money on a day we promised none.
+  const payAfter = Boolean(quote) && input.lane === 'payafter' && lanesEnabled.includes('payafter') && !quote!.extrasCents;
   const offsetDays = Number((await loadCatalog()).settings.get('booking.payafter_charge_offset_days') ?? 1);
   // The DATE, never "later". Days from today to the day after the first visit, which is the
   // number Stripe wants and the date the customer is shown - computed once, from one place.
@@ -289,7 +291,7 @@ export async function createBooking(input: BookingInput, base: string) {
         monthlyCents: quote.monthlyCents,
         firstChargeCents: quote.firstChargeCents,
         firstChargeOn,
-        packageName: quote.package.name,
+        packageName: planNames(quote),
         priceMayChange: quote.flags.containsFromPrice,
         cancelEmail: String(settings.get('business.email') ?? ''),
         businessName: String(settings.get('business.name') ?? 'Scoop Dogg'),
@@ -327,7 +329,8 @@ export async function createBooking(input: BookingInput, base: string) {
     }
     // num_dogs is NULL when nobody asked - a turf or deep-clean customer has no dog count, and
     // writing 1 to satisfy a constraint would be inventing a fact (migration 019).
-    const dogsMatch = quote ? /^(\d+)/.exec(quote.package.short_label) : null;
+    // Read from whichever line is the scooping, which is not always the primary plan.
+    const dogsMatch = quote ? /(\d+)\+? dogs?\b/.exec(quote.lines.filter((l) => l.kind === 'package').map((l) => l.label).join(' ')) : null;
     const { rows: prop } = await client.query(
       `insert into properties (customer_id, address, city, postal_code, num_dogs, gate_code, access_notes)
        values ($1,$2,$3,$4,$5,$6,$7) returning id`,

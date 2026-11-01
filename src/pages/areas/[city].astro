@@ -139,7 +139,7 @@ const cityQuestions = questions().filter((q) => q.service === 'weekly-pooper-sco
         <h2 id="city-services" class="text-h2 text-forest-900">Also available</h2>
       </div>
       <ul class="grid gap-3 sm:grid-cols-2 lg:col-span-8">
-        {services.filter((s) => s.slug !== 'weekly-pooper-scooper-service').map((s) => {
+        {services.filter((s) => s.slug !== 'weekly-pooper-scooper-service' && s.kind !== 'addon').map((s) => {
           const p = headlinePrice(s.slug);
           return <li><a href={`/services/${s.slug}`} class="card-lift flex h-full items-center justify-between gap-4 px-5 py-4"><span class="text-base font-semibold text-forest-900">{s.name}</span>{p && <span class="shrink-0 text-sm text-ink-500">{p.text}{p.per}</span>}</a></li>;
         })}

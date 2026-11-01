@@ -30,7 +30,7 @@ export const GET: APIRoute = () => {
   for (const s of services) {
     const pk = packagesForService(s.slug);
     const tiers = tiersFor(s.slug);
-    L.push(`### ${s.name}`, '');
+    L.push(`### ${s.name}${s.kind === 'addon' ? ' (add-on, sold with a plan)' : ''}`, '');
     if (s.intro) L.push(firstSentence(s.intro));
     if (pk.length) L.push(`Weekly plans, billed monthly: ${pk.map((p) => `${p.short_label} ${formatCents(weeklyCents(p))}/week (${formatCents(p.monthly_price_cents)}/month)`).join('; ')}`);
     if (tiers.length) L.push(`${pk.length ? 'Per visit' : 'Prices'}: ${tiers.map((t) => `${t.label} ${formatTierPrice(t, 'custom quote')}`).join('; ')}`);
