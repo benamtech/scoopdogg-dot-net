@@ -42,6 +42,7 @@ import ServiceGroup from '../components/site/ServiceGroup.astro';
 import ServiceCard from '../components/site/ServiceCard.astro';
 import MediaBand from '../components/site/MediaBand.astro';
 import KnowledgeBand from '../components/site/KnowledgeBand.astro';
+import { weeklyCents } from '../shared/pricing';
 import PackageCards from '../components/site/PackageCards.astro';
 import BeforeAfter from '../components/site/BeforeAfter.astro';
 import GuaranteeStamp from '../components/site/GuaranteeStamp.astro';
@@ -85,7 +86,7 @@ import artCatTree from '../assets/art/transp-cat-character-cleaning-cat-tree.png
 
 const scoop = packagesForService('weekly-pooper-scooper-service');
 const from = scoop.length ? Math.min(...scoop.map((p) => p.monthly_price_cents)) : null;
-const perVisit = from ? Math.round(from / (52 / 12) / 100) * 100 : null;
+const perVisit = scoop.length ? Math.min(...scoop.map((p) => weeklyCents(p))) : null;
 const startDays = setting<number>('schedule.new_customer_start_days', 3);
 const region = regionSentence();
 const offer = headlineOffer?.name;
@@ -427,8 +428,8 @@ const posterPreload = await getImage({
   {/* 4. PLANS — new to the live page: the ladder, with the badge on the row the leads support */}
   <Section tone="white" labelledby="plans-title">
     <div class="mx-auto max-w-2xl text-center">
-      <p class="eyebrow-chip mb-5">Monthly plans</p>
-      <h2 id="plans-title" class="text-h2 text-tone-heading">One Price a Month. The Whole Yard, Every Visit.</h2>
+      <p class="eyebrow-chip mb-5">Weekly plans</p>
+      <h2 id="plans-title" class="text-h2 text-tone-heading">One Price a Week. The Whole Yard, Every Visit.</h2>
       <p class="mt-4 text-lg text-tone-muted">Weekly scooping, priced by how many dogs you have.{offer ? ` ${offer}.` : ''}</p>
     </div>
     <div class="mt-12 lg:mt-14"><PackageCards service="weekly-pooper-scooper-service" /></div>

@@ -105,7 +105,7 @@ function scoopingQuestions(): Question[] {
       q: 'Is there a discount on the first month?',
       topic: 'Plans and billing',
       answer: `Yes. ${offer.name} on weekly scooping, so your first payment is ${money(firstMonth(lo, offer.value))} instead of ${formatCents(lo.monthly_price_cents)} for ${lo.short_label.toLowerCase()}. After that, your plan renews at the regular monthly price.`,
-      more: turfOffer && turf.length ? `Adding weekly turf maintenance to your scooping? Its first month is ${turfOffer.value === 50 ? 'half off' : `${turfOffer.value}% off`} too: ${money(firstMonth(turf[0], turfOffer.value))} on a ${turf[0].short_label.toLowerCase()}, then ${formatCents(turf[0].monthly_price_cents)} a month.` : undefined,
+      more: turfOffer && turf.length ? `Adding Turf Deodorizing to your scooping? Its first month is ${turfOffer.value === 50 ? 'half off' : `${turfOffer.value}% off`} too: ${money(firstMonth(turf[0], turfOffer.value))} on a ${turf[0].short_label.toLowerCase()}, then ${formatCents(turf[0].monthly_price_cents)} a month.` : undefined,
       facts: [f(`offer:${offer.id}.value`, offer.value, offer.name), ...pk.map(pkgFact), ...(turfOffer && turf.length ? [f(`offer:${turfOffer.id}.value`, turfOffer.value, turfOffer.value === 50 ? 'half off' : `${turfOffer.value}% off`), pkgFact(turf[0])] : [])],
       blocks: [
         { kind: 'table', title: 'Your first month on weekly scooping', head: ['Dogs', 'First month', 'Then each month'], rows: pk.map((p) => [p.short_label, money(firstMonth(p, offer.value)), formatCents(p.monthly_price_cents)]) },

@@ -36,7 +36,7 @@ const startDays = setting<number>('schedule.new_customer_start_days', 3);
 const title = a.meta_title || `Dog Poop Cleanup in ${a.name}, CA | Scoop Dogg`;
 const description = a.meta_description || `Weekly dog poop cleanup in ${a.name}. Same day every week, first month half off, no contract.`;
 const steps = [
-  { t: 'Enter your address', d: `We check it is on our ${a.name} route and show you the monthly price for your dogs.` },
+  { t: 'Enter your address', d: `We check it is on our ${a.name} route and show you the weekly price for your dogs.` },
   { t: days.length ? `Pick ${days.join(' or ')}` : 'Pick your day', d: days.length ? `We are in ${a.name} on ${days.join(' and ')}. Your day stays the same every week.` : `Choose from the days we run in ${a.name}. Your day stays the same every week.` },
   { t: `Start in ${startDays} days`, d: 'Pay your first month online, then run your plan from your account: skip, pause or cancel in a tap.' },
 ];
@@ -86,7 +86,7 @@ const cityQuestions = questions().filter((q) => q.service === 'weekly-pooper-sco
   <ProofBar tone="sage" />
 
   <Section tone="white" labelledby="city-plans">
-    <SectionHeading id="city-plans" eyebrow={`Plans in ${a.name}`} title={`Weekly scooping in ${a.name}`} lede="One monthly price by how many dogs you have. Every visit covers the whole yard." />
+    <SectionHeading id="city-plans" eyebrow={`Plans in ${a.name}`} title={`Weekly scooping in ${a.name}`} lede="One weekly price by how many dogs you have, billed monthly. Every visit covers the whole yard." />
     <div class="mt-12"><PackageCards service="weekly-pooper-scooper-service" /></div>
   </Section>
 
