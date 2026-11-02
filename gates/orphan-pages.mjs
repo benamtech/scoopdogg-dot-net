@@ -51,6 +51,7 @@ const PRIVATE = {
   '/admin': 'the owner signs in; a public link to the admin is not wanted',
   '/admin/login': 'as above',
   '/admin/today': 'as above',
+  '/admin/add-ons': 'as above',
   '/admin/leads': 'as above',
   '/admin/leads/example': 'as above — every lead\'s screen; rendered for the gates at a placeholder id (scripts/render-pages.mjs)',
   '/admin/messages': 'as above',

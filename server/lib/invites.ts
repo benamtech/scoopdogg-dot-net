@@ -321,7 +321,7 @@ export async function customerList() {
            s.service_weekday, s.frequency, s.price_cents, s.source, p.address, a.name as area_name,
            i.id as invite_id, i.sent_at, i.accepted_at
       from customers c
-      left join lateral (select * from subscriptions x where x.customer_id = c.id order by x.created_at desc limit 1) s on true
+      left join lateral (select * from subscriptions x where x.customer_id = c.id order by (x.state in ('active', 'paused')) desc, x.created_at desc limit 1) s on true
       left join properties p on p.id = s.property_id
       left join service_areas a on a.slug = s.area_slug
       left join customer_invites i on i.subscription_id = s.id

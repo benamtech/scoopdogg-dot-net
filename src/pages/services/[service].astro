@@ -69,19 +69,31 @@ const description = widen(s.meta_description || s.intro || '');
 const heading = widen(s.h1 || s.name);
 const intro = s.intro ? widen(s.intro) : undefined;
 const offerHere = headlineOffer && headlineOffer.applies_to_slugs.includes(s.slug) ? headlineOffer.name : null;
+const url = `${SITE_URL}/services/${s.slug}`;
+const toBook = `${SITE_URL}${bookHref}`;
+const relatedOn = addOnsFor(s.slug);
 const jsonLd = [
   {
-    '@context': 'https://schema.org', '@type': 'Service', name: s.name, description,
+    '@context': 'https://schema.org', '@type': 'Service', '@id': `${url}#service`, url, name: s.name, serviceType: s.name, description,
     provider: { '@type': 'LocalBusiness', '@id': `${SITE_URL}/#business`, name: 'Scoop Dogg' },
     areaServed: [{ '@type': 'AdministrativeArea', name: 'Ventura County, CA' }, { '@type': 'AdministrativeArea', name: 'Santa Barbara County, CA' }],
+    ...(relatedOn.length ? { isRelatedTo: relatedOn.map((r) => ({ '@type': 'Service', '@id': `${SITE_URL}/services/${r.service.slug}#service`, name: r.service.name })) } : {}),
     offers: pkgs.length && !addOn
-      ? pkgs.map((p) => ({ '@type': 'Offer', name: p.name, priceSpecification: { '@type': 'UnitPriceSpecification', price: (p.monthly_price_cents / 100).toFixed(2), priceCurrency: 'USD', unitText: 'MON' } }))
-      : tiers.filter((t) => t.price_cents && !t.price_is_from).map((t) => ({ '@type': 'Offer', name: t.label, price: ((t.price_cents ?? 0) / 100).toFixed(2), priceCurrency: 'USD' })),
+      ? pkgs.map((p) => ({ '@type': 'Offer', name: p.name, url: toBook, availability: 'https://schema.org/InStock', priceSpecification: { '@type': 'UnitPriceSpecification', price: (p.monthly_price_cents / 100).toFixed(2), priceCurrency: 'USD', unitText: 'MON' } }))
+      : tiers.filter((t) => t.price_cents && !t.price_is_from).map((t) => ({ '@type': 'Offer', name: t.label, url: toBook, availability: 'https://schema.org/InStock', price: ((t.price_cents ?? 0) / 100).toFixed(2), priceCurrency: 'USD' })),
+  },
+  {
+    '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Services', item: `${SITE_URL}/services` },
+      { '@type': 'ListItem', position: 2, name: s.name, item: url },
+    ],
   },
   ...(s.faqs?.length ? [{ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: s.faqs.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) }] : []),
 ];
 ---
 <Site title={title} description={description} canonicalPath={`/services/${s.slug}`} jsonLd={jsonLd} mobileCtaHref={bookHref} mobileCtaLabel={bookLabel}>
+  <link slot="head" rel="alternate" type="text/markdown" href={`/services/${s.slug}.md`} />
   <PageHero
     eyebrow={addOn ? 'Add-on' : shape === 'recurring' ? 'Weekly plan' : 'One-time service'}
     title={heading}

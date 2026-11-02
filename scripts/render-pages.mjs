@@ -84,7 +84,10 @@ const sitemapRoutes = [...sitemap.body.matchAll(/<loc>https?:\/\/[^/]+(\/[^<]*)<
 const questionRoutes = sitemapRoutes.filter((r) => /^\/questions\/[^/]+$/.test(r));
 
 const pages = [...new Set([...fileRoutes, ...sitemapRoutes])].sort();
-const endpoints = ['/llms.txt', '/sitemap-index.xml', '/sitemap-0.xml', ...questionRoutes.map((r) => `${r}.md`)];
+const serviceRoutes = sitemapRoutes.filter((r) => /^\/services\/[^/]+$/.test(r));
+const endpoints = ['/llms.txt', '/sitemap-index.xml', '/sitemap-0.xml', ...questionRoutes.map((r) => `${r}.md`), ...serviceRoutes.map((r) => `${r}.md`),
+  '/okf/index.md', '/okf/business.md', '/okf/policies.md', '/okf/areas.md', '/okf/relations.md', '/okf/computations/price-a-booking.md', '/okf/catalog.json', '/okf/references/attest-price.mjs',
+  ...serviceRoutes.map((r) => `/okf/services/${r.split('/').pop()}.md`)];
 
 const queue = [...pages.map((p) => ['page', p]), ...endpoints.map((p) => ['file', p])];
 const results = [];

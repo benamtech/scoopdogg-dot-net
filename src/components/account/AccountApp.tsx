@@ -10,7 +10,7 @@ type PauseOption = { weeks: number; catch_up: CatchUp | null };
 type Sub = {
   id: string; state: string; package_name: string | null; short_label: string | null; weekday: string; starts_on: string;
   monthly_price_cents: number; current_period_end: string | null; cancel_at_period_end: boolean; payment_state: string;
-  paused_until: string | null; address: string; city: string;
+  paused_until: string | null; address: string; city: string; frequency: string; service_name: string | null; price_tier_label: string | null;
   /** What each offered pause length costs to come back from, priced from Josue's own rows. */
   pause_options?: PauseOption[]; resume_catch_up_cents: number | null; resume_catch_up_tier_id: string | null;
 };
@@ -96,8 +96,12 @@ export default function AccountApp({ phone, phoneHref }: { phone: string; phoneH
 
   if (!data) return <div className="mx-auto h-64 max-w-3xl animate-pulse rounded-xl bg-line/50" role="status" aria-label="Loading your account" />;
 
-  const sub = data.subscriptions[0];
-  const upcoming = data.visits.filter((v) => (!sub || v.subscription_id === sub.id) && v.date >= new Date().toISOString().slice(0, 10));
+  // A live weekly plan comes first, so a finished one-time job never hides its Pause and Cancel.
+  const live = (s: { state: string; frequency: string }) => s.frequency !== 'one_time' && ['active', 'paused'].includes(s.state);
+  const sub = data.subscriptions.find(live) ?? data.subscriptions[0];
+  const oneTime = sub?.frequency === 'one_time';
+  const isJob = (id: string) => data.subscriptions.find((s) => s.id === id)?.frequency === 'one_time';
+  const upcoming = data.visits.filter((v) => v.date >= new Date().toISOString().slice(0, 10));
   const next = upcoming.find((v) => v.state === 'scheduled');
   const first = data.customer.name.split(' ')[0];
 
@@ -132,11 +136,11 @@ export default function AccountApp({ phone, phoneHref }: { phone: string; phoneH
           <section className="mt-8 rounded-xl border border-line bg-paper p-6 shadow-sm sm:p-8" aria-labelledby="plan-h">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <p className="text-micro font-semibold uppercase text-ink-400">Your plan</p>
-                <h2 id="plan-h" className="mt-2 text-h3 text-forest-900">{sub.package_name}</h2>
-                <p className="mt-1 text-base text-ink-500">Every {sub.weekday} · {sub.address}, {sub.city}</p>
+                <p className="text-micro font-semibold uppercase text-ink-400">{oneTime ? 'Your job' : 'Your plan'}</p>
+                <h2 id="plan-h" className="mt-2 text-h3 text-forest-900">{sub.package_name ?? [sub.service_name, sub.price_tier_label].filter(Boolean).join(' · ')}</h2>
+                <p className="mt-1 text-base text-ink-500">{oneTime ? 'One visit' : `Every ${sub.weekday}`} · {sub.address}, {sub.city}</p>
               </div>
-              <p className="text-right"><span className="font-serif text-h3 text-forest-900">{money(sub.monthly_price_cents)}</span><span className="block text-sm text-ink-500">per month</span></p>
+              {!oneTime && <p className="text-right"><span className="font-serif text-h3 text-forest-900">{money(sub.monthly_price_cents)}</span><span className="block text-sm text-ink-500">per month</span></p>}
             </div>
             {sub.cancel_at_period_end && (
               <div className="mt-6 flex flex-col gap-3 rounded-md bg-amber-100 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -160,7 +164,7 @@ export default function AccountApp({ phone, phoneHref }: { phone: string; phoneH
               </div>
             )}
             <div className="mt-6 flex flex-wrap gap-2 border-t border-line pt-6">
-              {sub.state === 'active' && !sub.cancel_at_period_end && (
+              {sub.state === 'active' && !oneTime && !sub.cancel_at_period_end && (
                 <>
                   <span className="inline-flex flex-col gap-1">
                     <button data-pause={2} className="btn-ghost btn-sm" disabled={!!busy} onClick={() => act('pause', 'plan/pause', { subscription_id: sub.id, weeks: 2 }, 'Paused for two weeks. You won’t be charged while paused.')}>Pause 2 weeks</button>
@@ -209,7 +213,7 @@ export default function AccountApp({ phone, phoneHref }: { phone: string; phoneH
               {upcoming.slice(0, 6).map((v) => (
                 <li key={v.id} className="flex items-center justify-between gap-4 py-3">
                   <span className={`text-base ${v.state === 'skipped' ? 'text-ink-400 line-through' : 'text-forest-900'}`}>{nice(v.date)}</span>
-                  {v.state === 'scheduled' && <button className="text-sm font-medium text-forest-700 underline underline-offset-4 disabled:opacity-50" disabled={!!busy} onClick={() => act(`skip-${v.id}`, 'visit/skip', { visit_id: v.id }, `Skipped ${nice(v.date, { month: 'short', day: 'numeric' })}.`)}>Skip</button>}
+                  {v.state === 'scheduled' && !isJob(v.subscription_id) && <button className="text-sm font-medium text-forest-700 underline underline-offset-4 disabled:opacity-50" disabled={!!busy} onClick={() => act(`skip-${v.id}`, 'visit/skip', { visit_id: v.id }, `Skipped ${nice(v.date, { month: 'short', day: 'numeric' })}.`)}>Skip</button>}
                   {v.state === 'skipped' && <button className="text-sm font-medium text-forest-700 underline underline-offset-4 disabled:opacity-50" disabled={!!busy} onClick={() => act(`unskip-${v.id}`, 'visit/unskip', { visit_id: v.id }, 'Visit is back on.')}>Undo skip</button>}
                 </li>
               ))}

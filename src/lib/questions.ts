@@ -115,18 +115,18 @@ function scoopingQuestions(): Question[] {
     });
   }
 
-  const factor = setting<string>('billing.monthly_factor', '52/12');
+  const factor = setting<string>('billing.monthly_factor', '4');
   const weekly = tiersFor(SCOOP).filter((t) => t.price_cents !== null);
-  if (weekly.length && factor === '52/12') {
+  if (weekly.length && factor === '4') {
     out.push({
       slug: 'is-a-monthly-plan-more-expensive-than-paying-per-visit',
       q: 'Is a monthly plan more expensive than paying per visit?',
       topic: 'Plans and billing',
-      answer: `No, it is the same money. Your monthly price is the weekly price times 52 weeks, divided by 12 months: ${formatTierPrice(weekly[0])} a week for ${lower(weekly[0].label)} becomes ${formatCents(lo.monthly_price_cents)} a month.`,
-      more: 'Months with five visits are already averaged in, so you pay one steady amount instead of a bill that changes month to month.',
-      facts: [sf('billing.monthly_factor', factor, '52'), ...weekly.map(tierFact), ...pk.map(pkgFact)],
+      answer: `No, it is the same money. Your monthly price is four weekly visits: ${formatTierPrice(weekly[0])} a week for ${lower(weekly[0].label)} becomes ${formatCents(lo.monthly_price_cents)} a month.`,
+      more: 'A month with a fifth visit costs the same, so you pay one steady amount instead of a bill that changes month to month.',
+      facts: [sf('billing.monthly_factor', factor, 'four'), ...weekly.map(tierFact), ...pk.map(pkgFact)],
       blocks: [
-        { kind: 'table', title: 'Weekly price and monthly price', head: ['Dogs', 'Per week', 'Per month (× 52 ÷ 12)'],
+        { kind: 'table', title: 'Weekly price and monthly price', head: ['Dogs', 'Per week', 'Per month (four visits)'],
           rows: pk.map((p) => { const t = weekly.find((w) => w.id === p.tier_id); return [p.short_label, t ? formatTierPrice(t) : '—', formatCents(p.monthly_price_cents)]; }) },
       ],
       action: { href: `/book?service=${SCOOP}`, label: 'See my price', service: SCOOP },
@@ -176,6 +176,7 @@ function policyQuestions(): Question[] {
   const out: Question[] = [];
   const start = setting<number>('schedule.new_customer_start_days', 3);
   const windowDays = setting<number>('booking.start_window_days', 14);
+  const pk = packagesForService(SCOOP);
   const windowHours = setting<number>('schedule.visit_window_hours', 4);
   const dayStart = setting<string>('schedule.day_start', '07:00');
   const dayEnd = setting<string>('schedule.day_end', '17:00');
@@ -283,6 +284,43 @@ function policyQuestions(): Question[] {
       reviewWords: ['never cuts corners', 'thorough', 'above and beyond'],
     });
   }
+
+  // What people complain about in this trade, from research/2026-11-02-scoopdogg-review-mining: gates left
+  // open, not knowing whether anyone came, and surprise charges. Answered only from what is on record.
+  out.push({
+    slug: 'do-you-close-the-gate-after-every-visit',
+    q: 'Do you close the gate after every visit?',
+    topic: 'Visits',
+    answer: 'Yes. We secure the gate after every visit, so your dogs stay in the yard. Add your gate code or access notes when you book.',
+    more: `If something about your gate changes, call or text ${business.phone}.${trust.guarantee ? ` Anything not right after a visit is covered by our ${trust.guarantee.split(':')[0].toLowerCase()}.` : ''}`,
+    facts: trust.guarantee ? [sf('trust.guarantee_text', trust.guarantee, trust.guarantee.split(':')[0].toLowerCase())] : [f('setting:business.phone', business.phone, business.phone)],
+    blocks: [{ kind: 'links', title: 'Read more', items: [{ href: '/questions/how-will-i-know-you-came-for-my-weekly-visit', label: 'How will I know you came?' }, { href: '/questions/do-i-need-to-be-home-for-dog-poop-pickup', label: 'Do I need to be home?' }] }],
+    action: { href: '/book', label: 'See my price' },
+  });
+  out.push({
+    slug: 'how-will-i-know-you-came-for-my-weekly-visit',
+    q: 'How will I know you came for my weekly visit?',
+    topic: 'Visits',
+    answer: `You get a same-day confirmation when the visit is done. We come on your set day, within a ${windowHours}-hour window between ${clock(dayStart)} and ${clock(dayEnd)}.`,
+    more: 'Your account shows your upcoming visits, and you can skip one from there.',
+    facts: [sf('schedule.visit_window_hours', windowHours, `${windowHours}-hour`), sf('schedule.day_start', dayStart, clock(dayStart)), sf('schedule.day_end', dayEnd, clock(dayEnd))],
+    blocks: [],
+    action: { href: '/book', label: 'See my price' },
+    reviewWords: ['lets', 'communicat', 'text'],
+  });
+  out.push({
+    slug: 'are-there-extra-fees-on-a-weekly-dog-poop-plan',
+    q: 'Are there extra fees on a weekly dog poop plan?',
+    topic: 'Plans and billing',
+    answer: 'No sign-up fee, no contract, and no fee to skip, pause or cancel. Your price is set by how many dogs you have, and a month with a fifth visit costs the same.',
+    more: 'One thing can add to your first visit: a yard that has gone more than two weeks without a clean needs a catch-up, and you see that price before you pay.',
+    facts: pk.map(pkgFact),
+    blocks: [
+      { kind: 'table', title: 'What you pay each month', head: ['Dogs', 'Each month'], rows: pk.map((p) => [p.short_label, formatCents(p.monthly_price_cents)]) },
+    ],
+    action: { href: `/book?service=${SCOOP}`, label: 'See my price', service: SCOOP },
+    service: SCOOP,
+  });
 
   if (trust.insured) {
     out.push({
@@ -401,7 +439,7 @@ function choosingQuestions(): Question[] {
       q: 'How do I get rid of dog urine smell on artificial turf?',
       topic: 'Turf and odor',
       answer: `Treat the turf with an enzyme deodorizer, which breaks down urine instead of masking it: Scoop Dogg's weekly Turf Deodorizing starts at ${formatTierPrice(d)}. If the smell comes back within days, the infill is saturated and needs a deep clean first, from ${formatTierPrice(dc)}.`,
-      more: 'Our weekly visit clears debris, rakes leaves, sanitizes and deodorizes, so the smell does not come back.',
+      more: 'Our weekly visit clears debris, rakes leaves, sanitizes and deodorizes, so odor does not get the chance to build up.',
       facts: [tierFact(d), tierFact(dc)],
       blocks: [
         { kind: 'table', title: 'Which turf service fits', head: ['If your turf', 'Service', 'From'], rows: [

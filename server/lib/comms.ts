@@ -31,7 +31,7 @@
  * 4. NOTHING HERE CHARGES A CARD. Every message is a message.
  */
 import { db } from './db.js';
-import { sendEmail } from './notify.js';
+import { sendEmail, demoMode } from './notify.js';
 import { appendEvent } from './events.js';
 import { loadCatalog } from './catalog-db.js';
 import { prune as prunePhotos } from './photos.js';
@@ -214,12 +214,12 @@ export async function sendVisitComplete(visitId: string): Promise<{ sent: boolea
  */
 export async function tellOwner(subscriptionId: string, purpose: 'owner_payment' | 'owner_notice', subject: (name: string, job: string) => string, sentence: string) {
   const { rows } = await db().query(
-    `select c.id as customer_id, c.name, c.email, c.phone, p.address, p.city, coalesce(pk.name, sv.name, 'plan') as job
+    `select s.livemode, c.id as customer_id, c.name, c.email, c.phone, p.address, p.city, coalesce(pk.name, sv.name, 'plan') as job
        from subscriptions s join customers c on c.id = s.customer_id join properties p on p.id = s.property_id
        left join packages pk on pk.id = s.package_id left join services sv on sv.slug = s.service_slug
       where s.id = $1`, [subscriptionId]);
   const s = rows[0];
-  if (!s) return;
+  if (!s || !(s.livemode || (await demoMode()).mode)) return;
   const row = (k: string, v: unknown) => (v ? `<tr><td style="padding:6px 12px;color:#5B6660">${k}</td><td style="padding:6px 12px;font-weight:600">${esc(String(v))}</td></tr>` : '');
   await sendEmail({
     purpose,

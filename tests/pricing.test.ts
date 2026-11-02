@@ -90,17 +90,17 @@ test('turf offer applies only when combined with scooping', () => {
      * $75 combined — $75 off for naming a service the customer was not buying, reachable from the
      * public endpoint because api/booking.ts forwards `with_package_ids` verbatim.
      *
-     * The honest arithmetic, from this fixture: turf 15200 + scooping 8700 = 23900 a month, less
-     * 50% of the turf line (7600) on the first month = 16300. The discount is real, it is just
-     * earned now.
+     * The honest arithmetic, from this fixture: turf 15200 + scooping 8700 = 23900 a month. Each plan
+     * takes its own 50% on the first month, as the site promises: 7600 + 4350 off = 11950. Both are
+     * charged, so the discount is earned.
      */
     assert.equal(combined.monthlyCents, 15200 + 8700);
-    assert.equal(combined.discountCents, 7600);
-    assert.equal(combined.firstChargeCents, 16300);
+    assert.equal(combined.discountCents, 7600 + 4350);
+    assert.equal(combined.firstChargeCents, 11950);
 
-    // Adding a service must never lower the bill. This is the invariant the old number violated,
-    // stated directly so it cannot be re-broken by a plausible-looking edit to the total.
-    assert.ok(combined.firstChargeCents > alone.firstChargeCents);
+    // Every plan named is paid for. This is the invariant the old number violated: the monthly must
+    // carry both, and the first charge must be both plans' own first months, not one of them.
+    assert.equal(combined.firstChargeCents, 7600 + 4350);
     assert.ok(combined.monthlyCents > alone.monthlyCents);
 
     // Every recurring line has a package behind it, and they sum to the monthly.

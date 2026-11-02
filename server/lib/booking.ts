@@ -20,7 +20,7 @@ import { tellEmployee } from './employee.js';
 import { sendEmail, demoMode } from './notify.js';
 import { appendEvent } from './events.js';
 import { loadCatalog } from './catalog-db.js';
-import { currentMode, resolve, priceForPackage, couponForOffer, connection, probeAccount, probeIsFresh, stripeFor, type StripeMode } from './stripe.js';
+import { currentMode, resolve, priceForPackage, couponForOffers, connection, probeAccount, probeIsFresh, stripeFor, type StripeMode } from './stripe.js';
 // The charge itself belongs to money.ts, which is the ONE file allowed to create one. This file
 // decides WHAT is being sold; it does not decide what AMTECH takes. gates/one-money-door.mjs.
 import { startSubscription, chargeOnce, feeCentsFor } from './money.js';
@@ -99,7 +99,7 @@ export function parseInput(body: Record<string, unknown>): BookingInput {
     tier_id: str(body.tier_id, 60),
     lane: body.lane === 'payafter' ? 'payafter' : 'prepay',
     session_id: str(body.session_id, 60),
-    extra_tier_ids: Array.isArray(body.extra_tier_ids) ? body.extra_tier_ids.map((x) => str(x, 60)).filter(Boolean).slice(0, 5) : [],
+    extra_tier_ids: Array.isArray(body.extra_tier_ids) ? body.extra_tier_ids.map((x) => str(x, 60)).filter(Boolean).slice(0, 12) : [],
     with_package_ids: Array.isArray(body.with_package_ids) ? body.with_package_ids.map((x) => str(x, 60)).filter(Boolean).slice(0, 3) : [],
     last_cleaned: str(body.last_cleaned, 30) || null,
     start_date: str(body.start_date, 10),
@@ -131,7 +131,7 @@ export function parseInput(body: Record<string, unknown>): BookingInput {
  * from a list; a ZIP that is known and not served is a different sentence from one we have never
  * heard of, and both of those are refusals rather than a shrug.
  */
-export async function priceBooking(input: Pick<BookingInput, 'city' | 'package_id' | 'extra_tier_ids' | 'with_package_ids' | 'start_date'> & { postal_code?: string; tier_id?: string }) {
+export async function priceBooking(input: Pick<BookingInput, 'city' | 'package_id' | 'extra_tier_ids' | 'with_package_ids' | 'start_date'> & { postal_code?: string; tier_id?: string; last_cleaned?: string | null }) {
   const catalog = await loadCatalog();
   let slug = input.city;
   if (!slug && input.postal_code) {
@@ -160,9 +160,9 @@ export async function priceBooking(input: Pick<BookingInput, 'city' | 'package_i
 
   const quote = quoteBooking(catalog, { packageId: input.package_id, extraTierIds: input.extra_tier_ids, withPackageIds: input.with_package_ids });
   if (!quote.ok) throw new BookingError(quote.reason, quote.reason === 'extra_requires_quote' ? 'That add-on needs a quick quote first.' : 'Please choose your plan again.');
-  // The first-visit catch-up comes from the "last cleaned" answer, not from the add-on list.
+  // The first-visit catch-up comes from the "last cleaned" answer, so it is the one thing excused.
   const extraSlugs = (input.extra_tier_ids ?? []).map((id) => catalog.tiers.find((t) => t.id === id))
-    .filter((t) => t && !t.covers_last_cleaned?.length).map((t) => t!.service_slug);
+    .filter((t) => t && !(input.last_cleaned && t.covers_last_cleaned?.includes(input.last_cleaned))).map((t) => t!.service_slug);
   const planSlugs = (input.with_package_ids ?? []).map((id) => catalog.packages.find((p) => p.id === id)!.service_slug);
   if (refusedTogether(graphOf(catalog), quote.package.service_slug, extraSlugs, planSlugs)) {
     throw new BookingError('not_together', 'Those two do not go together. Please choose again.');
@@ -223,7 +223,9 @@ export async function createBooking(input: BookingInput, base: string) {
 
   // Idempotent on the browser's key: a double-click or a retry returns the same booking.
   const { rows: prior } = await db().query(
-    `select id, state, booking_answers->>'checkout_url' as url from subscriptions where booking_answers->>'idempotency_key' = $1 limit 1`,
+    // Stripe's checkout link dies after 24 hours, so an older one is not worth handing back.
+    `select id, state, booking_answers->>'checkout_url' as url from subscriptions
+      where booking_answers->>'idempotency_key' = $1 and created_at > now() - interval '23 hours' order by created_at desc limit 1`,
     [input.idempotency_key]);
   if (prior[0]?.url && prior[0].state === 'deposit_pending') return { mode: 'checkout' as const, url: prior[0].url as string, booking_id: prior[0].id as string };
 
@@ -451,13 +453,18 @@ export async function createBooking(input: BookingInput, base: string) {
     });
   } else {
     const { priceId, productId } = await priceForPackage(mode, { ...quote!.package });
-    const offer = quote!.appliedOffers[0];
-    const couponId = offer ? await couponForOffer(mode, { id: offer.id, name: offer.name, value: offer.percent_off }, [productId]) : null;
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [{ price: priceId, quantity: 1 }];
+    const productOf = new Map<string, string>([[quote!.package.id, productId]]);
     for (const l of quote!.lines.filter((x) => x.kind === 'package' && x.ref !== quote!.package.id)) {
       const other = priced.catalog.packages.find((p) => p.id === l.ref)!;
-      lineItems.push({ price: (await priceForPackage(mode, { ...other })).priceId, quantity: 1 });
+      const made = await priceForPackage(mode, { ...other });
+      productOf.set(other.id, made.productId);
+      lineItems.push({ price: made.priceId, quantity: 1 });
     }
+    // Stripe takes one coupon per checkout, so one coupon carries every plan's first-month offer.
+    const couponId = await couponForOffers(mode, quote!.appliedOffers.map((o) => ({
+      id: o.id, name: o.name, value: o.percent_off, cents: o.cents, productId: productOf.get(o.package_id)!,
+    })));
     for (const l of quote!.lines.filter((x) => x.kind === 'extra')) {
       lineItems.push({ quantity: 1, price_data: { currency: 'usd', unit_amount: l.cents, product_data: { name: l.label } } });
     }
@@ -513,6 +520,10 @@ export async function stripeCustomer(stripe: Stripe, account: string, mode: Stri
 // ---------------------------------------------------------------------------------------
 // Completion: the return page and the webhook both call this; the second call is a no-op.
 // ---------------------------------------------------------------------------------------
+
+const paidSession = async (sub: { livemode: boolean; account_id: string }, sessionId: string) => ({
+  session: await stripeFor(sub.livemode ? 'live' : 'test').checkout.sessions.retrieve(sessionId, {}, { stripeAccount: sub.account_id }),
+});
 
 export async function completeBooking(bookingId: string, sessionId: string | null, res: ApiResponse | null) {
   const { rows } = await db().query(
@@ -621,7 +632,15 @@ export async function completeBooking(bookingId: string, sessionId: string | nul
     if (won && (sub.livemode || (await demoMode()).mode)) await sendWelcome(bookingId).catch((e) => safeError('booking:welcome', e));
   }
 
-  if (res) await openSessionForCustomer(res, sub.customer_id);
+  // A sign-in only for whoever came back from Stripe with this booking's paid session. A booking id
+  // alone sits in a URL, so it proves nothing about who is asking.
+  if (res) {
+    if (!sessionId) throw new BookingError('no_session', 'Sign in to see your booking.', 403);
+    const { session } = await paidSession(sub, sessionId);
+    if (session.metadata?.booking_id !== bookingId) throw new BookingError('mismatch', 'That payment does not match this booking.', 409);
+    if (session.status !== 'complete') throw new BookingError('unpaid', 'Your payment has not gone through yet.', 402);
+    await openSessionForCustomer(res, sub.customer_id);
+  }
   const { rows: next } = await db().query(
     `select scheduled_for::text as d from visits where subscription_id = $1 and state = 'scheduled' and scheduled_for >= current_date order by scheduled_for limit 1`, [bookingId]);
   return {
@@ -663,7 +682,7 @@ const shell = (title: string, body: string) => `<div style="font-family:system-u
   <h1 style="font-family:Georgia,serif;font-weight:400;font-size:28px;color:#0F2A1F;margin:28px 0 12px">${title}</h1>${body}
   <p style="color:#5B6660;font-size:13px;margin-top:32px;border-top:1px solid #E6E1D8;padding-top:16px">Scoop Dogg · (805) 869-8070 · <a href="${process.env.PUBLIC_SITE_URL ?? 'https://scoopdogg.net'}/account" style="color:#24593F">Your account</a></p></div>`;
 
-async function sendWelcome(bookingId: string) {
+async function sendWelcome(bookingId: string, opts: { customer: boolean } = { customer: true }) {
   const { rows } = await db().query(
     `select s.starts_on::text as starts_on, s.service_weekday, s.monthly_price_cents, s.price_cents, s.frequency,
             s.discount, s.extras, s.payment_state, s.booking_answers, s.customer_id, s.price_tier_label, c.name, c.email, c.phone,
@@ -731,7 +750,7 @@ async function sendWelcome(bookingId: string) {
     });
   }
 
-  await sendEmail({
+  if (opts.customer) await sendEmail({
     purpose: 'booking_welcome',
     about: { subscription_id: bookingId, customer_id: b.customer_id },
     recipients: { explicit: [b.email] },
@@ -757,37 +776,49 @@ async function sendWelcome(bookingId: string) {
 }
 
 /**
- * A paid booking whose mail never went: a crash between the commit and the send, or the provider
- * down for the whole of it. The daily run sends it, so a miss is a late email and not a silence.
- * Live bookings only, from the last three days, and it reads the outbox row the sender writes.
- */
-/**
  * A checkout nobody finished. Stripe's session dies within a day; the row used to stay
  * `deposit_pending` for ever, on the customer list as "waiting on a card". Online bookings only: an
- * invite or a quote has a person behind it and its own ending.
+ * invite or a quote has a person behind it and its own ending. Stripe is asked first, because a paid
+ * checkout whose webhook and return page both failed is a customer who is owed the visit.
  */
 export async function expireAbandonedCheckouts(q: { query: (text: string, values?: unknown[]) => Promise<{ rows: any[] }> } = db()) {
   const { rows } = await q.query(
-    `update subscriptions set state = 'cancelled', cancelled_at = now(), cancel_reason = 'checkout not finished', updated_at = now()
+    `select id, livemode, account_id, booking_answers->>'checkout_session' as checkout_session from subscriptions
       where state = 'deposit_pending' and source = 'online' and created_at < now() - interval '3 days'
         and not exists (select 1 from quotes q where q.subscription_id = subscriptions.id)
-        and not exists (select 1 from customer_invites i where i.subscription_id = subscriptions.id)
-      returning id`);
+        and not exists (select 1 from customer_invites i where i.subscription_id = subscriptions.id)`);
+  let expired = 0, recovered = 0;
   for (const r of rows) {
+    if (r.checkout_session && r.account_id) {
+      try {
+        const { session } = await paidSession(r, r.checkout_session);
+        if (session.status === 'complete') { await completeBooking(r.id, r.checkout_session, null); recovered += 1; continue; }
+      } catch (e) { safeError('booking:expiry_check', e); continue; } // Unknown is not abandoned: ask again tomorrow.
+    }
+    await q.query(`update subscriptions set state = 'cancelled', cancelled_at = now(), cancel_reason = 'checkout not finished', updated_at = now() where id = $1 and state = 'deposit_pending'`, [r.id]);
     await appendEvent(q as never, { subjectKind: 'subscription', subjectId: r.id, type: 'subscription.cancelled', from: 'deposit_pending', to: 'cancelled', actorKind: 'system', payload: { reason: 'checkout not finished' } });
+    expired += 1;
   }
-  return { expired: rows.length };
+  return { expired, recovered };
 }
 
+/**
+ * A paid booking whose mail never went: a crash between the commit and the send, or the provider
+ * down for the whole of it. The daily run sends it, so a miss is a late email and not a silence.
+ * Live bookings from the last three days only, and each person gets only the mail they have not had:
+ * Josue's notice failing must not send the customer "You're booked" again every morning.
+ */
 export async function sendMissedBookingNotices(q: { query: (text: string, values?: unknown[]) => Promise<{ rows: any[] }> } = db()) {
   const { rows } = await q.query(
-    `select s.id from subscriptions s
-      where s.livemode and s.state in ('active', 'completed') and s.activated_at between '2026-11-02'::timestamptz and now() - interval '10 minutes'
+    `select s.id,
+            not exists (select 1 from outbox o where o.purpose = 'booking_welcome' and o.state <> 'failed' and o.payload->>'subscription_id' = s.id::text) as customer_missed
+       from subscriptions s
+      where s.livemode and s.state in ('active', 'completed') and s.activated_at > now() - interval '3 days' and s.activated_at < now() - interval '10 minutes'
         and exists (select 1 from events e where e.subject_kind = 'subscription' and e.subject_id = s.id
                      and e.event_type in ('onetime.charged', 'booking.trial_started', 'subscription.activated'))
         and not exists (select 1 from outbox o where o.purpose = 'booking_owner' and o.state <> 'failed'
                          and o.payload->>'subscription_id' = s.id::text)`);
-  for (const r of rows) await sendWelcome(r.id);
+  for (const r of rows) await sendWelcome(r.id, { customer: r.customer_missed });
   return { sent: rows.length };
 }
 

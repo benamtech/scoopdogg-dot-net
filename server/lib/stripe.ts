@@ -427,6 +427,28 @@ export async function couponForOffer(mode: StripeMode, offer: { id: string; name
   return coupon.id;
 }
 
+/**
+ * THE ONE COUPON FOR A CHECKOUT. Stripe allows a single coupon on a session, and a booking can
+ * carry an offer per plan. Offers at the same percent share a percent coupon across their
+ * products. Different percents become one amount off, for exactly the sum the customer was shown.
+ */
+export async function couponForOffers(mode: StripeMode, offers: { id: string; name: string; value: number; cents: number; productId: string }[]) {
+  if (!offers.length) return null;
+  const products = offers.map((o) => o.productId);
+  if (offers.every((o) => o.value === offers[0].value)) return couponForOffer(mode, offers[0], products);
+  const { stripe, account } = await resolve(mode);
+  const cents = offers.reduce((a, o) => a + o.cents, 0);
+  const coupon = await stripe.coupons.create({
+    name: 'First month offers',
+    amount_off: cents,
+    currency: 'usd',
+    duration: 'once',
+    applies_to: { products: [...products].sort() },
+    metadata: { offer_ids: offers.map((o) => o.id).join(',').slice(0, 480) },
+  }, { stripeAccount: account, idempotencyKey: `coupon-sum-${account}-${cents}-${[...products].sort().join('.')}` });
+  return coupon.id;
+}
+
 // ---------------------------------------------------------------------------------------
 // TEST MODE ONLY: a connected account verified through the API with Stripe's test data, so
 // the checkout, subscription and portal gates run end to end without a human clicking

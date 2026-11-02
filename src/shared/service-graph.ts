@@ -90,7 +90,10 @@ export function refusedTogether(g: Graph, base: string, extras: string[], plans:
   const fits = (s: string) => present.some((p) => p !== s && offeredWith(g, p, 'add_on').some((r) => r.other_slug === s))
     || present.some((p) => p !== s && offeredWith(g, s, 'follow_on').some((r) => r.other_slug === p))
     || present.some((p) => p !== s && offeredWith(g, p, 'follow_on').some((r) => r.other_slug === s));
-  return [...extras, ...plans].find((s) => !fits(s)) ?? null;
+  // Same-visit extras must not repeat each other either: a job that includes a treatment makes buying
+  // that treatment again a double charge, whichever of them was added first.
+  const repeated = extras.find((s) => [base, ...extras].some((p) => p !== s && relate(g, p, s).relation === 'included'));
+  return repeated ?? [...extras, ...plans].find((s) => !fits(s)) ?? null;
 }
 
 /** Every contradiction in the catalog, as a sentence. Empty means clean. */
@@ -111,6 +114,8 @@ export function graphProblems(g: Graph): string[] {
   }
   for (const b of g.bundles ?? []) for (const m of b.members) {
     if (!offeredWith(g, b.base_slug, 'add_on').some((r) => r.other_slug === m)) out.push(`${b.name} includes ${name(m)}, which is not an approved add-on of ${name(b.base_slug)}.`);
+    const other = b.members.find((x) => x !== m && relate(g, x, m).relation === 'included');
+    if (other) out.push(`${b.name} sells ${name(m)} twice: ${name(other)} already does it.`);
   }
   // The same work under two names is one thing a customer would be sold twice.
   const sig = new Map<string, string[]>();

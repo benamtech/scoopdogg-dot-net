@@ -237,7 +237,7 @@ export type Quote = {
   firstChargeCents: number;
   extrasCents: number;
   discountCents: number;
-  appliedOffers: { id: string; name: string; percent_off: number; cents: number; service_slug: string }[];
+  appliedOffers: { id: string; name: string; percent_off: number; cents: number; service_slug: string; package_id: string }[];
   flags: { priceIsDerived: boolean; containsFromPrice: boolean };
 } | { ok: false; reason: 'unknown_package' | 'extra_requires_quote' | 'unknown_extra' | 'duplicate_package' };
 
@@ -311,15 +311,16 @@ export function quoteBooking(catalog: Catalog, input: BookingInput): Quote {
     extrasCents += p.cents;
   }
 
-  // One offer per package line, the best one. Offers discount the package's FIRST month
-  // only - never the one-time extras, which the site never said were discounted.
+  // One offer per plan, the best one: scooping and Turf Deodorizing booked together are each half
+  // off, as the site says. Offers discount a plan's FIRST month only, never the one-time extras.
   const applied: Extract<Quote, { ok: true }>['appliedOffers'] = [];
-  const best = offersFor(catalog, pkg.service_slug, booked).sort((a, b) => b.value - a.value)[0];
   let discountCents = 0;
-  if (best) {
-    const cents = Math.round((pkg.monthly_price_cents * best.value) / 100);
+  for (const p of [pkg, ...others]) {
+    const best = offersFor(catalog, p.service_slug, booked).sort((a, b) => b.value - a.value)[0];
+    if (!best) continue;
+    const cents = Math.round((p.monthly_price_cents * best.value) / 100);
     discountCents += cents;
-    applied.push({ id: best.id, name: best.name, percent_off: best.value, cents, service_slug: pkg.service_slug });
+    applied.push({ id: best.id, name: best.name, percent_off: best.value, cents, service_slug: p.service_slug, package_id: p.id });
     lines.push({ kind: 'discount', label: best.name, cents: -cents, recurring: false, ref: best.id });
   }
 

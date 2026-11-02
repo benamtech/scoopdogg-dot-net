@@ -20,7 +20,7 @@ export default function BookingComplete() {
         const j = await r.json();
         if (r.status === 402 && tries < 6) return setTimeout(attempt, 1500);
         if (!r.ok) throw new Error(j.error || 'We could not confirm your booking.');
-        sessionStorage.removeItem('sd-booking-v1');
+        sessionStorage.removeItem('sd-booking-v2');
         try { (window as unknown as { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'purchase', { transaction_id: booking }); } catch { /* never breaks */ }
         setResult(j); setState('done');
       } catch (e) { setError((e as Error).message); setState('error'); }
