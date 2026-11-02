@@ -23,6 +23,7 @@ const navItems = [
   { to: '/admin/invoices', label: 'Invoices', icon: Receipt, exact: false, crew: false },
   { to: '/admin/payments', label: 'Payments', icon: CreditCard, exact: false, crew: false },
   { to: '/admin/rate-card', label: 'Rate card', icon: Tags, exact: false, crew: false },
+  { to: '/admin/add-ons', label: 'Add-ons', icon: Tags, exact: false, crew: false },
   { to: '/admin/services', label: 'Services', icon: LayoutList, exact: false, crew: false },
   { to: '/admin/offers', label: 'Offers', icon: BadgePercent, exact: false, crew: false },
   { to: '/admin/areas', label: 'Areas', icon: MapPin, exact: false, crew: false },
