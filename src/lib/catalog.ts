@@ -66,6 +66,7 @@ export type Review = {
 };
 
 export type Raw = {
+  zones?: Catalog['zones']; work_tasks?: Catalog['work_tasks']; work?: Catalog['work']; relations?: Catalog['relations'];
   pulled_at: string;
   services: CatalogService[];
   /** Slugs of retired services: their pages redirect to /services instead of answering 404. */
@@ -119,8 +120,10 @@ export const isRetiredService = (slug: string) => (data.retired_service_slugs ??
 export const areaBySlug = (slug: string) => data.areas.find((a) => a.slug === slug);
 export const tiersFor = (slug: string) => data.tiers.filter((t) => t.service_slug === slug).sort((a, b) => a.sort_order - b.sort_order);
 export const packagesForService = (slug: string) => packagesFor(catalog, slug);
-/** The add-ons sold with a plan: `kind = 'addon'`, and `related_slugs` names the plan. */
-export const addOnsFor = (slug: string) => data.services.filter((s) => s.kind === 'addon' && (s.related_slugs ?? []).includes(slug));
+/** What goes on the same visit, from the approved relations (src/shared/service-graph.ts). */
+export const addOnsFor = (slug: string) => (data.relations ?? []).filter((r) => r.base_slug === slug && r.kind === 'add_on')
+  .map((r) => ({ service: data.services.find((s) => s.slug === r.other_slug), line: r.customer_line }))
+  .filter((r): r is { service: CatalogService; line: string } => Boolean(r.service));
 
 /**
  * Ben, 2026-09-16: "dont limit it to ventura county in the copy. they serve Ventura and Santa
@@ -235,7 +238,7 @@ export const reviewSummary = {
  */
 export function setCatalog(raw: Raw) {
   data = { ...raw, postal_codes: raw.postal_codes ?? {}, settings: raw.settings ?? {} };
-  catalog = { services: data.services, tiers: data.tiers, packages: data.packages, offers: data.offers };
+  catalog = { services: data.services, tiers: data.tiers, packages: data.packages, offers: data.offers, zones: data.zones, work_tasks: data.work_tasks, work: data.work, relations: data.relations };
   services = data.services;
   areas = data.areas;
   reviews = data.reviews;

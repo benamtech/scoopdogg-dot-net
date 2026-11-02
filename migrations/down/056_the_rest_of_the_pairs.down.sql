@@ -1,0 +1,1 @@
+delete from service_relations where customer_line in ('Care for the turf on the same weekly visit.','Mow and blow on the same weekly visit.','Mow and blow the grass on the same weekly visit.') or (base_slug in ('dog-run-cleanups','pressure-washing') and other_slug in ('turf-deep-clean','yard-deep-clean'));

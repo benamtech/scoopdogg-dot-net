@@ -47,6 +47,7 @@ export type PublicSnapshot = {
   pulled_at: string;
   source: string;
   services: any[]; retired_service_slugs: string[]; tiers: any[]; packages: any[]; offers: any[]; areas: any[]; reviews: any[];
+  zones: any[]; work_tasks: any[]; work: any[]; relations: any[];
   postal_codes: Record<string, string>;
   settings: Record<string, unknown>;
   demo: { mode: boolean; banner_text: string; source: string; pulled_at: string | null };
@@ -57,6 +58,12 @@ export class SnapshotError extends Error {}
 export async function loadPublicSnapshot(q: Queryable = db()): Promise<PublicSnapshot> {
   const rows = async (sql: string, params?: unknown[]) => (await q.query(sql, params)).rows;
   // Parallel is safe here: db() is a pool, unlike the single client pull-catalog.mjs uses.
+  const [zones, work_tasks, work, relations] = await Promise.all([
+    rows(`select slug, name, indoors from property_zones order by sort_order`),
+    rows(`select slug, name, stage from work_tasks`),
+    rows(`select service_slug, zone_slug, task_slug, depth from service_work`),
+    rows(`select base_slug, other_slug, kind, customer_line from service_relations`),
+  ]);
   const [services, retired, tiers, packages, offers, areas, reviews, postal, settings, demo] = await Promise.all([
     rows(`select slug, name, short_name, kind, price_basis, basis_label, pricing_note, sort_order,
                  meta_title, meta_description, h1, intro, what_includes, who_its_for, faqs, related_slugs
@@ -95,7 +102,7 @@ export async function loadPublicSnapshot(q: Queryable = db()): Promise<PublicSna
   return {
     pulled_at: now,
     source: 'database',
-    services, retired_service_slugs: retired.map((r: any) => r.slug), tiers, packages, offers, areas, reviews,
+    services, retired_service_slugs: retired.map((r: any) => r.slug), tiers, packages, offers, areas, reviews, zones, work_tasks, work, relations,
     postal_codes: Object.fromEntries(postal.map((r: any) => [r.postal_code, r.area_slug])),
     settings: Object.fromEntries(settings.map((r: any) => [r.key, r.value])),
     demo: { mode, banner_text: mode ? banner : '', source: 'database', pulled_at: now },

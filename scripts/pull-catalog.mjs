@@ -105,10 +105,14 @@ try {
          join service_areas a on a.slug = z.area_slug
         where a.bookable and a.status = 'active' order by z.postal_code`);
   const settings = await q(`select key, value from settings where key = any($1::text[])`, [PUBLIC_SETTINGS]);
+  const zones = await q(`select slug, name, indoors from property_zones order by sort_order`);
+  const work_tasks = await q(`select slug, name, stage from work_tasks`);
+  const work = await q(`select service_slug, zone_slug, task_slug, depth from service_work`);
+  const relations = await q(`select base_slug, other_slug, kind, customer_line from service_relations`);
   catalog = {
     pulled_at: new Date().toISOString(),
     source: 'database',
-    services, tiers, packages, offers, areas, reviews,
+    services, tiers, packages, offers, areas, reviews, zones, work_tasks, work, relations,
     postal_codes: Object.fromEntries(postal_codes.map((r) => [r.postal_code, r.area_slug])),
     settings: Object.fromEntries(settings.map((r) => [r.key, r.value])),
   };
