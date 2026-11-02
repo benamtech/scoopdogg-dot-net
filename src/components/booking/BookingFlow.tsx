@@ -34,6 +34,7 @@
  * Summit lesson: a client:load controlled input erases pre-hydration typing).
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { graphOf, offeredWith } from '../../shared/service-graph';
 import { quoteBooking, quoteOneTime, bookableServices, formatCents, tierPrice, catchUpFor, weeklyCents, planNames, LAST_CLEANED, type Catalog, type Tier } from '../../shared/pricing';
 import { renewalTerms } from '../../shared/consent';
 import { gaLead } from '../../lib/ga';
@@ -84,7 +85,7 @@ const HINT: Record<string, string> = {
   'one-time-dog-poop-cleanup': 'Before a party or a move, or when it got away from you',
   'weekly-turf-maintenance': 'Weekly turf care: debris, leaves, sanitizing, odor',
   'turf-deep-clean': 'A one-time reset for turf that smells or looks tired',
-  'yard-deep-clean': 'Overgrown yard? One visit, one price',
+  'yard-deep-clean': 'Overgrown grass yard? One visit, one price',
   'weekly-yard-maintenance': 'Mow, blow, debris and leaves, every week',
   'kitty-litter-exchange': 'We clean the box and the area around it',
   'kitty-litter-robot-cleaning': 'Deep clean and careful technical maintenance',
@@ -109,9 +110,6 @@ const SIZE_QUESTION: Record<string, string> = {
   'kitty-litter-robot-cleaning': 'How many Litter-Robots?',
 };
 const DEEP_CLEAN = 'one-time-dog-poop-cleanup';
-const SCOOP = 'weekly-pooper-scooper-service';
-/** Outdoor jobs where a customer is offered weekly scooping on the same visit (Josue, 2026-11-01). */
-const SCOOP_PAIRS = new Set(['weekly-turf-maintenance', 'weekly-yard-maintenance', 'turf-deep-clean', 'dog-run-cleanups', 'pressure-washing']);
 
 /** Five digits out of whatever was typed or pasted. An address still works. */
 const zipIn = (text: string) => (/\b(\d{5})\b/.exec(String(text ?? '')) ?? [])[1] ?? '';
@@ -144,15 +142,15 @@ export default function BookingFlow(props: Props) {
    * The sticky bar at the bottom of this component is that total, and it already existed.
    */
   const [addOns, setAddOns] = useState<string[]>([]);
-  /** An add-on that goes on the plan, every visit (Yard Sanitizing): its package id, one line on the subscription. */
-  const [addPlan, setAddPlan] = useState('');
   /**
-   * WEEKLY SCOOPING ADDED TO ANOTHER SERVICE (Josue, 2026-11-01: "they can add poop scoop
-   * services, have the 1 dog or two dogs"). The scooping package's id. With a one-time job the
-   * plan becomes the booking and the job its first-visit extra; with another plan it is a second
-   * line on the same subscription, on the same weekly visit. Priced by quoteBooking() either way.
+   * WEEKLY PLANS ADDED TO THIS BOOKING, by package id. On a weekly plan they share its visit, as a
+   * second line on the same subscription. After a one-time job the first one becomes the booking and
+   * the job its first-visit extra. What may be added comes from the service graph and quoteBooking()
+   * prices it, on the page and on the server alike.
    */
-  const [addScoop, setAddScoop] = useState('');
+  const [addPlans, setAddPlans] = useState<string[]>([]);
+  /** The one add-on row showing its sizes. Everything else stays a single line. */
+  const [openAddOn, setOpenAddOn] = useState('');
   /** The add-on a visitor arrived for or picked first, to show it chosen at the price step. */
   const [wantAddOn, setWantAddOn] = useState('');
   const [lane, setLane] = useState<Lane>('prepay');
@@ -241,9 +239,9 @@ export default function BookingFlow(props: Props) {
     // BACK FROM STRIPE. Checkout's cancel link says `resume`; everything chosen is in this tab, so the
     // customer returns to their review with add-ons and day intact instead of starting again.
     if (url.searchParams.get('resume') && saved.service && saved.startDate) {
-      const s = saved as unknown as { service: string; packageId?: string; tierId?: string; addOns?: string[]; addScoop?: string; addPlan?: string; startDate: string; city?: string; cityName?: string };
+      const s = saved as unknown as { service: string; packageId?: string; tierId?: string; addOns?: string[]; addPlans?: string[]; startDate: string; city?: string; cityName?: string };
       setService(s.service); setPackageId(s.packageId || ''); setTierId(s.tierId || '');
-      setAddOns(s.addOns || []); setAddScoop(s.addScoop || ''); setAddPlan(s.addPlan || ''); setStartDate(s.startDate);
+      setAddOns(s.addOns || []); setAddPlans(s.addPlans || []); setStartDate(s.startDate);
       if (s.city) { setCity(s.city); setCityName(s.cityName || ''); }
       setHistory(['service', 'size', 'price', 'day', 'details']); setStep('review');
       return;
@@ -295,8 +293,8 @@ export default function BookingFlow(props: Props) {
 
   useEffect(() => {
     if (!restored.current) return;
-    sessionStorage.setItem(STORE, JSON.stringify({ zip, city, cityName, address, service, packageId, tierId, lastCleaned, deepClean, lane, name, email, phone, gate, notes, addOns, addScoop, addPlan, startDate, idem: idem.current }));
-  }, [zip, city, cityName, address, service, packageId, tierId, lastCleaned, deepClean, lane, name, email, phone, gate, notes, addOns, addScoop, addPlan, startDate]);
+    sessionStorage.setItem(STORE, JSON.stringify({ zip, city, cityName, address, service, packageId, tierId, lastCleaned, deepClean, lane, name, email, phone, gate, notes, addOns, addPlans, startDate, idem: idem.current }));
+  }, [zip, city, cityName, address, service, packageId, tierId, lastCleaned, deepClean, lane, name, email, phone, gate, notes, addOns, addPlans, startDate]);
 
   useEffect(() => { headingRef.current?.focus({ preventScroll: true }); window.scrollTo({ top: 0, behavior: 'smooth' }); }, [step]);
 
@@ -308,30 +306,39 @@ export default function BookingFlow(props: Props) {
   const shapeOf = (slug: string) => shapes.find((s) => s.service.slug === slug)?.shape ?? 'quote';
   const pkgs = useMemo(() => catalog.packages.filter((p) => p.service_slug === service).sort((a, b) => a.sort_order - b.sort_order), [service]);
   const serviceTiers = useMemo(() => catalog.tiers.filter((t) => t.service_slug === service).sort((a, b) => a.sort_order - b.sort_order), [service]);
-  const pkg = catalog.packages.find((p) => p.id === (packageId || (tierId ? addScoop : '')));
-  const addOnPlanFor = (id: string) => catalog.packages.find((p) => p.tier_id === id);
-  const oneTime = tierId ? quoteOneTime(catalog, tierId) : null;
-  const scoopPkgs = useMemo(() => catalog.packages.filter((p) => p.service_slug === SCOOP).sort((a, b) => a.sort_order - b.sort_order), []);
-  const offersScoop = SCOOP_PAIRS.has(service);
-  const addedScoop = scoopPkgs.find((p) => p.id === addScoop);
+  const pkg = catalog.packages.find((p) => p.id === (packageId || (tierId ? addPlans[0] : '')));
+  const oneTime = tierId ? quoteOneTime(catalog, tierId, pkg ? [] : addOns) : null;
   const deepTiers = useMemo(() => catalog.tiers.filter((t) => t.service_slug === DEEP_CLEAN && !t.requires_quote && t.price_cents), []);
   /**
-   * WHAT MAY BE ADDED: the add-ons that belong to this plan, and nothing else. A service with
-   * `kind = 'addon'` names its plan in `related_slugs` (Yard Sanitizing with weekly scooping, an
-   * hour of extra work with yard maintenance). Until 2026-11-01 this offered the cheapest tier of
-   * every other service, eight unrelated things at the price step; Josue asked for it to be easy.
+   * WHAT MAY BE ADDED, from the service graph: the same rows the server checks a booking against. A
+   * tier list when it is a one-time job, a plan list when it is weekly. `add_on` happens on this
+   * visit; `follow_on` keeps the result going. Quote-only sizes are left out: this is a price list.
    */
+  const graph = useMemo(() => graphOf(catalog), []);
+  const nameOf = (slug: string) => props.services.find((x) => x.slug === slug)?.name ?? slug;
+  const offerRows = (kind: 'add_on' | 'follow_on') => offeredWith(graph, service, kind).map((r) => ({
+    ...r,
+    tiers: catalog.tiers.filter((t) => t.service_slug === r.other_slug && tierPrice(t).kind === 'price').sort((a, b) => a.sort_order - b.sort_order),
+    plans: catalog.packages.filter((p) => p.service_slug === r.other_slug).sort((a, b) => a.sort_order - b.sort_order),
+  })).filter((r) => r.tiers.length || r.plans.length);
+  const addOnRows = useMemo(() => offerRows('add_on'), [service]);
+  const followRows = useMemo(() => offerRows('follow_on'), [service]);
   const addOnServices = useMemo(() => props.services.filter((s) => s.kind === 'addon'), [props.services]);
-  const addOnGroups = useMemo(() => addOnServices
-    .filter((s) => s.related_slugs.includes(service))
-    .map((s) => ({ ...s, tiers: catalog.tiers.filter((t) => t.service_slug === s.slug && !t.requires_quote && t.price_cents).sort((a, b) => a.sort_order - b.sort_order) })),
-  [addOnServices, service]);
+  const toggleTier = (rowTiers: Tier[], id: string) => setAddOns((a) => {
+    // One size of one service: choosing a size replaces its other sizes.
+    const others = a.filter((x) => !rowTiers.some((t) => t.id === x));
+    return a.includes(id) ? others : [...others, id];
+  });
+  const togglePlan = (rowPlans: { id: string }[], id: string) => setAddPlans((a) => {
+    const others = a.filter((x) => !rowPlans.some((p) => p.id === x));
+    return a.includes(id) ? others : [...others, id];
+  });
 
   /** Everything charged on the first invoice beyond the plan: the catch-up, then the additions. */
   const extraTierIds = useMemo(
-    () => [...(deepClean ? [deepClean] : []), ...addOns, ...(tierId && addScoop ? [tierId] : [])],
-    [deepClean, addOns, tierId, addScoop]);
-  const withPackageIds = useMemo(() => [...(packageId && addScoop ? [addScoop] : []), ...(packageId && addPlan ? [addPlan] : [])], [packageId, addScoop, addPlan]);
+    () => [...(deepClean ? [deepClean] : []), ...addOns, ...(tierId && addPlans.length ? [tierId] : [])],
+    [deepClean, addOns, tierId, addPlans]);
+  const withPackageIds = useMemo(() => (packageId ? addPlans : addPlans.slice(1)), [packageId, addPlans]);
 
   const quote = pkg ? quoteBooking(catalog, { packageId: pkg.id, extraTierIds, withPackageIds }) : null;
   const serviceInfo = props.services.find((s) => s.slug === service);
@@ -340,12 +347,6 @@ export default function BookingFlow(props: Props) {
   // Anything on the first charge beyond the plan means no pay-after (server/lib/booking.ts says why).
   useEffect(() => { if (lane === 'payafter' && quote && quote.ok && quote.extrasCents) setLane('prepay'); }, [lane, quote]);
 
-  // Someone who came for an add-on with one size has it chosen for them; with sizes, it is marked.
-  useEffect(() => {
-    if (step !== 'price' || !wantAddOn) return;
-    const g = addOnGroups.find((x) => x.slug === wantAddOn);
-    if (g?.tiers.length === 1) setAddOns((a) => (a.includes(g.tiers[0].id) ? a : [...a, g.tiers[0].id]));
-  }, [step, wantAddOn, addOnGroups]);
   const firstCharge = isOneTime ? (oneTime?.ok ? oneTime.cents : null) : (quote && quote.ok ? quote.firstChargeCents : null);
   /**
    * THE PRICE THE FUNNEL RECORDS IS THE PRICE OF THE THING, not the first charge.
@@ -592,7 +593,7 @@ export default function BookingFlow(props: Props) {
                   return (
                     <Choice key={s.slug} selected={service === s.slug} badge={s.slug === 'weekly-pooper-scooper-service' ? 'Most popular' : undefined}
                       onClick={() => {
-                        setService(s.slug); setPackageId(''); setTierId(''); setAddScoop(''); setAddOns([]); setAddPlan(''); setWantAddOn(''); setLastCleaned(''); setDeepClean('');
+                        setService(s.slug); setPackageId(''); setTierId(''); setAddPlans([]); setAddOns([]); setWantAddOn(''); setLastCleaned(''); setDeepClean('');
                         if (shape === 'quote') { window.location.href = `/custom-quote?service=${s.slug}`; return; }
                         go('size');
                       }}>
@@ -616,7 +617,7 @@ export default function BookingFlow(props: Props) {
                   const low = catalog.tiers.filter((t) => t.service_slug === a.slug && t.price_cents).sort((x, y) => (x.price_cents ?? 0) - (y.price_cents ?? 0))[0];
                   return (
                     <Choice key={a.slug} selected={wantAddOn === a.slug}
-                      onClick={() => { setService(a.related_slugs[0]); setPackageId(''); setTierId(''); setAddScoop(''); setAddOns([]); setAddPlan(''); setWantAddOn(a.slug); setLastCleaned(''); setDeepClean(''); go('size'); }}>
+                      onClick={() => { setService(a.related_slugs[0]); setPackageId(''); setTierId(''); setAddPlans([]); setAddOns([]); setWantAddOn(a.slug); setLastCleaned(''); setDeepClean(''); go('size'); }}>
                       <span className="flex items-start justify-between gap-4">
                         <span>
                           <span className="block text-lg font-semibold text-forest-900">{a.name}</span>
@@ -706,77 +707,88 @@ export default function BookingFlow(props: Props) {
               {tierId && oneTime && oneTime.ok && (
                 <div className="mb-4 rounded-xl border border-line bg-paper p-6 shadow-md sm:p-8">
                   <p className="text-base font-semibold text-forest-800">{oneTime.service.name}</p>
-                  <p className="mt-2 font-serif text-h1 text-forest-900">{formatCents(oneTime.cents)}</p>
-                  <p className="mt-1 text-base text-ink-500">{oneTime.tier.label} · {addScoop ? 'done on your first visit' : 'one visit, paid when you book'}</p>
+                  <p className="mt-2 font-serif text-h1 text-forest-900">{formatCents(oneTime.jobCents)}</p>
+                  <p className="mt-1 text-base text-ink-500">{oneTime.tier.label} · {pkg ? 'done on your first visit' : 'one visit, paid when you book'}</p>
                 </div>
               )}
 
               {/*
-                ANYTHING ELSE WHILE HE IS THERE. The van is already in the street, so an add-on
-                costs Josue the work and none of the driving. Offered, never pre-ticked, every line
-                with its own price and the running total in the bar below (Morwitz, Greenleaf &
-                Johnson 1998: itemise, and keep the total on screen).
+                ANYTHING ELSE WHILE HE IS THERE. Only what truly fits this job, from the service graph.
+                Inline and optional, never a step of its own; each with its own price, and the running
+                total under it (Baymard 2021; Morwitz, Greenleaf & Johnson 1998).
               */}
-              {offersScoop && (
-                <fieldset className="mt-8" data-add-scoop>
-                  <legend className="text-lg font-semibold text-forest-900">Add weekly poop scooping?</legend>
-                  <p className="mt-1 text-base text-ink-500">Same visit, every week, billed monthly.</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <button type="button" aria-pressed={!addScoop} onClick={() => setAddScoop('')}
-                      className={`rounded-md border px-4 py-2.5 text-base font-medium transition duration-fast ${!addScoop ? 'border-forest-600 bg-forest-600 text-white' : 'border-line-strong bg-paper text-forest-800 hover:border-forest-400'}`}>No thanks</button>
-                    {scoopPkgs.map((p) => (
-                      <button key={p.id} type="button" aria-pressed={addScoop === p.id} onClick={() => setAddScoop(p.id)}
-                        className={`rounded-md border px-4 py-2.5 text-base font-medium transition duration-fast ${addScoop === p.id ? 'border-forest-600 bg-forest-600 text-white' : 'border-line-strong bg-paper text-forest-800 hover:border-forest-400'}`}>
-                        {p.short_label} · {formatCents(weeklyCents(p))}/week
-                      </button>
-                    ))}
-                  </div>
-                  {packageId && addedScoop && quote && quote.ok && (
-                    <p className="mt-3 text-base text-forest-900">Your plans together: <strong className="font-semibold">{formatCents(quote.monthlyCents)}</strong> a month.</p>
-                  )}
-                </fieldset>
-              )}
-              {!isOneTime && pkg && addOnGroups.map((g) => (
-                <fieldset key={g.slug} className={`mt-8 ${wantAddOn === g.slug && !addPlan && !addOns.some((x) => g.tiers.some((t) => t.id === x)) ? 'rounded-lg border-2 border-amber-400 p-4' : ''}`} data-add-on={g.slug}>
-                  <legend className="text-lg font-semibold text-forest-900">Add {g.name}?</legend>
-                  <p className="mt-1 text-base text-ink-500">{g.tiers.some((t) => addOnPlanFor(t.id)) ? 'Done every visit, billed with your plan.' : 'One time, on your first visit. No second trip, and your weekly price stays the same.'}{g.tiers.length > 1 ? ' Pick your yard size.' : ''}</p>
-                  <div className="mt-3 space-y-2">
-                    {g.tiers.map((t) => {
-                      const plan = addOnPlanFor(t.id);
-                      const on = plan ? addPlan === plan.id : addOns.includes(t.id);
+              {addOnRows.length > 0 && (
+                <fieldset className="mt-8" data-add-ons>
+                  <legend className="text-lg font-semibold text-forest-900">Add to this visit</legend>
+                  <p className="mt-1 text-base text-ink-500">Optional, and no second trip.</p>
+                  <div className="mt-3 space-y-3">
+                    {addOnRows.map((r) => {
+                      const chosenTier = r.tiers.find((t) => addOns.includes(t.id));
+                      const chosenPlan = r.plans.find((p) => addPlans.includes(p.id));
+                      const chosen = chosenTier ?? chosenPlan;
+                      const open = openAddOn === r.other_slug || wantAddOn === r.other_slug;
+                      const from = r.plans.length ? `from ${formatCents(Math.min(...r.plans.map((p) => weeklyCents(p))))}/week` : r.tiers.length > 1 ? `from ${formatCents(Math.min(...r.tiers.map((t) => t.price_cents ?? 0)))}` : `${formatCents(r.tiers[0]?.price_cents ?? 0)}${r.tiers[0]?.price_suffix ?? ''}`;
                       return (
-                        <label key={t.id}
-                          className={`flex cursor-pointer items-center justify-between gap-4 rounded-lg border px-4 py-3 transition duration-fast ${on ? 'border-forest-600 bg-forest-50' : 'border-line-strong bg-paper hover:border-forest-400'}`}>
-                          <span className="flex min-w-0 items-center gap-3">
-                            <input
-                              type="checkbox"
-                              checked={on}
-                              onChange={() => {
-                                if (plan) { setAddPlan(on ? '' : plan.id); return; }
-                                // One size of one add-on: choosing a size replaces the other sizes.
-                                setAddOns((a) => {
-                                  const others = a.filter((x) => !g.tiers.some((gt) => gt.id === x));
-                                  return on ? others : [...others, t.id];
-                                });
-                              }}
-                              className="h-5 w-5 shrink-0 accent-forest-600"
-                            />
-                            <span className="min-w-0 text-base font-medium text-forest-900">{t.label}</span>
-                          </span>
-                          <span className="shrink-0 text-base font-semibold text-forest-800">+{formatCents(t.price_cents ?? 0)}{t.price_suffix}</span>
-                        </label>
+                        <div key={r.other_slug} data-add-on={r.other_slug} className={`rounded-lg border bg-paper ${chosen ? 'border-forest-600' : wantAddOn === r.other_slug ? 'border-2 border-amber-400' : 'border-line'}`}>
+                          <button type="button" aria-expanded={open} className="flex w-full items-center justify-between gap-3 p-4 text-left"
+                            onClick={() => {
+                              if (r.tiers.length === 1 && !r.plans.length) { toggleTier(r.tiers, r.tiers[0].id); return; }
+                              setOpenAddOn(open ? '' : r.other_slug); if (wantAddOn === r.other_slug) setWantAddOn('');
+                            }}>
+                            <span className="min-w-0">
+                              <span className="block text-base font-semibold text-forest-900">{nameOf(r.other_slug)}</span>
+                              <span className="block text-sm text-ink-500">{chosen ? ('short_label' in chosen ? chosen.short_label : chosen.label) : r.customer_line}</span>
+                            </span>
+                            <span className="shrink-0 text-right text-sm font-semibold text-forest-800">
+                              {chosen ? `+${chosenTier ? formatCents(chosenTier.price_cents ?? 0) : `${formatCents(weeklyCents(chosenPlan!))}/week`}` : from}
+                            </span>
+                          </button>
+                          {open && !(r.tiers.length === 1 && !r.plans.length) && (
+                            <div className="flex flex-wrap gap-2 px-4 pb-4">
+                              {r.plans.length > 0
+                                ? r.plans.map((p) => {
+                                    const on = addPlans.includes(p.id);
+                                    return <button key={p.id} type="button" aria-pressed={on} onClick={() => { togglePlan(r.plans, p.id); setOpenAddOn(''); }}
+                                      className={`rounded-md border px-3 py-2 text-base font-medium transition duration-fast ${on ? 'border-forest-600 bg-forest-600 text-white' : 'border-line-strong bg-paper text-forest-800 hover:border-forest-400'}`}>{p.short_label} · +{formatCents(weeklyCents(p))}/week</button>;
+                                  })
+                                : r.tiers.map((t) => {
+                                    const on = addOns.includes(t.id);
+                                    return <button key={t.id} type="button" aria-pressed={on} onClick={() => { toggleTier(r.tiers, t.id); setOpenAddOn(''); }}
+                                      className={`rounded-md border px-3 py-2 text-base font-medium transition duration-fast ${on ? 'border-forest-600 bg-forest-600 text-white' : 'border-line-strong bg-paper text-forest-800 hover:border-forest-400'}`}>{t.label} · +{formatCents(t.price_cents ?? 0)}{t.price_suffix}</button>;
+                                  })}
+                            </div>
+                          )}
+                        </div>
                       );
                     })}
                   </div>
                 </fieldset>
-              ))}
-              {!isOneTime && pkg && addPlan && quote && quote.ok && (
-                <p className="mt-3 text-base text-forest-900">Your plan with sanitizing: <strong className="font-semibold">{formatCents(quote.monthlyCents)}</strong> a month.</p>
               )}
-              {!isOneTime && pkg && addOns.length > 0 && quote && quote.ok && (
-                <p className="mt-3 text-base text-forest-900">
-                  <strong className="font-semibold">{formatCents(quote.extrasCents)}</strong> added to your first visit.
-                  Your monthly stays {formatCents(quote.monthlyCents)}.
+              {followRows.length > 0 && (
+                <fieldset className="mt-8" data-follow-ons>
+                  <legend className="text-lg font-semibold text-forest-900">Keep it that way</legend>
+                  <p className="mt-1 text-base text-ink-500">Every week after this visit, billed monthly. Cancel anytime.</p>
+                  <div className="mt-3 space-y-3">
+                    {followRows.map((r) => (
+                      <div key={r.other_slug} data-follow-on={r.other_slug} className="rounded-lg border border-line bg-paper p-4">
+                        <p className="text-base font-semibold text-forest-900">{nameOf(r.other_slug)}</p>
+                        <p className="mt-0.5 text-base text-ink-500">{r.customer_line}</p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {r.plans.map((p) => {
+                            const on = addPlans.includes(p.id);
+                            return <button key={p.id} type="button" aria-pressed={on} onClick={() => setAddPlans(on ? [] : [p.id])}
+                              className={`rounded-md border px-3 py-2 text-base font-medium transition duration-fast ${on ? 'border-forest-600 bg-forest-600 text-white' : 'border-line-strong bg-paper text-forest-800 hover:border-forest-400'}`}>{p.short_label} · {formatCents(weeklyCents(p))}/week</button>;
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </fieldset>
+              )}
+              {(addOns.length > 0 || addPlans.length > 0) && firstCharge !== null && (
+                <p className="mt-4 rounded-md bg-forest-50 px-4 py-3 text-base text-forest-900" data-running-total>
+                  Today <strong className="font-semibold">{formatCents(firstCharge, { forceDecimals: firstCharge % 100 !== 0 })}</strong>
+                  {quote && quote.ok ? <>, then <strong className="font-semibold">{formatCents(quote.monthlyCents)}</strong> a month</> : null}
                 </p>
               )}
 
@@ -948,7 +960,10 @@ export default function BookingFlow(props: Props) {
                   <p key={l.ref + l.kind} className="flex justify-between py-1 text-base text-ink-700"><span>{l.kind === 'package' ? `${l.label} (first month)` : l.label}</span><span>{l.cents < 0 ? '−' : ''}{formatCents(Math.abs(l.cents), { forceDecimals: Math.abs(l.cents) % 100 !== 0 })}</span></p>
                 ))}
                 {isOneTime && oneTime && oneTime.ok && (
-                  <p className="flex justify-between py-1 text-base text-ink-700"><span>{oneTime.label}</span><span>{formatCents(oneTime.cents)}</span></p>
+                  <>
+                    <p className="flex justify-between py-1 text-base text-ink-700"><span>{oneTime.label}</span><span>{formatCents(oneTime.jobCents)}</span></p>
+                    {oneTime.extras.map((e) => <p key={e.tier.id} className="flex justify-between py-1 text-base text-ink-700"><span>{e.label}</span><span>{formatCents(e.cents)}</span></p>)}
+                  </>
                 )}
                 {/* LANE B SAYS THE DATE. Never "later", never "after your first visit" alone. */}
                 {!isOneTime && lane === 'payafter' ? (

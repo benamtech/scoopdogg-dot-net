@@ -13,6 +13,8 @@
  *  - A tier with requires_quote has no price; it becomes a quote request, not a checkout.
  */
 
+import type { Zone, Task as WorkTask, Work, Approved } from './service-graph.js';
+
 export type PriceBasis = 'dogs' | 'sqft' | 'boxes' | 'units' | 'levels' | 'choice' | 'flat';
 
 export type Service = {
@@ -82,6 +84,11 @@ export type Catalog = {
   tiers: Tier[];
   packages: Package[];
   offers: Offer[];
+  /** How the work relates (src/shared/service-graph.ts). No price lives here. */
+  zones?: Zone[];
+  work_tasks?: WorkTask[];
+  work?: Work[];
+  relations?: Approved[];
 };
 
 /** A qty lands in a tier when min <= qty and (max is null or qty < max) - except for
@@ -433,10 +440,11 @@ export function catchUpFor(catalog: Catalog, serviceSlug: string, lastCleaned: s
 // ---------------------------------------------------------------------------------------
 
 export type OneTimeQuote =
-  | { ok: true; service: Service; tier: Tier; cents: number; label: string }
+  | { ok: true; service: Service; tier: Tier; cents: number; label: string; jobCents: number; extras: { tier: Tier; service: Service; label: string; cents: number }[] }
   | { ok: false; reason: 'unknown_tier' | 'requires_quote' | 'from_price' };
 
-export function quoteOneTime(catalog: Catalog, tierId: string): OneTimeQuote {
+/** A one-time job, plus anything added to the same visit: one total, one payment. */
+export function quoteOneTime(catalog: Catalog, tierId: string, extraTierIds: string[] = []): OneTimeQuote {
   const tier = catalog.tiers.find((t) => t.id === tierId);
   if (!tier) return { ok: false, reason: 'unknown_tier' };
   const service = catalog.services.find((s) => s.slug === tier.service_slug);
@@ -447,7 +455,16 @@ export function quoteOneTime(catalog: Catalog, tierId: string): OneTimeQuote {
   // A floor presented as a final number is the one thing gates/from-price-never-final.mjs exists
   // to stop, and a checkout is the most final a number ever gets.
   if (p.kind === 'from') return { ok: false, reason: 'from_price' };
-  return { ok: true, service, tier, cents: p.cents, label: `${service.name} · ${tier.label}` };
+  const extras: { tier: Tier; service: Service; label: string; cents: number }[] = [];
+  for (const id of extraTierIds) {
+    const t = catalog.tiers.find((x) => x.id === id);
+    const svc = t && catalog.services.find((s) => s.slug === t.service_slug);
+    if (!t || !svc) return { ok: false, reason: 'unknown_tier' };
+    const ep = tierPrice(t);
+    if (ep.kind !== 'price') return { ok: false, reason: 'requires_quote' };
+    extras.push({ tier: t, service: svc, label: `${svc.name} · ${t.label}`, cents: ep.cents });
+  }
+  return { ok: true, service, tier, cents: p.cents + extras.reduce((a, e) => a + e.cents, 0), jobCents: p.cents, extras, label: `${service.name} · ${tier.label}` };
 }
 
 /** Every service that can be booked, in the shape it books in. The funnel renders from this. */

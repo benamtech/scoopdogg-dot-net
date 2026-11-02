@@ -43,5 +43,9 @@ export async function loadCatalog(): Promise<Catalog & { areas: AreaRow[]; setti
   // `reviews.google_profile_url` (the link it sends). Adding the read without adding the
   // prefix would have made the sweep silently find nothing and report zero eligible.
   const rows = await q<{ key: string; value: unknown }>(`select key, value from settings where key like 'schedule.%' or key like 'booking.%' or key like 'business.%' or key like 'billing.%' or key like 'notify.%' or key like 'subscription.%' or key like 'visit.%' or key like 'growth.%' or key like 'reviews.%' or key like 'quote.%' or key like 'contract.%'`);
-  return { services, tiers, packages, offers, areas, settings: new Map(rows.map((r) => [r.key, r.value])) };
+  const zones = await q<NonNullable<Catalog['zones']>[number]>(`select slug, name, indoors from property_zones order by sort_order`);
+  const work_tasks = await q<NonNullable<Catalog['work_tasks']>[number]>(`select slug, name, stage from work_tasks`);
+  const work = await q<NonNullable<Catalog['work']>[number]>(`select service_slug, zone_slug, task_slug, depth from service_work`);
+  const relations = await q<NonNullable<Catalog['relations']>[number]>(`select base_slug, other_slug, kind, customer_line from service_relations`);
+  return { services, tiers, packages, offers, zones, work_tasks, work, relations, areas, settings: new Map(rows.map((r) => [r.key, r.value])) };
 }

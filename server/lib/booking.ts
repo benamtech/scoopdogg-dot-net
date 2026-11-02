@@ -31,6 +31,7 @@ import { renewalTerms, acknowledgmentHtml } from '../../src/shared/consent.js';
 import { recordConsent } from './consent.js';
 import { openSessionForCustomer } from './customer-auth.js';
 import { quoteBooking, quoteOneTime, startDates, formatCents, weekdayName, catchUpFor, planNames } from '../../src/shared/pricing.js';
+import { graphOf, refusedTogether } from '../../src/shared/service-graph.js';
 import { safeError, type ApiResponse } from './http.js';
 
 export type BookingInput = {
@@ -145,17 +146,27 @@ export async function priceBooking(input: Pick<BookingInput, 'city' | 'package_i
   // A one-time job is priced from its own tier and has no package, no offer and no monthly
   // anything. It still gets start dates, because it still has to be driven to.
   if (input.tier_id && !input.package_id) {
-    const one = quoteOneTime(catalog, input.tier_id);
+    const one = quoteOneTime(catalog, input.tier_id, input.extra_tier_ids ?? []);
     if (!one.ok) {
       throw new BookingError(one.reason, one.reason === 'requires_quote' || one.reason === 'from_price'
         ? 'That one needs a quick look first — we will confirm the price with you.'
         : 'Please choose what you need again.');
+    }
+    if (refusedTogether(graphOf(catalog), one.service.slug, one.extras.map((e) => e.service.slug), [])) {
+      throw new BookingError('not_together', 'Those two do not go together. Please choose again.');
     }
     return { catalog, area, quote: null, oneTime: one, dates: await startDatesFor(catalog, area) };
   }
 
   const quote = quoteBooking(catalog, { packageId: input.package_id, extraTierIds: input.extra_tier_ids, withPackageIds: input.with_package_ids });
   if (!quote.ok) throw new BookingError(quote.reason, quote.reason === 'extra_requires_quote' ? 'That add-on needs a quick quote first.' : 'Please choose your plan again.');
+  // The first-visit catch-up comes from the "last cleaned" answer, not from the add-on list.
+  const extraSlugs = (input.extra_tier_ids ?? []).map((id) => catalog.tiers.find((t) => t.id === id))
+    .filter((t) => t && !t.covers_last_cleaned?.length).map((t) => t!.service_slug);
+  const planSlugs = (input.with_package_ids ?? []).map((id) => catalog.packages.find((p) => p.id === id)!.service_slug);
+  if (refusedTogether(graphOf(catalog), quote.package.service_slug, extraSlugs, planSlugs)) {
+    throw new BookingError('not_together', 'Those two do not go together. Please choose again.');
+  }
 
   return { catalog, area, quote, oneTime: null, dates: await startDatesFor(catalog, area) };
 }
@@ -337,12 +348,12 @@ export async function createBooking(input: BookingInput, base: string) {
       [customerId, input.address, area.name, input.postal_code || null, dogsMatch ? Number(dogsMatch[1]) : null, input.gate_code || null, input.access_notes || '']);
     propertyId = prop[0].id;
 
-    const extras = quote ? [
+    const extras = !quote ? oneTime!.extras.map((e) => ({ tier_id: e.tier.id, label: e.label, price_cents: e.cents })) : [
       ...quote.lines.filter((l) => l.kind === 'extra').map((l) => ({ tier_id: l.ref, label: l.label, price_cents: l.cents })),
       // A second plan on the same subscription (weekly scooping added to turf or yard care): same
       // weekly visit, one Stripe subscription, `monthly_price_cents` is the sum of both.
       ...quote.lines.filter((l) => l.kind === 'package' && l.ref !== quote.package.id).map((l) => ({ package_id: l.ref, label: l.label, monthly_cents: l.cents })),
-    ] : [];
+    ];
     const offer = quote ? quote.appliedOffers[0] : undefined;
     // Everything billed a month: the plan, and any second plan booked with it.
     const priceCents = quote ? quote.monthlyCents : oneTime!.cents;
@@ -428,7 +439,10 @@ export async function createBooking(input: BookingInput, base: string) {
       mode,
       customerId: stripeCustomerId,
       amountCents: oneTime.cents,
-      lineItems: [{ quantity: 1, price_data: { currency: 'usd', unit_amount: oneTime.cents, product_data: { name: oneTime.label } } }],
+      lineItems: [
+        { quantity: 1, price_data: { currency: 'usd', unit_amount: oneTime.jobCents, product_data: { name: oneTime.label } } },
+        ...oneTime.extras.map((e) => ({ quantity: 1, price_data: { currency: 'usd', unit_amount: e.cents, product_data: { name: e.label } } })),
+      ],
       metadata: { booking_id: subscriptionId, customer_id: customerId, tier_id: oneTime.tier.id, shape: 'one_time' },
       submitMessage: `We'll be there ${chosen.label}.`,
       successUrl: `${base}/book/complete?session_id={CHECKOUT_SESSION_ID}&booking=${subscriptionId}`,
