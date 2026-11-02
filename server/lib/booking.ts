@@ -508,7 +508,9 @@ export async function completeBooking(bookingId: string, sessionId: string | nul
   const sub = rows[0];
   if (!sub) throw new BookingError('not_found', 'We could not find that booking.', 404);
 
-  if (sub.state !== 'active') {
+  // Only a booking still waiting to be paid can become active. A late webhook or a return page for
+  // an old session must not bring back a plan that was cancelled or paused since.
+  if (sub.state === 'deposit_pending' || sub.state === 'draft') {
     const mode: StripeMode = sub.livemode ? 'live' : 'test';
     const stripe = stripeFor(mode);
     const sid = sessionId ?? sub.booking_answers?.checkout_session;
@@ -552,7 +554,7 @@ export async function completeBooking(bookingId: string, sessionId: string | nul
         `update subscriptions set state = 'active', payment_state = $4, stripe_subscription_id = $2,
                 current_period_end = to_timestamp($3), activated_at = coalesce(activated_at, now()),
                 updated_at = now()
-          where id = $1 and state <> 'active'`,
+          where id = $1 and state in ('deposit_pending', 'draft')`,
         [bookingId, stripeSub?.id ?? null, periodEnd, trialing ? 'trialing' : 'ok']);
       if (rowCount) {
         won = true;
@@ -745,10 +747,28 @@ async function sendWelcome(bookingId: string) {
  * down for the whole of it. The daily run sends it, so a miss is a late email and not a silence.
  * Live bookings only, from the last three days, and it reads the outbox row the sender writes.
  */
+/**
+ * A checkout nobody finished. Stripe's session dies within a day; the row used to stay
+ * `deposit_pending` for ever, on the customer list as "waiting on a card". Online bookings only: an
+ * invite or a quote has a person behind it and its own ending.
+ */
+export async function expireAbandonedCheckouts(q: { query: (text: string, values?: unknown[]) => Promise<{ rows: any[] }> } = db()) {
+  const { rows } = await q.query(
+    `update subscriptions set state = 'cancelled', cancelled_at = now(), cancel_reason = 'checkout not finished', updated_at = now()
+      where state = 'deposit_pending' and source = 'online' and created_at < now() - interval '3 days'
+        and not exists (select 1 from quotes q where q.subscription_id = subscriptions.id)
+        and not exists (select 1 from customer_invites i where i.subscription_id = subscriptions.id)
+      returning id`);
+  for (const r of rows) {
+    await appendEvent(q as never, { subjectKind: 'subscription', subjectId: r.id, type: 'subscription.cancelled', from: 'deposit_pending', to: 'cancelled', actorKind: 'system', payload: { reason: 'checkout not finished' } });
+  }
+  return { expired: rows.length };
+}
+
 export async function sendMissedBookingNotices(q: { query: (text: string, values?: unknown[]) => Promise<{ rows: any[] }> } = db()) {
   const { rows } = await q.query(
     `select s.id from subscriptions s
-      where s.livemode and s.state = 'active' and s.activated_at between now() - interval '3 days' and now() - interval '10 minutes'
+      where s.livemode and s.state in ('active', 'completed') and s.activated_at between '2026-11-02'::timestamptz and now() - interval '10 minutes'
         and exists (select 1 from events e where e.subject_kind = 'subscription' and e.subject_id = s.id
                      and e.event_type in ('onetime.charged', 'booking.trial_started', 'subscription.activated'))
         and not exists (select 1 from outbox o where o.purpose = 'booking_owner' and o.state <> 'failed'

@@ -321,6 +321,16 @@ export async function completeVisit(input: CompleteVisitInput, q?: Queryable): P
                 (select arrived_at  from visits where id = $1) as arrived_at`,
       [input.visitId, input.completedBy ?? null, photos, (input.crewNotes ?? '').slice(0, 2000)]);
 
+    // A one-time job ends with its visit. A plan does not; a quote ends when its balance is settled.
+    const { rows: finished } = await client.query(
+      `update subscriptions s set state = 'completed', updated_at = now()
+         from visits v
+        where v.id = $1 and s.id = v.subscription_id and s.frequency = 'one_time' and s.state = 'active'
+          and not exists (select 1 from quotes q where q.subscription_id = s.id)
+          and not exists (select 1 from visits o where o.subscription_id = s.id and o.id <> v.id and o.state = 'scheduled')
+        returning s.id`, [input.visitId]);
+    if (finished[0]) await appendEvent(client as never, { subjectKind: 'subscription', subjectId: finished[0].id, type: 'subscription.completed', from: 'active', to: 'completed', actorKind: 'system', payload: { visit: input.visitId } });
+
     await appendEvent(client as never, {
       subjectKind: 'visit', subjectId: input.visitId, type: 'visit.complete',
       from: v.state, to: 'completed',

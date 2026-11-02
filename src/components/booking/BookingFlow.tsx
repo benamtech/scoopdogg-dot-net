@@ -211,7 +211,7 @@ export default function BookingFlow(props: Props) {
   // ---- restore: URL first (the hero form posts here), then this tab's saved progress ----
   useEffect(() => {
     const url = new URL(window.location.href);
-    let saved: Record<string, string> = {};
+    let saved: Record<string, any> = {};
     try { saved = JSON.parse(sessionStorage.getItem(STORE) || '{}'); } catch { /* fresh */ }
     idem.current = saved.idem || crypto.randomUUID();
     try {
@@ -238,6 +238,16 @@ export default function BookingFlow(props: Props) {
 
     // The service the visitor pressed a button for. A package outranks it (it names a service
     // already); an unknown slug is ignored and the picker is shown as before.
+    // BACK FROM STRIPE. Checkout's cancel link says `resume`; everything chosen is in this tab, so the
+    // customer returns to their review with add-ons and day intact instead of starting again.
+    if (url.searchParams.get('resume') && saved.service && saved.startDate) {
+      const s = saved as unknown as { service: string; packageId?: string; tierId?: string; addOns?: string[]; addScoop?: string; addPlan?: string; startDate: string; city?: string; cityName?: string };
+      setService(s.service); setPackageId(s.packageId || ''); setTierId(s.tierId || '');
+      setAddOns(s.addOns || []); setAddScoop(s.addScoop || ''); setAddPlan(s.addPlan || ''); setStartDate(s.startDate);
+      if (s.city) { setCity(s.city); setCityName(s.cityName || ''); }
+      setHistory(['service', 'size', 'price', 'day', 'details']); setStep('review');
+      return;
+    }
     const asked = pkg ? '' : (url.searchParams.get('service') || '');
     // An add-on is booked through its plan, with the add-on already chosen at the price step.
     const askedAddOn = props.services.find((s) => s.slug === asked && s.kind === 'addon');
@@ -285,8 +295,8 @@ export default function BookingFlow(props: Props) {
 
   useEffect(() => {
     if (!restored.current) return;
-    sessionStorage.setItem(STORE, JSON.stringify({ zip, city, cityName, address, service, packageId, tierId, lastCleaned, deepClean, lane, name, email, phone, gate, notes, idem: idem.current }));
-  }, [zip, city, cityName, address, service, packageId, tierId, lastCleaned, deepClean, lane, name, email, phone, gate, notes]);
+    sessionStorage.setItem(STORE, JSON.stringify({ zip, city, cityName, address, service, packageId, tierId, lastCleaned, deepClean, lane, name, email, phone, gate, notes, addOns, addScoop, addPlan, startDate, idem: idem.current }));
+  }, [zip, city, cityName, address, service, packageId, tierId, lastCleaned, deepClean, lane, name, email, phone, gate, notes, addOns, addScoop, addPlan, startDate]);
 
   useEffect(() => { headingRef.current?.focus({ preventScroll: true }); window.scrollTo({ top: 0, behavior: 'smooth' }); }, [step]);
 
@@ -538,6 +548,9 @@ export default function BookingFlow(props: Props) {
   return (
     <div className="grid gap-10 lg:grid-cols-12 lg:gap-12">
       <div className="lg:col-span-7">
+        {stepIndex < 0 && step === 'waitlist' && history.length > 0 && (
+          <button type="button" onClick={back} className="mb-6 inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-base font-medium text-forest-800">Back</button>
+        )}
         {stepIndex >= 0 && (
           <div className="mb-8 flex items-center gap-4">
             {history.length > 0 && (

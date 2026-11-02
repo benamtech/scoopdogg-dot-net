@@ -54,6 +54,7 @@ export default function AdminCustomersPage() {
     if (c.state === 'active') return { label: 'Active', cls: 'bg-success-100 text-success' };
     if (c.state === 'deposit_pending') return { label: 'Waiting on a card', cls: 'bg-amber-100 text-amber-700' };
     if (c.invite_id && !c.accepted_at) return { label: 'Invited', cls: 'bg-forest-50 text-forest-800' };
+    if (c.state === 'completed') return { label: 'Job done', cls: 'bg-success-100 text-success' };
     if (c.state === 'cancelled') return { label: 'Cancelled', cls: 'bg-line text-ink-500' };
     return { label: 'No plan', cls: 'bg-line text-ink-500' };
   };
