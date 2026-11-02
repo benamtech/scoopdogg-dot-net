@@ -10,7 +10,7 @@ import Section from '../components/site/Section.astro';
 import CloseCta from '../components/site/CloseCta.astro';
 import { services, headlinePrice, packagesForService, headlineOffer } from '../lib/catalog';
 import mowing from '../assets/art/transp-dog-character-mowing-grass.png';
-const recurring = services.filter((s) => packagesForService(s.slug).length > 0);
+const recurring = services.filter((s) => s.kind !== 'addon' && packagesForService(s.slug).length > 0);
 const oneTime = services.filter((s) => s.kind !== 'addon' && packagesForService(s.slug).length === 0);
 const Card = (s: (typeof services)[number]) => ({ s, p: headlinePrice(s.slug) });
 ---

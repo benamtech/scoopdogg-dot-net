@@ -1,0 +1,10 @@
+begin;
+delete from settings where key = 'trust.guarantee_text';
+delete from stripe_prices where package_id in (select id from packages where service_slug = 'yard-sanitizing');
+delete from packages where service_slug = 'yard-sanitizing';
+update service_tiers set price_suffix = '' where service_slug = 'yard-sanitizing';
+delete from service_tiers where service_slug = 'pressure-washing' and label = 'Over 800 sq ft';
+update service_tiers set label = 'Small patio or run (under 200 sq ft)', max_qty = 250 where id::text like '18d466d5%';
+update service_tiers set label = 'Medium area (200-500 sq ft)', min_qty = 250 where id::text like '904dfec9%';
+update service_tiers set label = 'Large area (500+ sq ft)', max_qty = null, price_cents = null, requires_quote = true where id::text like 'db60c61f%';
+commit;

@@ -57,7 +57,7 @@ const serviceQuestions = questions().filter((q) => q.service === s.slug);
 const priced = tiers.some((t) => t.price_cents && !t.requires_quote && !t.price_is_from);
 const addOn = s.kind === 'addon';
 const parent = addOn ? serviceBySlug(s.related_slugs?.[0] ?? '') : undefined;
-const shape: 'recurring' | 'one_time' | 'quote' = pkgs.length ? 'recurring' : priced ? 'one_time' : 'quote';
+const shape: 'recurring' | 'one_time' | 'quote' = pkgs.length && !addOn ? 'recurring' : priced ? 'one_time' : 'quote';
 // An add-on is bought with its plan, so its button goes to the booking with the add-on already chosen.
 const bookHref = addOn ? `/book?service=${s.slug}` : shape === 'quote' ? `/custom-quote?service=${s.slug}` : `/book?service=${s.slug}`;
 const bookLabel = addOn ? `Add it to ${parent?.short_name ?? 'your plan'}` : shape === 'recurring' ? 'See my price' : shape === 'one_time' ? 'Book this service' : 'Get a quote';
@@ -74,7 +74,7 @@ const jsonLd = [
     '@context': 'https://schema.org', '@type': 'Service', name: s.name, description,
     provider: { '@type': 'LocalBusiness', '@id': `${SITE_URL}/#business`, name: 'Scoop Dogg' },
     areaServed: [{ '@type': 'AdministrativeArea', name: 'Ventura County, CA' }, { '@type': 'AdministrativeArea', name: 'Santa Barbara County, CA' }],
-    offers: pkgs.length
+    offers: pkgs.length && !addOn
       ? pkgs.map((p) => ({ '@type': 'Offer', name: p.name, priceSpecification: { '@type': 'UnitPriceSpecification', price: (p.monthly_price_cents / 100).toFixed(2), priceCurrency: 'USD', unitText: 'MON' } }))
       : tiers.filter((t) => t.price_cents && !t.price_is_from).map((t) => ({ '@type': 'Offer', name: t.label, price: ((t.price_cents ?? 0) / 100).toFixed(2), priceCurrency: 'USD' })),
   },
@@ -104,7 +104,7 @@ const jsonLd = [
   <ProofBar tone="sage" />
 
   <Section tone="white" labelledby="price-title">
-    <SectionHeading id="price-title" eyebrow="Pricing" title={pkgs.length ? 'Pick your plan' : 'What it costs'} lede={[s.pricing_note, offerHere ? `${offerHere}.` : null].filter(Boolean).join(' ') || undefined}>
+    <SectionHeading id="price-title" eyebrow="Pricing" title={pkgs.length && !addOn ? 'Pick your plan' : 'What it costs'} lede={[s.pricing_note, offerHere ? `${offerHere}.` : null].filter(Boolean).join(' ') || undefined}>
       <a slot="action" href="/pricing" class="link text-base">All pricing</a>
     </SectionHeading>
     <div class="mt-12">
@@ -114,7 +114,7 @@ const jsonLd = [
           <a href={business.phoneHref} class="link text-lg">Or call {business.phone}</a>
         </div>
       )}
-      {pkgs.length > 0 ? <PackageCards service={s.slug} /> : tiers.every((t) => t.requires_quote || t.price_cents === null) ? null : (
+      {pkgs.length > 0 && !addOn ? <PackageCards service={s.slug} /> : tiers.every((t) => t.requires_quote || t.price_cents === null) ? null : (
         <dl class="max-w-3xl divide-y divide-line border-y border-line">
           {tiers.map((t) => (
             <div class="flex items-center justify-between gap-6 py-5" data-tier={t.id} data-price-cents={t.price_cents ?? undefined}>

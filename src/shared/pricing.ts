@@ -247,6 +247,8 @@ export function offersFor(catalog: Catalog, serviceSlug: string, bookedServiceSl
 export function quoteBooking(catalog: Catalog, input: BookingInput): Quote {
   const pkg = catalog.packages.find((p) => p.id === input.packageId);
   if (!pkg) return { ok: false, reason: 'unknown_package' };
+  // An add-on's plan line goes with a plan; it is never the plan itself.
+  if (catalog.services.find((s) => s.slug === pkg.service_slug)?.kind === 'addon') return { ok: false, reason: 'unknown_package' };
   const tier = pkg.tier_id ? catalog.tiers.find((t) => t.id === pkg.tier_id) : undefined;
   /**
    * `withPackageIds` NAMES PACKAGES THAT ARE BEING BOUGHT, AND THEY ARE CHARGED FOR.

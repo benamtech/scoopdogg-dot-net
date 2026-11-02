@@ -274,6 +274,7 @@ type PackageRow = { id: string; slug: string; service_slug: string; name: string
 const PRODUCT_NAMES: Record<string, string> = {
   'weekly-pooper-scooper-service': 'Weekly poop scooping',
   'weekly-turf-maintenance': 'Turf Deodorizing',
+  'yard-sanitizing': 'Weekly yard sanitizing',
   'weekly-yard-maintenance': 'Weekly yard maintenance',
   'kitty-litter-exchange': 'Weekly litter box service',
 };
