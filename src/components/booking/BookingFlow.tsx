@@ -110,7 +110,7 @@ const SIZE_QUESTION: Record<string, string> = {
 const DEEP_CLEAN = 'one-time-dog-poop-cleanup';
 const SCOOP = 'weekly-pooper-scooper-service';
 /** Outdoor jobs where a customer is offered weekly scooping on the same visit (Josue, 2026-11-01). */
-const SCOOP_PAIRS = new Set(['weekly-turf-maintenance', 'weekly-yard-maintenance', 'one-time-dog-poop-cleanup', 'dog-run-cleanups', 'pressure-washing']);
+const SCOOP_PAIRS = new Set(['weekly-turf-maintenance', 'weekly-yard-maintenance', 'dog-run-cleanups', 'pressure-washing']);
 
 /** Five digits out of whatever was typed or pasted. An address still works. */
 const zipIn = (text: string) => (/\b(\d{5})\b/.exec(String(text ?? '')) ?? [])[1] ?? '';
@@ -606,7 +606,7 @@ export default function BookingFlow(props: Props) {
                       <span className="flex items-start justify-between gap-4">
                         <span>
                           <span className="block text-lg font-semibold text-forest-900">{a.name}</span>
-                          <span className="mt-1 block text-base text-ink-500">An add-on to weekly scooping. Pick your dogs first.</span>
+                          <span className="mt-1 block text-base text-ink-500">A one-time treatment added to weekly scooping</span>
                         </span>
                         {low && <span className="shrink-0 text-right text-sm text-ink-500">from<span className="block text-lg font-semibold text-forest-900">{formatCents(low.price_cents ?? 0)}</span></span>}
                       </span>
@@ -619,7 +619,7 @@ export default function BookingFlow(props: Props) {
 
           {step === 'size' && (
             <div>
-              <Heading sub={wantAddOn === 'yard-sanitizing' ? 'Then pick your yard size for the sanitizing.' : /yard\?$/.test(SIZE_QUESTION[service] ?? '') ? 'Not sure? Pick the closest and Josue will confirm.' : undefined}>{SIZE_QUESTION[service] ?? 'Which fits best?'}</Heading>
+              <Heading sub={wantAddOn === 'yard-sanitizing' ? 'Weekly scooping first, then pick your yard size for the sanitizing.' : /yard\?$/.test(SIZE_QUESTION[service] ?? '') ? 'Not sure? Pick the closest and Josue will confirm.' : undefined}>{SIZE_QUESTION[service] ?? 'Which fits best?'}</Heading>
               <div className="grid grid-cols-2 gap-3">
                 {shapeOf(service) === 'recurring' && pkgs.map((p) => (
                   <Choice key={p.id} selected={packageId === p.id} badge={p.featured ? 'Most booked' : undefined}
@@ -725,7 +725,7 @@ export default function BookingFlow(props: Props) {
               {!isOneTime && pkg && addOnGroups.map((g) => (
                 <fieldset key={g.slug} className={`mt-8 ${wantAddOn === g.slug && !addPlan && !addOns.some((x) => g.tiers.some((t) => t.id === x)) ? 'rounded-lg border-2 border-amber-400 p-4' : ''}`} data-add-on={g.slug}>
                   <legend className="text-lg font-semibold text-forest-900">Add {g.name}?</legend>
-                  <p className="mt-1 text-base text-ink-500">{g.tiers.some((t) => addOnPlanFor(t.id)) ? 'Done every visit, billed with your plan.' : 'Done on your first visit, no second trip.'}{g.tiers.length > 1 ? ' Pick your yard size.' : ''}</p>
+                  <p className="mt-1 text-base text-ink-500">{g.tiers.some((t) => addOnPlanFor(t.id)) ? 'Done every visit, billed with your plan.' : 'One time, on your first visit. No second trip, and your weekly price stays the same.'}{g.tiers.length > 1 ? ' Pick your yard size.' : ''}</p>
                   <div className="mt-3 space-y-2">
                     {g.tiers.map((t) => {
                       const plan = addOnPlanFor(t.id);
