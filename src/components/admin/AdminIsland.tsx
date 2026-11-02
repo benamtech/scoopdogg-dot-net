@@ -13,6 +13,7 @@ import AdminGrowthPage from '../../pages_react/admin/AdminGrowthPage';
 import AdminTodayPage from '../../pages_react/admin/AdminTodayPage';
 import AdminTeamPage from '../../pages_react/admin/AdminTeamPage';
 import AdminRateCardPage from '../../pages_react/admin/AdminRateCardPage';
+import AdminAddOnsPage from '../../pages_react/admin/AdminAddOnsPage';
 import AdminQuotesPage from '../../pages_react/admin/AdminQuotesPage';
 import AdminQuotePage from '../../pages_react/admin/AdminQuotePage';
 import AdminOffersPage from '../../pages_react/admin/AdminOffersPage';
@@ -57,6 +58,7 @@ const SCREENS = {
   today: AdminTodayPage,
   team: AdminTeamPage,
   rateCard: AdminRateCardPage,
+  addOns: AdminAddOnsPage,
   quotes: AdminQuotesPage,
   quote: AdminQuotePage,
   offers: AdminOffersPage,

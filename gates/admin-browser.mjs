@@ -197,6 +197,7 @@ const screens = [
   // WS1: the rate card had never been opened in a browser. A tier label and a package name only
   // the rate-card read returns — the login screen carries neither.
   ['/admin/rate-card', [/Tap a service to open its prices/, /Litter-Robot/],                              'rate card'],
+  ['/admin/add-ons',   [/What customers are offered/, /Dog Run Cleanups/],                       'add-ons'],
   // The quote rail: the seeded quote in the list, and on its own screen with the total the server
   // computed from its one line ($123.45) — the builder's numbers come back from quoteForOwner.
   ['/admin/quotes',   [/AMTECH SITE TEST quote/],                                               'quotes list'],

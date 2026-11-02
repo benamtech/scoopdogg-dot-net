@@ -27,6 +27,8 @@ import { createInvite, customerList, InviteError } from '../server/lib/invites.j
 import { listTeam, addTeamMember, setTeamStatus, TeamError } from '../server/lib/team.js';
 import { listRateCard, setTier, setPackagePrice, addTier, setBands, RateCardError, type TierPatch } from '../server/lib/rate-card.js';
 import { purgeSite } from '../server/lib/site-cache.js';
+import { graphOf, relate, graphProblems, visitPlan } from '../src/shared/service-graph.js';
+import { loadCatalog } from '../server/lib/catalog-db.js';
 import { completeVisit, completionReadiness, markArrived, markEnRoute, stopDurations, VisitError } from '../server/lib/visits.js';
 import { put, PhotoError } from '../server/lib/photos.js';
 import { sendVisitComplete, runCommsSweeps } from '../server/lib/comms.js';
@@ -654,6 +656,42 @@ async function route(req: ApiRequest, res: ApiResponse) {
     //
     // Owners, not superadmin. A CMS the owner cannot administer is a retainer he did not ask
     // for, and P7 keeps requireSuper on exactly two verbs — neither of them is this one.
+    // HOW SERVICES GO TOGETHER. The owner edits the sentence and what is offered; whether a pair CAN go
+    // together is calculated from the work, so a contradiction is refused here as it is in the gate.
+    if (path === 'service-graph') {
+      if (session.role !== 'admin' && session.role !== 'superadmin') return sendJson(res, 403, { error: 'Only the owner can do that.' });
+      const g = graphOf(await loadCatalog());
+      if (req.method === 'GET') {
+        const onSale = g.services.filter((s) => s.kind !== 'addon' && g.work.some((w) => w.service_slug === s.slug));
+        return sendJson(res, 200, { services: onSale.map((s) => ({
+          slug: s.slug, name: s.name,
+          work: visitPlan(g, [s.slug]).map((w) => ({ zone: g.zones.find((z) => z.slug === w.zone_slug)?.name ?? w.zone_slug, task: g.tasks.find((t) => t.slug === w.task_slug)?.name ?? w.task_slug })),
+          options: g.services.filter((o) => o.slug !== s.slug).map((o) => {
+            const r = relate(g, s.slug, o.slug);
+            return { slug: o.slug, name: o.name, relation: r.relation, why: r.why, approved: g.relations.find((x) => x.base_slug === s.slug && x.other_slug === o.slug) ?? null };
+          }).filter((o) => o.relation === 'add_on' || o.relation === 'follow_on' || o.approved),
+        })), problems: graphProblems(g) });
+      }
+      const body = await readJsonBody(req);
+      const base = String(body.base ?? ''), other = String(body.other ?? '');
+      if (req.method === 'DELETE') {
+        await db().query(`delete from service_relations where base_slug = $1 and other_slug = $2`, [base, other]);
+        return sendJson(res, 200, { ok: true });
+      }
+      if (req.method === 'POST') {
+        const line = String(body.customer_line ?? '').trim().slice(0, 70);
+        const r = relate(g, base, other);
+        if (r.relation !== 'add_on' && r.relation !== 'follow_on') return sendJson(res, 409, { error: `That cannot be offered: ${r.why}.` });
+        if (!line) return sendJson(res, 400, { error: 'Write the sentence the customer reads.' });
+        await db().query(
+          `insert into service_relations (base_slug, other_slug, kind, customer_line, approved_by) values ($1,$2,$3,$4,$5)
+           on conflict (base_slug, other_slug) do update set kind = excluded.kind, customer_line = excluded.customer_line, approved_by = excluded.approved_by`,
+          [base, other, r.relation, line, session.email]);
+        return sendJson(res, 200, { ok: true });
+      }
+      return sendJson(res, 405, { error: 'Method not allowed.' });
+    }
+
     if (path === 'rate-card' || path === 'rate-card/tier' || path === 'rate-card/package' || path === 'rate-card/tier-new' || path === 'rate-card/bands') {
       if (session.role !== 'admin' && session.role !== 'superadmin') return sendJson(res, 403, { error: 'Owners only.' });
       try {
