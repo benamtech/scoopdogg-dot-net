@@ -84,7 +84,7 @@ const HINT: Record<string, string> = {
   'one-time-dog-poop-cleanup': 'Before a party or a move, or when it got away from you',
   'weekly-turf-maintenance': 'Weekly turf care: debris, leaves, sanitizing, odor',
   'turf-deep-clean': 'A one-time reset for turf that smells or looks tired',
-  'yard-deep-clean': 'Overgrown yard? One time, one quoted price',
+  'yard-deep-clean': 'Overgrown yard? One visit, one price',
   'weekly-yard-maintenance': 'Mow, blow, debris and leaves, every week',
   'kitty-litter-exchange': 'We clean the box and the area around it',
   'kitty-litter-robot-cleaning': 'Deep clean and careful technical maintenance',
@@ -101,7 +101,8 @@ const SIZE_QUESTION: Record<string, string> = {
   'weekly-yard-maintenance': 'Which best describes your yard?',
   'kitty-litter-exchange': 'How many litter boxes?',
   'one-time-dog-poop-cleanup': 'How much has built up?',
-  'turf-deep-clean': 'How big is your yard?',
+  'turf-deep-clean': 'How big is your turf?',
+  'yard-deep-clean': 'How big is your yard?',
   'dog-run-cleanups': 'How big is the run?',
   'cat-tree-cleaning': 'How many cat trees?',
   'pressure-washing': 'How big is the area?',
@@ -110,7 +111,7 @@ const SIZE_QUESTION: Record<string, string> = {
 const DEEP_CLEAN = 'one-time-dog-poop-cleanup';
 const SCOOP = 'weekly-pooper-scooper-service';
 /** Outdoor jobs where a customer is offered weekly scooping on the same visit (Josue, 2026-11-01). */
-const SCOOP_PAIRS = new Set(['weekly-turf-maintenance', 'weekly-yard-maintenance', 'dog-run-cleanups', 'pressure-washing']);
+const SCOOP_PAIRS = new Set(['weekly-turf-maintenance', 'weekly-yard-maintenance', 'turf-deep-clean', 'dog-run-cleanups', 'pressure-washing']);
 
 /** Five digits out of whatever was typed or pasted. An address still works. */
 const zipIn = (text: string) => (/\b(\d{5})\b/.exec(String(text ?? '')) ?? [])[1] ?? '';
@@ -655,7 +656,7 @@ export default function BookingFlow(props: Props) {
                 {shapeOf(service) === 'recurring' && catalog.tiers.filter((t) => t.service_slug === service && t.requires_quote).map((t) => (
                   <Choice key={t.id} onClick={() => { window.location.href = `/custom-quote?service=${service}&size=${encodeURIComponent(t.label)}${zip ? `&zip=${zip}` : ''}`; }}>
                     <span className="block text-lg font-semibold text-forest-900">{t.label}</span>
-                    <span className="mt-1 block text-base text-ink-500">Get a custom quote</span>
+                    <span className="mt-1 block text-base text-ink-500">Bigger job: we'll quote it</span>
                   </Choice>
                 ))}
               </div>
