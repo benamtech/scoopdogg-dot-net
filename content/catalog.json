@@ -1,5 +1,5 @@
 {
-  "pulled_at": "2026-11-01T23:46:27.276Z",
+  "pulled_at": "2026-11-02T00:48:38.807Z",
   "source": "database",
   "services": [
     {
@@ -107,23 +107,27 @@
       "kind": "addon",
       "price_basis": "sqft",
       "basis_label": "Roughly how big is the yard?",
-      "pricing_note": "An add-on to weekly poop scooping, priced by the size of your yard.",
+      "pricing_note": "One treatment, added to a weekly scooping visit, priced by the size of your yard. No extra trip.",
       "sort_order": 25,
       "meta_title": "Yard Sanitizing Add-On for Weekly Scooping | Scoop Dogg",
       "meta_description": "Add yard sanitizing to your weekly poop scooping. Pet-safe treatment that kills odor and germs where your dog goes. Priced by the size of your yard.",
       "h1": "Yard Sanitizing for Weekly Scooping Customers",
-      "intro": "Scooping takes away what you can see. Sanitizing takes care of what you cannot. We treat the areas your dog uses most with a pet-safe sanitizer that breaks down odor and germs, so the yard smells as clean as it looks. It is an add-on to weekly poop scooping: pick your dogs, pick your yard size, and it is done on your first visit. Want it again later? Just ask Josue.",
+      "intro": "Scooping takes away what you can see. Sanitizing takes care of what you cannot. We treat the areas your dog uses most with a pet-safe sanitizer that breaks down odor and germs, so the yard smells as clean as it looks. It is an add-on to weekly poop scooping, done while we are already there: add it when you book and it happens on your first visit. Want it again later? Just ask.",
       "what_includes": [
         "Pet-safe sanitizer on the areas your dog uses most",
         "Odor and germs treated at the source",
-        "Done on the same visit as your scooping",
+        "Done on a scooping visit, no extra trip",
         "Works on turf, grass, gravel and concrete"
       ],
       "who_its_for": "Weekly scooping customers who want the yard to smell clean too, especially with more than one dog or in hot weather.",
       "faqs": [
         {
-          "a": "Sanitizing is an add-on to weekly poop scooping. If you only need the odor taken care of on turf, look at Turf Deodorizing.",
+          "a": "Sanitizing is an add-on to weekly poop scooping. If you have turf and want it cared for every week, look at Turf Deodorizing, which includes sanitizing.",
           "q": "Can I get sanitizing without scooping?"
+        },
+        {
+          "a": "Whenever the yard needs it. Add it when you book, then just ask when you want it again.",
+          "q": "How often should I do it?"
         },
         {
           "a": "Yes. It is pet-safe.",
@@ -476,7 +480,7 @@
       "kind": "one_time",
       "price_basis": "sqft",
       "basis_label": "Roughly how big is the area, in square feet?",
-      "pricing_note": "Solid waste removal is included before washing. Enzyme deodorizing available as an add-on.",
+      "pricing_note": "50 cents a square foot. Solid waste removal is included before washing. Enzyme deodorizing available as an add-on.",
       "sort_order": 100,
       "meta_title": "Pet Area Pressure Washing in Ventura County | Scoop Dogg",
       "meta_description": "Pet area pressure washing for patios, hardscape, dog runs, and outdoor surfaces in Ventura County. We clean hard surfaces after solid pet waste has been removed.",
@@ -824,9 +828,9 @@
     {
       "id": "18d466d5-6f03-4a7a-9a1a-787348b2a71c",
       "service_slug": "pressure-washing",
-      "label": "Small patio or run (under 200 sq ft)",
+      "label": "Small area (up to 300 sq ft)",
       "min_qty": null,
-      "max_qty": 250,
+      "max_qty": 300,
       "price_cents": 15000,
       "price_suffix": "",
       "requires_quote": false,
@@ -838,8 +842,8 @@
     {
       "id": "904dfec9-41fd-4cc7-b084-dc46c7985c98",
       "service_slug": "pressure-washing",
-      "label": "Medium area (200-500 sq ft)",
-      "min_qty": 250,
+      "label": "Medium area (300-500 sq ft)",
+      "min_qty": 300,
       "max_qty": 500,
       "price_cents": 25000,
       "price_suffix": "",
@@ -852,15 +856,29 @@
     {
       "id": "db60c61f-e0fc-4fba-b599-9799ec7c0b27",
       "service_slug": "pressure-washing",
-      "label": "Large area (500+ sq ft)",
+      "label": "Large area (500-800 sq ft)",
       "min_qty": 500,
+      "max_qty": 800,
+      "price_cents": 40000,
+      "price_suffix": "",
+      "requires_quote": false,
+      "price_is_from": false,
+      "est_minutes": 120,
+      "sort_order": 30,
+      "covers_last_cleaned": null
+    },
+    {
+      "id": "a460c71f-9bb2-4cb7-9202-28c4bc4c6c6c",
+      "service_slug": "pressure-washing",
+      "label": "Over 800 sq ft",
+      "min_qty": 800,
       "max_qty": null,
       "price_cents": null,
       "price_suffix": "",
       "requires_quote": true,
       "price_is_from": false,
-      "est_minutes": 120,
-      "sort_order": 30,
+      "est_minutes": 180,
+      "sort_order": 40,
       "covers_last_cleaned": null
     },
     {
@@ -2473,6 +2491,7 @@
     "trust.background_checked_confirmed": true,
     "trust.insured_confirmed": true,
     "google.site_verification": "CPNh_fSu8eFn9gpkFHhnFXltHYHpcfIkkcks7w2nvbI",
-    "analytics.measurement_id": "G-SNLVJNSP05"
+    "analytics.measurement_id": "G-SNLVJNSP05",
+    "trust.guarantee_text": "Happy-yard guarantee: if we miss a spot or you are not happy with a visit, tell us within 24 hours and we come back and make it right, free."
   }
 }
