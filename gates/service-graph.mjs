@@ -14,7 +14,7 @@ loadEnv();
 let pass = 0, fail = 0;
 const check = (c, w, d = '') => { c ? pass++ : fail++; console.log(`  ${c ? 'PASS' : 'FAIL'}  ${w}${d ? ` — ${d}` : ''}`); };
 const out = compileServer();
-const { relate, graphProblems, offeredWith, visitPlan } = await import(`${process.cwd()}/${out}/src/shared/service-graph.js`.replace(`${process.cwd()}/${process.cwd()}`, process.cwd()));
+const { relate, graphProblems, offeredWith, visitPlan, refusedTogether } = await import(`${process.cwd()}/${out}/src/shared/service-graph.js`.replace(`${process.cwd()}/${process.cwd()}`, process.cwd()));
 const c = new pg.Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: true } });
 await c.connect();
 const q = async (s) => (await c.query(s)).rows;
@@ -57,6 +57,9 @@ const twin = g.work.filter((w) => w.service_slug === 'one-time-dog-poop-cleanup'
 check(graphProblems({ ...g, work: [...g.work.filter((w) => w.service_slug !== 'pressure-washing'), ...twin] }).some((p) => /same work/.test(p)), 'NEGATIVE CONTROL: the same work under two names is named');
 check(g.bundles.length >= 2, 'the visits people ask for are there', g.bundles.map((b) => b.name).join(', '));
 check(graphProblems({ ...g, bundles: [{ slug: 'x', name: 'Bad', customer_line: 'x', base_slug: 'turf-deep-clean', members: ['yard-sanitizing'] }] }).length > 0, 'NEGATIVE CONTROL: a bundle offering what its job already includes is refused');
+check(refusedTogether(g, 'turf-deep-clean', ['yard-sanitizing'], []) !== null, 'the server refuses an add-on the job already includes');
+check(refusedTogether(g, 'one-time-dog-poop-cleanup', ['turf-deep-clean', 'yard-sanitizing'], []) === 'yard-sanitizing', 'the server refuses an add-on another add-on already includes');
+check(refusedTogether(g, 'one-time-dog-poop-cleanup', ['turf-deep-clean', 'pressure-washing'], []) === null, 'NEGATIVE CONTROL: two add-ons that do different work go through');
 cleanupCompile(out);
 console.log(`RESULT: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

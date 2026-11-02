@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "node scripts/pull-catalog.mjs && node scripts/pull-demo-state.mjs && astro build && node scripts/render-pages.mjs && node gates/build-gates.mjs && node gates/question-pages.mjs",
+    "build": "node scripts/pull-catalog.mjs && node scripts/pull-demo-state.mjs && astro build && node scripts/render-pages.mjs && node gates/build-gates.mjs && node gates/question-pages.mjs && node gates/okf.mjs",
     "build:only": "node scripts/pull-catalog.mjs && node scripts/pull-demo-state.mjs && astro build && node scripts/render-pages.mjs",
     "build:bare": "astro build",
     "preview": "astro preview",

@@ -222,6 +222,10 @@ const jsonLd = [
      * purpose, and Google already has it from the profile this now points at.
      */
     sameAs: [reviewSummary.profileUrl],
+    hasOfferCatalog: {
+      '@type': 'OfferCatalog', name: 'Scoop Dogg services',
+      itemListElement: services.map((s) => ({ '@type': 'Offer', itemOffered: { '@type': 'Service', '@id': `${SITE_URL}/services/${s.slug}#service`, name: s.name, url: `${SITE_URL}/services/${s.slug}` } })),
+    },
     areaServed: [
       { '@type': 'AdministrativeArea', name: 'Ventura County, CA' },
       { '@type': 'AdministrativeArea', name: 'Santa Barbara County, CA' },

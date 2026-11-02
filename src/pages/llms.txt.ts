@@ -30,7 +30,7 @@ export const GET: APIRoute = () => {
   for (const s of services) {
     const pk = packagesForService(s.slug);
     const tiers = tiersFor(s.slug);
-    L.push(`### ${s.name}${s.kind === 'addon' ? ' (add-on, sold with a plan)' : ''}`, '');
+    L.push(`### ${s.name}${s.kind === 'addon' ? ' (add-on, done on the same visit as another job)' : ''}`, '');
     if (s.intro) L.push(firstSentence(s.intro));
     if (pk.length) L.push(`Weekly plans, billed monthly: ${pk.map((p) => `${p.short_label} ${formatCents(weeklyCents(p))}/week (${formatCents(p.monthly_price_cents)}/month)`).join('; ')}`);
     if (tiers.length) L.push(`${pk.length ? 'Per visit' : 'Prices'}: ${tiers.map((t) => `${t.label} ${formatTierPrice(t, 'custom quote')}`).join('; ')}`);
@@ -41,6 +41,7 @@ export const GET: APIRoute = () => {
     L.push(`Details: ${SITE_URL}/services/${s.slug}`, '');
   }
 
+  L.push('## For agents', '', `- Structured knowledge, with sources and dates (OKF v0.2): ${SITE_URL}/okf/index.md`, `- Every service, price and id as JSON: ${SITE_URL}/okf/catalog.json`, `- Price a booking the way the checkout does: ${SITE_URL}/okf/computations/price-a-booking.md`, `- What goes with what: ${SITE_URL}/okf/relations.md`, `- Add .md to any service or question page for a plain version.`, '');
   L.push('## Questions and answers', '', 'Each answer is built from the same price list and policies the booking uses. Markdown twins end in .md.', '');
   const qs = questions();
   for (const topic of TOPICS) {

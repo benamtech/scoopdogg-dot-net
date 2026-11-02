@@ -9,8 +9,8 @@
  * the published per-visit price times the visits in an average month, rounded to the
  * dollar, and the `derivation` column says exactly that in words.
  *
- * WHICH FACTOR. `billing.monthly_factor` is "52/12" (4.33 visits: a customer pays for the
- * visits they get across a year) unless Ben sets "4". Changing the setting and re-running
+ * WHICH FACTOR. `billing.monthly_factor` is "4": Josue prices a month as four visits, and a
+ * month with a fifth costs the same. Changing the setting and re-running
  * this re-derives every row that is still `derived_from_published`.
  *
  * IT NEVER TOUCHES A CONFIRMED ROW. Once somebody with authority has confirmed a price,

@@ -1,5 +1,5 @@
 {
-  "pulled_at": "2026-11-02T00:48:38.807Z",
+  "pulled_at": "2026-11-02T19:31:45.083Z",
   "source": "database",
   "services": [
     {
@@ -43,6 +43,18 @@
         {
           "a": "Never. We earn your business every visit. Cancel anytime with no questions asked.",
           "q": "Is there a contract or commitment?"
+        },
+        {
+          "a": "Tell us within 24 hours and we come back and make it right, free.",
+          "q": "What if you miss some?"
+        },
+        {
+          "a": "Yes. We secure the gate after every visit.",
+          "q": "Will you close my gate?"
+        },
+        {
+          "a": "You get a same-day confirmation when the visit is done.",
+          "q": "How will I know you came?"
         }
       ],
       "related_slugs": [
@@ -58,7 +70,7 @@
       "kind": "one_time",
       "price_basis": "choice",
       "basis_label": "Which best describes it?",
-      "pricing_note": "Final pricing confirmed after booking based on yard size and buildup level.",
+      "pricing_note": "One clear price by how much has built up. Pick yours, choose a day and pay online. Severe buildup gets a custom quote.",
       "sort_order": 20,
       "meta_title": "One-Time Dog Poop Cleanup in Ventura County | Scoop Dogg",
       "meta_description": "Full yard poop cleanup for overgrown or neglected yards. Perfect for moving, hosting, or getting back to zero. Priced by how much has built up. Ventura & Santa Barbara Counties.",
@@ -86,7 +98,7 @@
           "q": "Do you handle really bad yards?"
         },
         {
-          "a": "Book online and describe what you are dealing with. We will give you an honest quote before we start. No surprises.",
+          "a": "Pick the closest match and you see the price before you pay, or call us and we will help you choose.",
           "q": "What if I am not sure how bad it is?"
         },
         {
@@ -107,22 +119,22 @@
       "kind": "addon",
       "price_basis": "sqft",
       "basis_label": "Roughly how big is the yard?",
-      "pricing_note": "One treatment, added to a weekly scooping visit, priced by the size of your yard. No extra trip.",
+      "pricing_note": "One treatment, added to a scooping visit or another job, priced by the size of your yard. No extra trip.",
       "sort_order": 25,
       "meta_title": "Yard Sanitizing Add-On for Weekly Scooping | Scoop Dogg",
-      "meta_description": "Add yard sanitizing to your weekly poop scooping. Pet-safe treatment that kills odor and germs where your dog goes. Priced by the size of your yard.",
+      "meta_description": "Add yard sanitizing to a scooping visit or another job. A pet-safe treatment that kills germs where your dog goes. Priced by the size of your yard.",
       "h1": "Yard Sanitizing for Weekly Scooping Customers",
-      "intro": "Scooping takes away what you can see. Sanitizing takes care of what you cannot. We treat the areas your dog uses most with a pet-safe sanitizer that breaks down odor and germs, so the yard smells as clean as it looks. It is an add-on to weekly poop scooping, done while we are already there: add it when you book and it happens on your first visit. Want it again later? Just ask.",
+      "intro": "Scooping takes away what you can see. Sanitizing takes care of what you cannot. We treat the areas your dog uses most with a pet-safe sanitizer that kills germs and freshens the yard. It is an add-on, done while we are already there on a scooping visit or another job: add it when you book. Want it again later? Just ask.",
       "what_includes": [
         "Pet-safe sanitizer on the areas your dog uses most",
-        "Odor and germs treated at the source",
-        "Done on a scooping visit, no extra trip",
+        "Germs killed where your dog goes",
+        "Done on a visit we are already making, no extra trip",
         "Works on turf, grass, gravel and concrete"
       ],
-      "who_its_for": "Weekly scooping customers who want the yard to smell clean too, especially with more than one dog or in hot weather.",
+      "who_its_for": "Customers who want the yard treated while we are there, especially with more than one dog or in hot weather.",
       "faqs": [
         {
-          "a": "Sanitizing is an add-on to weekly poop scooping. If you have turf and want it cared for every week, look at Turf Deodorizing, which includes sanitizing.",
+          "a": "Sanitizing is an add-on, done on a scooping visit or another job we are already doing. If you have turf and want it cared for every week, look at Turf Deodorizing, which includes sanitizing.",
           "q": "Can I get sanitizing without scooping?"
         },
         {
@@ -147,12 +159,12 @@
       "name": "Turf Deep Clean",
       "short_name": "Turf Deep Clean",
       "kind": "one_time",
-      "price_basis": "flat",
-      "basis_label": "Tell us about the turf",
-      "pricing_note": "A one-time job, quoted to your turf. Call or send the details and you get one price. For weekly care after, sign up for Turf Deodorizing.",
+      "price_basis": "sqft",
+      "basis_label": "Roughly how big is your turf?",
+      "pricing_note": "One price by the size of your turf. Pick your day and pay online. For weekly care after, sign up for Turf Deodorizing.",
       "sort_order": 38,
       "meta_title": "Artificial Turf Deep Clean in Ventura County | Scoop Dogg",
-      "meta_description": "One-time artificial turf deep clean: brush, vacuum, pressure wash and heavy deodorizer. Ideal for seasonal resets and new homeowners. Call or send the details for one price.",
+      "meta_description": "One-time artificial turf deep clean: brush, vacuum, pressure wash and heavy deodorizer. One clear price by size. Book your day and pay online.",
       "h1": "Turf Deep Clean in Ventura County",
       "intro": "A full reset for your outdoor surface. We deep-brush the turf to loosen embedded debris, vacuum the infill, pressure wash the surface, and apply a heavy-duty deodorizer and sanitizer. This is not a quick spray — it is a thorough restoration that leaves your turf looking and smelling like the day it was installed. Recommended 2-3 times per year or when you are inheriting a yard from a previous owner.",
       "what_includes": [
@@ -194,12 +206,12 @@
       "kind": "one_time",
       "price_basis": "sqft",
       "basis_label": "Roughly how big is the yard?",
-      "pricing_note": "No set price: every yard is different. These are starting points. Call or send the details and you get one price.",
+      "pricing_note": "One price by the size of your yard. Pick your day and pay online.",
       "sort_order": 40,
       "meta_title": "Yard Deep Clean & Overgrowth Clean-Up in Ventura County | Scoop Dogg",
-      "meta_description": "One-time yard clean-up for overgrowth, debris and built-up pet waste across Ventura County. Call or send the details for one custom price.",
+      "meta_description": "One-time yard clean-up for overgrowth, debris and built-up pet waste across Ventura County. One clear price by yard size. Book your day and pay online.",
       "h1": "Yard Deep Clean in Ventura County",
-      "intro": "A yard deep clean is a one-time reset for a yard that has gotten away from you: overgrown plants, weeds, piles of leaves and debris, and pet waste that has built up. It is different from weekly yard maintenance. We do the heavy lifting once, and if you want it kept that way, you can sign up for weekly maintenance separately. Every yard is different, so call or send the details and we will give you one simple price.",
+      "intro": "A yard deep clean is a one-time reset for a yard that has gotten away from you: overgrown plants, weeds, piles of leaves and debris, and pet waste that has built up. It is different from weekly yard maintenance. We do the heavy lifting once, and if you want it kept that way, you can sign up for weekly maintenance separately. Pick your yard size, see one simple price, and choose your day.",
       "what_includes": [
         "Overgrown plants and weeds cut back",
         "Leaves, debris and yard waste hauled off",
@@ -209,7 +221,7 @@
       "who_its_for": "Anyone with an overgrown yard, a rental between tenants, a new home, or a yard that needs a fresh start before weekly service.",
       "faqs": [
         {
-          "a": "It depends on the yard, so we give you a custom quote. Call, or send a few details and photos, and you get one simple price.",
+          "a": "One price by the size of your yard, shown above. Pick your size, choose a day and pay online. Yards over 800 sq ft get a custom quote.",
           "q": "How much does a yard deep clean cost?"
         },
         {
@@ -217,11 +229,11 @@
           "q": "Is this the same as weekly yard maintenance?"
         },
         {
-          "a": "Artificial turf has its own one-time job, the Turf Deep Clean, priced by size.",
+          "a": "Artificial turf has its own one-time job, the Turf Deep Clean.",
           "q": "What about artificial turf?"
         },
         {
-          "a": "Yes. If there is poop or other waste built up, tell us and it goes in the quote.",
+          "a": "Yes. Built-up pet waste is part of the job.",
           "q": "Can you take care of pet waste too?"
         }
       ],
@@ -310,7 +322,7 @@
           "q": "Do you trim big hedges?"
         },
         {
-          "a": "No. A Yard Deep Clean is a one-time reset for an overgrown yard, quoted to the job. Weekly maintenance is ongoing upkeep.",
+          "a": "No. A Yard Deep Clean is a one-time reset for an overgrown yard, at one price by size. Weekly maintenance is ongoing upkeep.",
           "q": "Is this the same as a Yard Deep Clean?"
         },
         {
@@ -399,7 +411,7 @@
       "kind": "one_time",
       "price_basis": "sqft",
       "basis_label": "Roughly how big is the area, in square feet?",
-      "pricing_note": "Enzyme deodorizing available as an add-on. Pricing based on size and accumulation level.",
+      "pricing_note": "One clear price by the size of the area. Add yard sanitizing when you book. A large or custom area gets a quote.",
       "sort_order": 80,
       "meta_title": "Dog Run Cleanup Service in Ventura County | Scoop Dogg",
       "meta_description": "Cleanup for side yards, gravel runs, turf strips, and fenced dog areas in Ventura County. Waste removal and odor control for high-use pet zones.",
@@ -409,7 +421,7 @@
         "Full waste removal from the run or enclosed area",
         "All surfaces checked — gravel, turf, concrete, dirt",
         "Double-bagged waste hauled off property",
-        "Odor assessment and optional enzyme treatment",
+        "Yard sanitizing available as an add-on",
         "Gate secured and area reset after service"
       ],
       "who_its_for": "Homeowners with dedicated dog runs, side-yard potty areas, or any enclosed space where dogs spend time and waste accumulates. Especially common in homes with gravel or turf runs.",
@@ -423,8 +435,8 @@
           "q": "Do you handle gravel runs?"
         },
         {
-          "a": "Absolutely. Most dog run cleanups benefit from an enzyme deodorizer application after waste removal, especially if the run is artificial turf or concrete.",
-          "q": "Can I add enzyme treatment to the same visit?"
+          "a": "Yes. Add yard sanitizing when you book and we do it after the waste is removed.",
+          "q": "Can I have the run sanitized on the same visit?"
         }
       ],
       "related_slugs": [
@@ -440,7 +452,7 @@
       "kind": "one_time",
       "price_basis": "levels",
       "basis_label": "How many levels?",
-      "pricing_note": "Pricing based on size and condition. Cleaning products are pet-safe.",
+      "pricing_note": "One clear price by the size of the tree. Multiple trees get a quote. Cleaning products are pet-safe.",
       "sort_order": 90,
       "meta_title": "Cat Tree Cleaning Service in Ventura County | Scoop Dogg",
       "meta_description": "Professional cat tree and pet furniture cleaning in Ventura County. We remove hair, odor, litter dust, and everyday pet mess from cat trees and scratching posts.",
@@ -480,7 +492,7 @@
       "kind": "one_time",
       "price_basis": "sqft",
       "basis_label": "Roughly how big is the area, in square feet?",
-      "pricing_note": "50 cents a square foot. Solid waste removal is included before washing. Enzyme deodorizing available as an add-on.",
+      "pricing_note": "50 cents a square foot. Solid waste removal is included before washing. Add yard sanitizing when you book.",
       "sort_order": 100,
       "meta_title": "Pet Area Pressure Washing in Ventura County | Scoop Dogg",
       "meta_description": "Pet area pressure washing for patios, hardscape, dog runs, and outdoor surfaces in Ventura County. We clean hard surfaces after solid pet waste has been removed.",
@@ -490,7 +502,7 @@
         "Solid waste removed before any washing begins",
         "High-pressure wash of concrete, pavers, tile, and hardscape",
         "Responsible water direction — away from gutters and storm drains",
-        "Post-wash enzyme deodorizer application (optional)",
+        "Yard sanitizing available as an add-on",
         "Surface inspection and rinse"
       ],
       "who_its_for": "Homeowners with concrete patios, pavers, or hardscape in pet-use areas that have developed staining or persistent odor. Often combined with a dog run cleanup or yard deep clean.",
@@ -500,11 +512,11 @@
           "q": "Do you remove the pet waste before washing?"
         },
         {
-          "a": "Concrete, pavers, brick, tile, and most hardscape. We do not pressure wash artificial turf — turf gets the enzyme deep clean treatment instead.",
+          "a": "Concrete, pavers, brick, tile, and most hardscape. Artificial turf has its own job, the Turf Deep Clean, which brushes and vacuums it before the wash.",
           "q": "What surfaces can you pressure wash?"
         },
         {
-          "a": "Yes. Pressure washing is commonly added on to dog run cleanups, one-time yard cleanups, or yard deep cleans. Just mention it when you book.",
+          "a": "Yes. Pressure washing is commonly added on to dog run cleanups, one-time yard cleanups, or yard deep cleans. Add it when you book.",
           "q": "Can I add pressure washing to my regular cleanup visit?"
         }
       ],
@@ -882,17 +894,59 @@
       "covers_last_cleaned": null
     },
     {
-      "id": "2ecca088-edb4-4061-83a1-8a7c7206c4d3",
+      "id": "d06f33b0-c375-41e4-8d84-fa17aa7b2027",
       "service_slug": "turf-deep-clean",
-      "label": "Turf deep clean",
+      "label": "Small yard (up to 300 sq ft)",
       "min_qty": null,
-      "max_qty": null,
+      "max_qty": 300,
       "price_cents": 30000,
       "price_suffix": "",
       "requires_quote": false,
-      "price_is_from": true,
-      "est_minutes": 180,
+      "price_is_from": false,
+      "est_minutes": 120,
       "sort_order": 10,
+      "covers_last_cleaned": null
+    },
+    {
+      "id": "e9763acc-4d92-473f-8925-cbfb20d0ecda",
+      "service_slug": "turf-deep-clean",
+      "label": "Medium yard (300-500 sq ft)",
+      "min_qty": 300,
+      "max_qty": 500,
+      "price_cents": 35000,
+      "price_suffix": "",
+      "requires_quote": false,
+      "price_is_from": false,
+      "est_minutes": 180,
+      "sort_order": 20,
+      "covers_last_cleaned": null
+    },
+    {
+      "id": "6958cf1c-2580-4694-a1c2-37b45f95d3d2",
+      "service_slug": "turf-deep-clean",
+      "label": "Large yard (500-800 sq ft)",
+      "min_qty": 500,
+      "max_qty": 800,
+      "price_cents": 50000,
+      "price_suffix": "",
+      "requires_quote": false,
+      "price_is_from": false,
+      "est_minutes": 240,
+      "sort_order": 30,
+      "covers_last_cleaned": null
+    },
+    {
+      "id": "f99f651b-ce37-4d34-888e-9aa87a283af4",
+      "service_slug": "turf-deep-clean",
+      "label": "Over 800 sq ft",
+      "min_qty": 800,
+      "max_qty": null,
+      "price_cents": null,
+      "price_suffix": "",
+      "requires_quote": true,
+      "price_is_from": false,
+      "est_minutes": 300,
+      "sort_order": 40,
       "covers_last_cleaned": null
     },
     {
@@ -1058,7 +1112,7 @@
       "price_cents": 17900,
       "price_suffix": "",
       "requires_quote": false,
-      "price_is_from": true,
+      "price_is_from": false,
       "est_minutes": 120,
       "sort_order": 10,
       "covers_last_cleaned": null
@@ -1072,7 +1126,7 @@
       "price_cents": 35000,
       "price_suffix": "",
       "requires_quote": false,
-      "price_is_from": true,
+      "price_is_from": false,
       "est_minutes": 180,
       "sort_order": 20,
       "covers_last_cleaned": null
@@ -1086,7 +1140,7 @@
       "price_cents": 50000,
       "price_suffix": "",
       "requires_quote": false,
-      "price_is_from": true,
+      "price_is_from": false,
       "est_minutes": 240,
       "sort_order": 30,
       "covers_last_cleaned": null
@@ -2408,6 +2462,804 @@
       "sort_order": 180
     }
   ],
+  "zones": [
+    {
+      "slug": "yard",
+      "name": "Grass yard",
+      "indoors": false
+    },
+    {
+      "slug": "turf",
+      "name": "Artificial turf",
+      "indoors": false
+    },
+    {
+      "slug": "run",
+      "name": "Dog run or side yard",
+      "indoors": false
+    },
+    {
+      "slug": "patio",
+      "name": "Patio and hardscape",
+      "indoors": false
+    },
+    {
+      "slug": "beds",
+      "name": "Garden beds",
+      "indoors": false
+    },
+    {
+      "slug": "indoors",
+      "name": "Indoors",
+      "indoors": true
+    }
+  ],
+  "work_tasks": [
+    {
+      "slug": "scoop",
+      "name": "Scoop and haul pet waste",
+      "stage": 10
+    },
+    {
+      "slug": "debris",
+      "name": "Clear debris and leaves",
+      "stage": 20
+    },
+    {
+      "slug": "cut_back",
+      "name": "Cut back overgrowth",
+      "stage": 20
+    },
+    {
+      "slug": "weed",
+      "name": "Weed",
+      "stage": 20
+    },
+    {
+      "slug": "mow",
+      "name": "Mow",
+      "stage": 25
+    },
+    {
+      "slug": "trim",
+      "name": "Garden trims",
+      "stage": 25
+    },
+    {
+      "slug": "labor",
+      "name": "Light outdoor work",
+      "stage": 25
+    },
+    {
+      "slug": "blow",
+      "name": "Blow clean",
+      "stage": 30
+    },
+    {
+      "slug": "brush",
+      "name": "Deep brush",
+      "stage": 30
+    },
+    {
+      "slug": "vacuum",
+      "name": "Infill vacuum",
+      "stage": 35
+    },
+    {
+      "slug": "wash",
+      "name": "Pressure wash",
+      "stage": 40
+    },
+    {
+      "slug": "enzyme",
+      "name": "Enzyme deodorize",
+      "stage": 50
+    },
+    {
+      "slug": "sanitize",
+      "name": "Sanitize",
+      "stage": 60
+    },
+    {
+      "slug": "rinse",
+      "name": "Final rinse",
+      "stage": 70
+    },
+    {
+      "slug": "litter",
+      "name": "Exchange litter",
+      "stage": 10
+    },
+    {
+      "slug": "box",
+      "name": "Clean and sanitize the box and area",
+      "stage": 20
+    },
+    {
+      "slug": "tree",
+      "name": "Clean the cat tree",
+      "stage": 20
+    },
+    {
+      "slug": "robot",
+      "name": "Litter-Robot deep clean and maintenance",
+      "stage": 20
+    }
+  ],
+  "work": [
+    {
+      "service_slug": "weekly-pooper-scooper-service",
+      "zone_slug": "yard",
+      "task_slug": "scoop",
+      "depth": "full"
+    },
+    {
+      "service_slug": "weekly-pooper-scooper-service",
+      "zone_slug": "turf",
+      "task_slug": "scoop",
+      "depth": "full"
+    },
+    {
+      "service_slug": "weekly-pooper-scooper-service",
+      "zone_slug": "run",
+      "task_slug": "scoop",
+      "depth": "full"
+    },
+    {
+      "service_slug": "weekly-pooper-scooper-service",
+      "zone_slug": "patio",
+      "task_slug": "scoop",
+      "depth": "full"
+    },
+    {
+      "service_slug": "one-time-dog-poop-cleanup",
+      "zone_slug": "yard",
+      "task_slug": "scoop",
+      "depth": "full"
+    },
+    {
+      "service_slug": "one-time-dog-poop-cleanup",
+      "zone_slug": "turf",
+      "task_slug": "scoop",
+      "depth": "full"
+    },
+    {
+      "service_slug": "one-time-dog-poop-cleanup",
+      "zone_slug": "run",
+      "task_slug": "scoop",
+      "depth": "full"
+    },
+    {
+      "service_slug": "one-time-dog-poop-cleanup",
+      "zone_slug": "patio",
+      "task_slug": "scoop",
+      "depth": "full"
+    },
+    {
+      "service_slug": "yard-sanitizing",
+      "zone_slug": "yard",
+      "task_slug": "sanitize",
+      "depth": "full"
+    },
+    {
+      "service_slug": "yard-sanitizing",
+      "zone_slug": "turf",
+      "task_slug": "sanitize",
+      "depth": "full"
+    },
+    {
+      "service_slug": "yard-sanitizing",
+      "zone_slug": "run",
+      "task_slug": "sanitize",
+      "depth": "full"
+    },
+    {
+      "service_slug": "yard-sanitizing",
+      "zone_slug": "patio",
+      "task_slug": "sanitize",
+      "depth": "full"
+    },
+    {
+      "service_slug": "turf-deep-clean",
+      "zone_slug": "turf",
+      "task_slug": "scoop",
+      "depth": "full"
+    },
+    {
+      "service_slug": "turf-deep-clean",
+      "zone_slug": "turf",
+      "task_slug": "debris",
+      "depth": "full"
+    },
+    {
+      "service_slug": "turf-deep-clean",
+      "zone_slug": "turf",
+      "task_slug": "brush",
+      "depth": "full"
+    },
+    {
+      "service_slug": "turf-deep-clean",
+      "zone_slug": "turf",
+      "task_slug": "vacuum",
+      "depth": "full"
+    },
+    {
+      "service_slug": "turf-deep-clean",
+      "zone_slug": "turf",
+      "task_slug": "wash",
+      "depth": "full"
+    },
+    {
+      "service_slug": "turf-deep-clean",
+      "zone_slug": "turf",
+      "task_slug": "enzyme",
+      "depth": "full"
+    },
+    {
+      "service_slug": "turf-deep-clean",
+      "zone_slug": "turf",
+      "task_slug": "sanitize",
+      "depth": "full"
+    },
+    {
+      "service_slug": "turf-deep-clean",
+      "zone_slug": "turf",
+      "task_slug": "rinse",
+      "depth": "full"
+    },
+    {
+      "service_slug": "yard-deep-clean",
+      "zone_slug": "yard",
+      "task_slug": "scoop",
+      "depth": "full"
+    },
+    {
+      "service_slug": "yard-deep-clean",
+      "zone_slug": "yard",
+      "task_slug": "debris",
+      "depth": "full"
+    },
+    {
+      "service_slug": "yard-deep-clean",
+      "zone_slug": "yard",
+      "task_slug": "cut_back",
+      "depth": "full"
+    },
+    {
+      "service_slug": "yard-deep-clean",
+      "zone_slug": "yard",
+      "task_slug": "weed",
+      "depth": "full"
+    },
+    {
+      "service_slug": "yard-deep-clean",
+      "zone_slug": "beds",
+      "task_slug": "debris",
+      "depth": "full"
+    },
+    {
+      "service_slug": "yard-deep-clean",
+      "zone_slug": "beds",
+      "task_slug": "cut_back",
+      "depth": "full"
+    },
+    {
+      "service_slug": "yard-deep-clean",
+      "zone_slug": "beds",
+      "task_slug": "weed",
+      "depth": "full"
+    },
+    {
+      "service_slug": "weekly-turf-maintenance",
+      "zone_slug": "turf",
+      "task_slug": "debris",
+      "depth": "full"
+    },
+    {
+      "service_slug": "weekly-turf-maintenance",
+      "zone_slug": "turf",
+      "task_slug": "enzyme",
+      "depth": "spot"
+    },
+    {
+      "service_slug": "weekly-turf-maintenance",
+      "zone_slug": "turf",
+      "task_slug": "sanitize",
+      "depth": "spot"
+    },
+    {
+      "service_slug": "weekly-yard-maintenance",
+      "zone_slug": "yard",
+      "task_slug": "mow",
+      "depth": "full"
+    },
+    {
+      "service_slug": "weekly-yard-maintenance",
+      "zone_slug": "yard",
+      "task_slug": "blow",
+      "depth": "full"
+    },
+    {
+      "service_slug": "weekly-yard-maintenance",
+      "zone_slug": "yard",
+      "task_slug": "debris",
+      "depth": "full"
+    },
+    {
+      "service_slug": "weekly-yard-maintenance",
+      "zone_slug": "patio",
+      "task_slug": "blow",
+      "depth": "full"
+    },
+    {
+      "service_slug": "weekly-yard-maintenance",
+      "zone_slug": "turf",
+      "task_slug": "debris",
+      "depth": "light"
+    },
+    {
+      "service_slug": "extra-yard-work",
+      "zone_slug": "yard",
+      "task_slug": "trim",
+      "depth": "full"
+    },
+    {
+      "service_slug": "extra-yard-work",
+      "zone_slug": "yard",
+      "task_slug": "weed",
+      "depth": "full"
+    },
+    {
+      "service_slug": "extra-yard-work",
+      "zone_slug": "yard",
+      "task_slug": "labor",
+      "depth": "full"
+    },
+    {
+      "service_slug": "extra-yard-work",
+      "zone_slug": "beds",
+      "task_slug": "trim",
+      "depth": "full"
+    },
+    {
+      "service_slug": "extra-yard-work",
+      "zone_slug": "beds",
+      "task_slug": "weed",
+      "depth": "full"
+    },
+    {
+      "service_slug": "extra-yard-work",
+      "zone_slug": "beds",
+      "task_slug": "labor",
+      "depth": "full"
+    },
+    {
+      "service_slug": "dog-run-cleanups",
+      "zone_slug": "run",
+      "task_slug": "scoop",
+      "depth": "full"
+    },
+    {
+      "service_slug": "dog-run-cleanups",
+      "zone_slug": "run",
+      "task_slug": "debris",
+      "depth": "full"
+    },
+    {
+      "service_slug": "dog-run-cleanups",
+      "zone_slug": "run",
+      "task_slug": "rinse",
+      "depth": "full"
+    },
+    {
+      "service_slug": "dog-run-cleanups",
+      "zone_slug": "run",
+      "task_slug": "enzyme",
+      "depth": "spot"
+    },
+    {
+      "service_slug": "pressure-washing",
+      "zone_slug": "patio",
+      "task_slug": "scoop",
+      "depth": "light"
+    },
+    {
+      "service_slug": "pressure-washing",
+      "zone_slug": "patio",
+      "task_slug": "wash",
+      "depth": "full"
+    },
+    {
+      "service_slug": "pressure-washing",
+      "zone_slug": "patio",
+      "task_slug": "rinse",
+      "depth": "full"
+    },
+    {
+      "service_slug": "pressure-washing",
+      "zone_slug": "run",
+      "task_slug": "scoop",
+      "depth": "light"
+    },
+    {
+      "service_slug": "pressure-washing",
+      "zone_slug": "run",
+      "task_slug": "wash",
+      "depth": "full"
+    },
+    {
+      "service_slug": "pressure-washing",
+      "zone_slug": "run",
+      "task_slug": "rinse",
+      "depth": "full"
+    },
+    {
+      "service_slug": "kitty-litter-exchange",
+      "zone_slug": "indoors",
+      "task_slug": "litter",
+      "depth": "full"
+    },
+    {
+      "service_slug": "kitty-litter-exchange",
+      "zone_slug": "indoors",
+      "task_slug": "box",
+      "depth": "full"
+    },
+    {
+      "service_slug": "cat-tree-cleaning",
+      "zone_slug": "indoors",
+      "task_slug": "tree",
+      "depth": "full"
+    },
+    {
+      "service_slug": "kitty-litter-robot-cleaning",
+      "zone_slug": "indoors",
+      "task_slug": "robot",
+      "depth": "full"
+    }
+  ],
+  "relations": [
+    {
+      "base_slug": "weekly-pooper-scooper-service",
+      "other_slug": "yard-sanitizing",
+      "kind": "add_on",
+      "customer_line": "Sanitize the yard on your first visit."
+    },
+    {
+      "base_slug": "weekly-pooper-scooper-service",
+      "other_slug": "dog-run-cleanups",
+      "kind": "add_on",
+      "customer_line": "Rake, hose and freshen the dog run or side yard."
+    },
+    {
+      "base_slug": "weekly-pooper-scooper-service",
+      "other_slug": "pressure-washing",
+      "kind": "add_on",
+      "customer_line": "Wash the patio while we are there."
+    },
+    {
+      "base_slug": "weekly-pooper-scooper-service",
+      "other_slug": "turf-deep-clean",
+      "kind": "add_on",
+      "customer_line": "Reset the turf on your first visit."
+    },
+    {
+      "base_slug": "weekly-pooper-scooper-service",
+      "other_slug": "yard-deep-clean",
+      "kind": "add_on",
+      "customer_line": "Clear the overgrowth on your first visit."
+    },
+    {
+      "base_slug": "one-time-dog-poop-cleanup",
+      "other_slug": "yard-sanitizing",
+      "kind": "add_on",
+      "customer_line": "Sanitize after the cleanup."
+    },
+    {
+      "base_slug": "one-time-dog-poop-cleanup",
+      "other_slug": "dog-run-cleanups",
+      "kind": "add_on",
+      "customer_line": "Rake, hose and freshen the dog run too."
+    },
+    {
+      "base_slug": "one-time-dog-poop-cleanup",
+      "other_slug": "pressure-washing",
+      "kind": "add_on",
+      "customer_line": "Wash the patio on the same visit."
+    },
+    {
+      "base_slug": "one-time-dog-poop-cleanup",
+      "other_slug": "turf-deep-clean",
+      "kind": "add_on",
+      "customer_line": "Deep clean the turf on the same visit."
+    },
+    {
+      "base_slug": "one-time-dog-poop-cleanup",
+      "other_slug": "yard-deep-clean",
+      "kind": "add_on",
+      "customer_line": "Clear the overgrowth on the same visit."
+    },
+    {
+      "base_slug": "one-time-dog-poop-cleanup",
+      "other_slug": "weekly-pooper-scooper-service",
+      "kind": "follow_on",
+      "customer_line": "Keep it clean with weekly scooping."
+    },
+    {
+      "base_slug": "one-time-dog-poop-cleanup",
+      "other_slug": "weekly-turf-maintenance",
+      "kind": "follow_on",
+      "customer_line": "Keep turf fresh with weekly Turf Deodorizing."
+    },
+    {
+      "base_slug": "yard-deep-clean",
+      "other_slug": "yard-sanitizing",
+      "kind": "add_on",
+      "customer_line": "Sanitize the yard when we finish."
+    },
+    {
+      "base_slug": "yard-deep-clean",
+      "other_slug": "dog-run-cleanups",
+      "kind": "add_on",
+      "customer_line": "Rake, hose and freshen the dog run too."
+    },
+    {
+      "base_slug": "yard-deep-clean",
+      "other_slug": "pressure-washing",
+      "kind": "add_on",
+      "customer_line": "Wash the patio on the same visit."
+    },
+    {
+      "base_slug": "yard-deep-clean",
+      "other_slug": "turf-deep-clean",
+      "kind": "add_on",
+      "customer_line": "Deep clean the turf too."
+    },
+    {
+      "base_slug": "yard-deep-clean",
+      "other_slug": "weekly-pooper-scooper-service",
+      "kind": "follow_on",
+      "customer_line": "Keep it clean with weekly scooping."
+    },
+    {
+      "base_slug": "yard-deep-clean",
+      "other_slug": "weekly-yard-maintenance",
+      "kind": "follow_on",
+      "customer_line": "Keep it looking good with weekly yard maintenance."
+    },
+    {
+      "base_slug": "turf-deep-clean",
+      "other_slug": "dog-run-cleanups",
+      "kind": "add_on",
+      "customer_line": "Rake, hose and freshen the dog run down the side too."
+    },
+    {
+      "base_slug": "turf-deep-clean",
+      "other_slug": "pressure-washing",
+      "kind": "add_on",
+      "customer_line": "Wash the patio on the same visit."
+    },
+    {
+      "base_slug": "turf-deep-clean",
+      "other_slug": "one-time-dog-poop-cleanup",
+      "kind": "add_on",
+      "customer_line": "Clean up the rest of the yard."
+    },
+    {
+      "base_slug": "turf-deep-clean",
+      "other_slug": "yard-deep-clean",
+      "kind": "add_on",
+      "customer_line": "Clear overgrowth in the rest of the yard."
+    },
+    {
+      "base_slug": "turf-deep-clean",
+      "other_slug": "weekly-turf-maintenance",
+      "kind": "follow_on",
+      "customer_line": "Keep it fresh with weekly Turf Deodorizing."
+    },
+    {
+      "base_slug": "turf-deep-clean",
+      "other_slug": "weekly-pooper-scooper-service",
+      "kind": "follow_on",
+      "customer_line": "Keep it clean with weekly scooping."
+    },
+    {
+      "base_slug": "weekly-turf-maintenance",
+      "other_slug": "weekly-pooper-scooper-service",
+      "kind": "add_on",
+      "customer_line": "Scoop the poop on the same weekly visit."
+    },
+    {
+      "base_slug": "weekly-turf-maintenance",
+      "other_slug": "dog-run-cleanups",
+      "kind": "add_on",
+      "customer_line": "Rake, hose and freshen the dog run on your first visit."
+    },
+    {
+      "base_slug": "weekly-turf-maintenance",
+      "other_slug": "pressure-washing",
+      "kind": "add_on",
+      "customer_line": "Wash the patio on your first visit."
+    },
+    {
+      "base_slug": "weekly-yard-maintenance",
+      "other_slug": "extra-yard-work",
+      "kind": "add_on",
+      "customer_line": "Add an hour for gardening or anything special."
+    },
+    {
+      "base_slug": "weekly-yard-maintenance",
+      "other_slug": "weekly-pooper-scooper-service",
+      "kind": "add_on",
+      "customer_line": "Scoop the poop on the same weekly visit."
+    },
+    {
+      "base_slug": "weekly-yard-maintenance",
+      "other_slug": "pressure-washing",
+      "kind": "add_on",
+      "customer_line": "Wash the patio on your first visit."
+    },
+    {
+      "base_slug": "weekly-yard-maintenance",
+      "other_slug": "yard-deep-clean",
+      "kind": "add_on",
+      "customer_line": "Clear the overgrowth on your first visit."
+    },
+    {
+      "base_slug": "dog-run-cleanups",
+      "other_slug": "yard-sanitizing",
+      "kind": "add_on",
+      "customer_line": "Sanitize the run when we finish."
+    },
+    {
+      "base_slug": "dog-run-cleanups",
+      "other_slug": "pressure-washing",
+      "kind": "add_on",
+      "customer_line": "Pressure wash a concrete run or the patio."
+    },
+    {
+      "base_slug": "dog-run-cleanups",
+      "other_slug": "one-time-dog-poop-cleanup",
+      "kind": "add_on",
+      "customer_line": "Clean up the rest of the yard."
+    },
+    {
+      "base_slug": "dog-run-cleanups",
+      "other_slug": "weekly-pooper-scooper-service",
+      "kind": "follow_on",
+      "customer_line": "Keep it clean with weekly scooping."
+    },
+    {
+      "base_slug": "pressure-washing",
+      "other_slug": "yard-sanitizing",
+      "kind": "add_on",
+      "customer_line": "Sanitize the washed area."
+    },
+    {
+      "base_slug": "pressure-washing",
+      "other_slug": "dog-run-cleanups",
+      "kind": "add_on",
+      "customer_line": "Rake, hose and freshen the dog run too."
+    },
+    {
+      "base_slug": "pressure-washing",
+      "other_slug": "one-time-dog-poop-cleanup",
+      "kind": "add_on",
+      "customer_line": "Clean up the yard on the same visit."
+    },
+    {
+      "base_slug": "pressure-washing",
+      "other_slug": "weekly-pooper-scooper-service",
+      "kind": "follow_on",
+      "customer_line": "Keep the yard clean with weekly scooping."
+    },
+    {
+      "base_slug": "kitty-litter-exchange",
+      "other_slug": "cat-tree-cleaning",
+      "kind": "add_on",
+      "customer_line": "Clean the cat tree on the same visit."
+    },
+    {
+      "base_slug": "kitty-litter-exchange",
+      "other_slug": "kitty-litter-robot-cleaning",
+      "kind": "add_on",
+      "customer_line": "Deep clean the Litter-Robot on the same visit."
+    },
+    {
+      "base_slug": "cat-tree-cleaning",
+      "other_slug": "kitty-litter-exchange",
+      "kind": "add_on",
+      "customer_line": "Exchange the litter on the same visit."
+    },
+    {
+      "base_slug": "cat-tree-cleaning",
+      "other_slug": "kitty-litter-robot-cleaning",
+      "kind": "add_on",
+      "customer_line": "Deep clean the Litter-Robot on the same visit."
+    },
+    {
+      "base_slug": "kitty-litter-robot-cleaning",
+      "other_slug": "kitty-litter-exchange",
+      "kind": "add_on",
+      "customer_line": "Exchange the litter in any other boxes."
+    },
+    {
+      "base_slug": "kitty-litter-robot-cleaning",
+      "other_slug": "cat-tree-cleaning",
+      "kind": "add_on",
+      "customer_line": "Clean the cat tree while the globe dries."
+    },
+    {
+      "base_slug": "weekly-pooper-scooper-service",
+      "other_slug": "weekly-turf-maintenance",
+      "kind": "add_on",
+      "customer_line": "Care for the turf on the same weekly visit."
+    },
+    {
+      "base_slug": "weekly-pooper-scooper-service",
+      "other_slug": "weekly-yard-maintenance",
+      "kind": "add_on",
+      "customer_line": "Mow and blow on the same weekly visit."
+    },
+    {
+      "base_slug": "weekly-turf-maintenance",
+      "other_slug": "weekly-yard-maintenance",
+      "kind": "add_on",
+      "customer_line": "Mow and blow the grass on the same weekly visit."
+    },
+    {
+      "base_slug": "weekly-yard-maintenance",
+      "other_slug": "weekly-turf-maintenance",
+      "kind": "add_on",
+      "customer_line": "Care for the turf on the same weekly visit."
+    },
+    {
+      "base_slug": "dog-run-cleanups",
+      "other_slug": "turf-deep-clean",
+      "kind": "add_on",
+      "customer_line": "Deep clean the turf on the same visit."
+    },
+    {
+      "base_slug": "dog-run-cleanups",
+      "other_slug": "yard-deep-clean",
+      "kind": "add_on",
+      "customer_line": "Clear the overgrowth on the same visit."
+    },
+    {
+      "base_slug": "pressure-washing",
+      "other_slug": "turf-deep-clean",
+      "kind": "add_on",
+      "customer_line": "Deep clean the turf on the same visit."
+    },
+    {
+      "base_slug": "pressure-washing",
+      "other_slug": "yard-deep-clean",
+      "kind": "add_on",
+      "customer_line": "Clear the overgrowth on the same visit."
+    }
+  ],
+  "bundles": [
+    {
+      "slug": "before-a-party",
+      "name": "Getting ready for a party",
+      "customer_line": "A clean yard, a sanitized lawn and a washed patio, on one visit.",
+      "base_slug": "one-time-dog-poop-cleanup",
+      "members": [
+        "yard-sanitizing",
+        "pressure-washing"
+      ]
+    },
+    {
+      "slug": "move-out",
+      "name": "Moving out or between tenants",
+      "customer_line": "Cleanup, the dog run and the hard surfaces, on one visit.",
+      "base_slug": "one-time-dog-poop-cleanup",
+      "members": [
+        "dog-run-cleanups",
+        "pressure-washing"
+      ]
+    }
+  ],
   "postal_codes": {
     "90263": "malibu",
     "90265": "malibu",
@@ -2474,15 +3326,14 @@
     "booking.payafter_charge_offset_days": 1,
     "booking.onetime_enabled": true,
     "growth.review_request_after_visits": 3,
+    "billing.monthly_factor": "4",
+    "reviews.google_count": 45,
     "booking.initial_cleanup_policy": "required_beyond_two_weeks",
     "schedule.day_capacity": 20,
     "booking.start_window_days": 14,
     "booking.card_required": true,
-    "billing.monthly_factor": "52/12",
     "reviews.google_profile_url": "https://www.google.com/maps/place/?q=place_id:ChIJx2f0lVCt6YARL_qslmyUQKM",
-    "reviews.google_count": 42,
     "reviews.google_rating": 5,
-    "reviews.google_checked_on": "2026-09-23",
     "quote.reply_promise": "within one business day",
     "quote.photos_max": 6,
     "business.license_number": null,
@@ -2492,6 +3343,7 @@
     "trust.insured_confirmed": true,
     "google.site_verification": "CPNh_fSu8eFn9gpkFHhnFXltHYHpcfIkkcks7w2nvbI",
     "analytics.measurement_id": "G-SNLVJNSP05",
+    "reviews.google_checked_on": "2026-11-02",
     "trust.guarantee_text": "Happy-yard guarantee: if we miss a spot or you are not happy with a visit, tell us within 24 hours and we come back and make it right, free."
   }
 }

@@ -27,7 +27,7 @@ const faqs = [
   { q: 'What if I have a big yard or lots of pets?', a: 'Larger or custom properties get a quick custom quote — request one and we will get back to you within a day.' },
 ];
 ---
-<Site title="Pricing | Weekly Dog Poop Cleanup Plans | Scoop Dogg" description={`Simple weekly plans for dog poop scooping, turf deodorizing, yard care and litter boxes, billed monthly, plus one-time cleanups.${offer ? ` ${offer}.` : ''}`} canonicalPath="/pricing" jsonLd={{ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faqs.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) }}>
+<Site title="Pricing | Weekly Dog Poop Cleanup Plans | Scoop Dogg" description={`Simple weekly plans for dog poop scooping, turf deodorizing and yard care, billed monthly, plus one-time cleanups and litter box service.${offer ? ` ${offer}.` : ''}`} canonicalPath="/pricing" jsonLd={{ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faqs.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) }}>
   <PageHero eyebrow="Pricing" title="Simple weekly plans. No surprises." lede={`One price a week, billed monthly, and you see it before you book.${offer ? ` ${offer} on weekly scooping.` : ''} Cancel anytime.`} form source="pricing-hero" />
   <ProofBar tone="sage" />
   {plans.map((s, i) => (

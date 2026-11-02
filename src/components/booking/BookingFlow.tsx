@@ -34,7 +34,7 @@
  * Summit lesson: a client:load controlled input erases pre-hydration typing).
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { graphOf, offeredWith } from '../../shared/service-graph';
+import { graphOf, offeredWith, relate } from '../../shared/service-graph';
 import { quoteBooking, quoteOneTime, bookableServices, formatCents, tierPrice, catchUpFor, weeklyCents, planNames, LAST_CLEANED, type Catalog, type Tier } from '../../shared/pricing';
 import { renewalTerms } from '../../shared/consent';
 import { gaLead } from '../../lib/ga';
@@ -157,6 +157,7 @@ export default function BookingFlow(props: Props) {
   const [wantSet, setWantSet] = useState<string[]>([]);
   const [lane, setLane] = useState<Lane>('prepay');
   const [dates, setDates] = useState<DateOption[] | null>(null);
+  const [datesFailed, setDatesFailed] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [firstChargeOn, setFirstChargeOn] = useState('');
   const [name, setName] = useState('');
@@ -234,7 +235,7 @@ export default function BookingFlow(props: Props) {
 
     const pkgSlug = url.searchParams.get('package');
     const pkg = pkgSlug ? catalog.packages.find((p) => p.slug === pkgSlug && !props.services.some((s) => s.slug === p.service_slug && s.kind === 'addon')) : undefined;
-    if (pkg) { setService(pkg.service_slug); setPackageId(pkg.id); }
+    if (pkg) { setService(pkg.service_slug); setPackageId(pkg.id); setTierId(''); }
 
     // The service the visitor pressed a button for. A package outranks it (it names a service
     // already); an unknown slug is ignored and the picker is shown as before.
@@ -323,8 +324,11 @@ export default function BookingFlow(props: Props) {
     tiers: catalog.tiers.filter((t) => t.service_slug === r.other_slug && tierPrice(t).kind === 'price').sort((a, b) => a.sort_order - b.sort_order),
     plans: catalog.packages.filter((p) => p.service_slug === r.other_slug).sort((a, b) => a.sort_order - b.sort_order),
   })).filter((r) => r.tiers.length || r.plans.length);
+  // A row an already-chosen add-on includes is gone, and comes back if that add-on is taken off.
+  const chosenSlugs = useMemo(() => addOns.map((id) => catalog.tiers.find((t) => t.id === id)?.service_slug).filter(Boolean) as string[], [addOns]);
+  const notRepeated = (slug: string) => !chosenSlugs.some((c) => c !== slug && ['included', 'upgrade'].includes(relate(graph, c, slug).relation));
   // The services of the chosen moment come first, then the rest in the order they were approved.
-  const addOnRows = useMemo(() => offerRows('add_on').sort((a, b) => Number(wantSet.includes(b.other_slug)) - Number(wantSet.includes(a.other_slug))), [service, wantSet]);
+  const addOnRows = useMemo(() => offerRows('add_on').filter((r) => notRepeated(r.other_slug)).sort((a, b) => Number(wantSet.includes(b.other_slug)) - Number(wantSet.includes(a.other_slug))), [service, wantSet, chosenSlugs]);
   const followRows = useMemo(() => offerRows('follow_on'), [service]);
   const addOnServices = useMemo(() => props.services.filter((s) => s.kind === 'addon'), [props.services]);
   const toggleTier = (rowTiers: Tier[], id: string) => setAddOns((a) => {
@@ -396,6 +400,7 @@ export default function BookingFlow(props: Props) {
     [service, lastCleaned],
   );
   const catchUpRequired = props.cleanupPolicy === 'required_beyond_two_weeks';
+  const lastCleanedAsked = service === 'weekly-pooper-scooper-service' && deepTiers.length > 0;
 
   // Keep the extra the server will price in step with what the screen shows. Under the required
   // policy the tier is not the customer's to choose, so it is set here rather than by a click.
@@ -439,6 +444,7 @@ export default function BookingFlow(props: Props) {
   async function loadDates() {
     if ((!pkg && !tierId) || !city) return;
     setDates(null);
+    setDatesFailed(false);
     try {
       const r = await fetch('/api/booking/price', {
         method: 'POST', headers: { 'content-type': 'application/json' },
@@ -453,6 +459,7 @@ export default function BookingFlow(props: Props) {
       }
     } catch (e) {
       setError((e as Error).message);
+      setDatesFailed(true);
       setDates([]);
     }
   }
@@ -492,7 +499,7 @@ export default function BookingFlow(props: Props) {
           source: document.referrer ? new URL(document.referrer).pathname : '/book',
           // The key names the selection too: a customer who backs out of Stripe, changes what they
           // want and pays again must get a new checkout, not the old session at the old price.
-          idempotency_key: `${idem.current}:${[pkg?.id, tierId, ...extraTierIds, ...withPackageIds].join('').replace(/-/g, '').split('').reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7).toString(36)}`,
+          idempotency_key: `${idem.current}:${[pkg?.id, tierId, ...extraTierIds, ...withPackageIds, lane, startDate, name, email, phone, address, zip, gate, notes, lastCleaned].join('|').replace(/-/g, '').split('').reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7).toString(36)}`,
           // The sentence the customer actually read. The server re-renders it from its own rows
           // and refuses the booking if the two differ, so this is a witness and not an input —
           // a browser cannot talk itself into a cheaper set of terms by sending nicer words.
@@ -887,10 +894,10 @@ export default function BookingFlow(props: Props) {
               )}
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <Primary onClick={() => go(city ? 'day' : 'zip')}>
+                <Primary disabled={lastCleanedAsked && !lastCleaned} onClick={() => go(city ? 'day' : 'zip')}>
                   {isOneTime ? 'Choose my day' : 'Choose my start day'}
                 </Primary>
-                <p className="text-sm text-ink-500">Nothing is charged yet.</p>
+                <p className="text-sm text-ink-500" role="status">{lastCleanedAsked && !lastCleaned ? 'Tell us when the yard was last cleaned to see your first price.' : 'Nothing is charged yet.'}</p>
               </div>
               <p className="mt-4 text-base text-ink-700">No contract, no cancellation fee. Rather talk first? <a className="link" href={props.phoneHref}>Call or text {props.phone}</a></p>
             </div>
@@ -902,7 +909,13 @@ export default function BookingFlow(props: Props) {
                 {isOneTime ? 'When should we come?' : 'When should we start?'}
               </Heading>
               {!dates && <div className="grid gap-3 sm:grid-cols-2">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-20 animate-pulse rounded-lg bg-line/60" />)}</div>}
-              {dates && dates.length === 0 && (
+              {datesFailed && (
+                <div className="rounded-lg border border-line bg-paper p-6">
+                  <p className="text-lg text-forest-900">We could not load the days just now.</p>
+                  <button type="button" className="btn-secondary mt-4" onClick={loadDates}>Try again</button>
+                </div>
+              )}
+              {dates && dates.length === 0 && !datesFailed && (
                 <div className="rounded-lg border border-line bg-paper p-6">
                   <p className="text-lg text-forest-900">Our routes there are full for the next two weeks.</p>
                   <p className="mt-2 text-base text-ink-700">Join the waitlist and we'll let you know the moment a day opens.</p>
@@ -1034,7 +1047,7 @@ export default function BookingFlow(props: Props) {
 
               <div className="mt-8 flex flex-col gap-3">
                 <Primary disabled={Boolean(terms) && !agreed} onClick={checkout}>
-                  {!isOneTime && lane === 'payafter'
+                  {catchUpRequired && catchUp.kind === 'quote' ? 'Send my booking request' : !isOneTime && lane === 'payafter'
                     ? 'Save my card and book'
                     : `Pay ${formatCents(firstCharge, { forceDecimals: firstCharge % 100 !== 0 })} and book`}
                 </Primary>

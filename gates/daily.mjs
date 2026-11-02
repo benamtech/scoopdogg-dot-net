@@ -93,6 +93,28 @@ try {
   check(!el.some((r) => r.title === 'Gate unpaid'), `NEGATIVE CONTROL: a job done and not paid is not (#${unpaid.number})`);
   const el0 = await C.eligibleForJobReview(c, 30);
   check(!el0.some((r) => r.customer_id === cu.id), 'NEGATIVE CONTROL: with a 30-day delay it is not due yet');
+
+  // The schedule rolls forward on a plan's own day, skips a day already dealt with, and stops at an end date.
+  const { rows: [home] } = await c.query(`insert into properties (customer_id, address, city) values ($1, '1 Gate St', 'Ventura') returning id`, [cu.id]);
+  const plan = async (extra, weeksAgo) => {
+    const { rows: [p] } = await c.query(
+      `insert into subscriptions (customer_id, property_id, service_slug, state, frequency, payment_state, cancel_at_period_end, current_period_end, livemode)
+       values ($1, $2, 'weekly-pooper-scooper-service', 'active', 'weekly', $3, $4, $5, false) returning id`,
+      [cu.id, home.id, extra.payment ?? 'ok', Boolean(extra.ending), extra.ending ?? null]);
+    await c.query(`insert into visits (subscription_id, property_id, scheduled_for, state, chargeable) values ($1, $2, current_date + $3::int, 'scheduled', false)`, [p.id, home.id, -7 * weeksAgo + 2]);
+    return p.id;
+  };
+  const days = async (id) => (await c.query(`select (scheduled_for - current_date)::int as d, state from visits where subscription_id = $1 order by scheduled_for`, [id])).rows;
+  const steady = await plan({}, 1);
+  await c.query(`insert into visits (subscription_id, property_id, scheduled_for, state, chargeable) values ($1, $2, current_date + 9, 'cancelled', false)`, [steady, home.id]);
+  const ending = await plan({ ending: new Date(Date.now() + 10 * 864e5) }, 0);
+  const declined = await plan({ payment: 'past_due' }, 0);
+  await D.extendSchedules(c);
+  const s = await days(steady);
+  check(s.at(-1).d >= 28 && s.every((v, i) => i === 0 || (v.d - s[i - 1].d) % 7 === 0), 'a weekly plan is kept five weeks ahead on its own day', s.map((v) => v.d).join(','));
+  check(s.filter((v) => v.d === 9).length === 1 && s.find((v) => v.d === 9).state === 'cancelled', 'a visit cancelled by hand does not come back');
+  check((await days(ending)).every((v) => v.d <= 10), 'NEGATIVE CONTROL: a plan that is ending gets nothing past its end');
+  check((await days(declined)).length === 1, 'NEGATIVE CONTROL: a declined card gets no new visits');
   await c.query('rollback');
 
   console.log('\nB. the route, as Vercel Cron calls it');

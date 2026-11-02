@@ -53,10 +53,11 @@ export async function overview(customerId: string) {
   await expireDuePauses(customerId);
   const { rows: [customer] } = await db().query(`select id, name, email, phone from customers where id = $1`, [customerId]);
   const { rows: subs } = await db().query(
-    `select s.id, s.state, s.service_slug, s.frequency, s.service_weekday, s.starts_on::text as starts_on, s.monthly_price_cents,
+    `select s.id, s.state, s.service_slug, s.frequency, s.service_weekday, s.starts_on::text as starts_on, s.monthly_price_cents, s.price_cents, s.price_tier_label, sv.name as service_name,
             s.current_period_end, s.cancel_at_period_end, s.payment_state, s.paused_from::text as paused_from, s.paused_until::text as paused_until,
             s.livemode, s.resume_catch_up_cents, s.resume_catch_up_tier_id, pk.name || coalesce((select ' + ' || string_agg(x->>'label', ' + ') from jsonb_array_elements(s.extras) x where x ? 'package_id'), '') as package_name, pk.short_label, p.address, p.city, p.gate_code is not null as has_gate_code, p.access_notes
        from subscriptions s join properties p on p.id = s.property_id left join packages pk on pk.id = s.package_id
+       left join services sv on sv.slug = s.service_slug
       where s.customer_id = $1 and s.state in ('active','paused','deposit_pending','draft','completed')
       order by s.created_at desc`, [customerId]);
   const ids = subs.map((s: Record<string, any>) => s.id);
@@ -93,6 +94,9 @@ async function ownSubscription(customerId: string, subscriptionId: string) {
 
 const mode = (s: { livemode: boolean }): StripeMode => (s.livemode ? 'live' : 'test');
 
+/** A one-time job is already paid for, so a change to it goes through a person who can move the day or refund it. */
+const ONE_TIME_CHANGE = 'A one-time job is changed by phone. Please call or text us and we will sort it out.';
+
 export async function skipVisit(customerId: string, visitId: string) {
   /*
    * `visit.skip_charge_policy` has said `no_charge` since the settings were seeded and NOTHING
@@ -114,7 +118,7 @@ export async function skipVisit(customerId: string, visitId: string) {
   const { rows } = await db().query(
     `update visits v set state = 'skipped', customer_note = 'Skipped by customer', updated_at = now()
        from subscriptions s where v.id = $1 and v.subscription_id = s.id and s.customer_id = $2
-        and v.state = 'scheduled' and v.scheduled_for > current_date returning v.id, v.subscription_id, v.scheduled_for::text as date`,
+        and s.frequency <> 'one_time' and v.state = 'scheduled' and v.scheduled_for > current_date returning v.id, v.subscription_id, v.scheduled_for::text as date`,
     [visitId, customerId]);
   if (!rows[0]) throw new AccountError('That visit can no longer be skipped.', 409);
   await appendEvent(db(), { subjectKind: 'visit', subjectId: visitId, type: 'visit.skipped', from: 'scheduled', to: 'skipped', actorKind: 'customer', actorId: customerId, payload: { date: rows[0].date } });
@@ -157,6 +161,7 @@ export async function unskipVisit(customerId: string, visitId: string) {
  */
 export async function pausePlan(customerId: string, subscriptionId: string, weeks: number) {
   const s = await ownSubscription(customerId, subscriptionId);
+  if (s.frequency === 'one_time') throw new AccountError(ONE_TIME_CHANGE, 409);
   if (s.state !== 'active') throw new AccountError('Only an active plan can be paused.', 409);
   // THE CEILING IS A ROW. `subscription.pause_max_weeks` is what src/lib/questions.ts already
   // tells a customer on the public question page; this line used to be a literal 12 beside it.
@@ -285,6 +290,7 @@ export async function expireDuePauses(customerId?: string) {
 
 export async function cancelPlan(customerId: string, subscriptionId: string, reason: string) {
   const s = await ownSubscription(customerId, subscriptionId);
+  if (s.frequency === 'one_time') throw new AccountError(ONE_TIME_CHANGE, 409);
   if (!['active', 'paused'].includes(s.state)) throw new AccountError('That plan is not active.', 409);
   if (s.stripe_subscription_id) {
     await stripeFor(mode(s)).subscriptions.update(s.stripe_subscription_id, { cancel_at_period_end: true }, { stripeAccount: s.account_id });

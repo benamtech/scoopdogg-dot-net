@@ -71,9 +71,12 @@ try {
       'the second package gets its own line on the quote',
       `${recurring.length} recurring lines — a total with no line behind it is what the customer disputes`);
 
-    check(both.firstChargeCents > alone.firstChargeCents,
-      'adding a service cannot make the first charge SMALLER',
-      `alone ${money(alone.firstChargeCents)} -> with ${money(both.firstChargeCents)}`);
+    // Each plan pays for its own first month. Half off both can land below one plan at full price;
+    // that is the promise on the site. Paying less than a plan's own first month is not.
+    const ownFirst = (p) => p.monthly_price_cents - (both.appliedOffers.find((o) => o.package_id === p.id)?.cents ?? 0);
+    check(both.firstChargeCents === ownFirst(a) + ownFirst(b) && ownFirst(b) > 0,
+      'each plan is charged its own first month',
+      `alone ${money(alone.firstChargeCents)} -> with ${money(both.firstChargeCents)} = ${money(ownFirst(a))} + ${money(ownFirst(b))}`);
 
     // The sum of the lines must equal the stated first charge, or one of them is decoration.
     const summed = both.lines.reduce((t, l) => t + l.cents, 0);
@@ -111,12 +114,11 @@ try {
         const without = quoteBooking(cat, { packageId: primary.id });
         const with_ = quoteBooking(cat, { packageId: primary.id, withPackageIds: required.map((r) => r.id) });
         const requiredCost = required.reduce((t, r) => t + r.monthly_price_cents, 0);
-        const delta = with_.firstChargeCents - without.firstChargeCents;
+        const requiredOff = with_.appliedOffers.filter((o) => required.some((r) => r.id === o.package_id)).reduce((t, o) => t + o.cents, 0);
 
-        check(delta >= 0,
+        check(requiredCost - requiredOff > 0 && with_.firstChargeCents === with_.monthlyCents - with_.discountCents,
           `"${offer.name}" cannot be earned for free`,
-          `claiming ${offer.requires_slugs.join(' + ')} changes the first charge by ${money(delta)} `
-          + `against a required cost of ${money(requiredCost)}`);
+          `the required ${offer.requires_slugs.join(' + ')} is charged ${money(requiredCost - requiredOff)} in the first month, not nothing`);
         check(with_.monthlyCents >= without.monthlyCents + requiredCost,
           `and the monthly reflects everything claimed`,
           `${money(with_.monthlyCents)} >= ${money(without.monthlyCents)} + ${money(requiredCost)}`);
@@ -142,6 +144,13 @@ try {
     check(with_.appliedOffers.length > 0,
       'the conditional offer really does fire on this pair',
       with_.appliedOffers.map((o) => o.name).join(', ') || 'NO OFFER FIRED — check 2 would be vacuous');
+
+    // The site promises each plan its own first month off, whichever plan the booking starts from.
+    const both = quoteBooking(cat, { packageId: b.id, withPackageIds: [a.id] });
+    const owed = both.appliedOffers.reduce((n, o) => n + o.cents, 0);
+    check(both.appliedOffers.length === 2 && both.discountCents === owed && both.firstChargeCents === both.monthlyCents - owed,
+      'scooping and Turf Deodorizing each get their own offer',
+      `${both.appliedOffers.length} offers, ${money(both.discountCents)} off, first charge ${money(both.firstChargeCents)}`);
   }
 } catch (e) {
   no('the gate ran to the end', String(e.message ?? e));

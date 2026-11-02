@@ -11,6 +11,7 @@
  * THE STEPS, each caught on its own so one failure cannot stop the rest, and each returning what
  * it changed — which is how gates/daily.mjs proves it by calling it and reading the rows:
  *   pauses            a pause past its end resumes (account.ts expireDuePauses)
+ *   schedules         every live weekly plan keeps five weeks of visits ahead
  *   quote_expiry      a sent quote past its valid_until date expires, on Ventura's calendar
  *   quote_follow_ups  a quote opened two days ago and not approved goes on Josue's list with a
  *                     prefilled text, and he gets one email naming them. There is no SMS transport,
@@ -58,6 +59,27 @@ export async function expireDueQuotes(q: Queryable = db()) {
     await appendEvent(q as never, { subjectKind: 'quote', subjectId: r.id, type: 'quote.expired', from: 'sent', to: 'expired', actorKind: 'system', payload: { by: 'daily' } });
   }
   return { expired: rows.length, numbers: rows.map((r: any) => r.number) };
+}
+
+/**
+ * THE SCHEDULE ROLLS FORWARD. A booking writes the first weeks of visits and nothing wrote any more,
+ * so a weekly plan would have kept billing with an empty route from about week ten. Every live weekly
+ * plan is kept five weeks ahead, on its own weekly rhythm, but never past a date it is ending and
+ * never onto a card that failed. A day that already has a visit in any state is left alone, so a
+ * cancelled or moved visit does not come back.
+ */
+export async function extendSchedules(q: Queryable = db()) {
+  const { rows } = await q.query(
+    `insert into visits (subscription_id, property_id, scheduled_for, state, chargeable)
+     select s.id, s.property_id, d::date, 'scheduled', false
+       from subscriptions s
+       join lateral (select max(scheduled_for) as last from visits v where v.subscription_id = s.id) m on m.last is not null
+       cross join lateral generate_series(m.last + 7, current_date + 35, interval '7 days') d
+      where s.state = 'active' and s.frequency = 'weekly' and s.payment_state <> 'past_due' and d::date > current_date
+        and not (s.cancel_at_period_end and s.current_period_end is not null and d::date > s.current_period_end::date)
+        and not exists (select 1 from visits x where x.subscription_id = s.id and x.scheduled_for = d::date)
+     on conflict do nothing returning id`);
+  return { added: rows.length };
 }
 
 /** Quotes a customer opened FOLLOW_UP_AFTER_DAYS ago and has not approved, not yet on the list. */
@@ -144,6 +166,7 @@ export async function runDaily(opts: { base?: string; by: string }) {
   const out: Record<string, unknown> = {};
   const steps: Step[] = [
     ['pauses', () => expireDuePauses()],
+    ['schedules', () => extendSchedules()],
     ['quote_expiry', () => expireDueQuotes()],
     ['abandoned_checkouts', () => expireAbandonedCheckouts()],
     ['quote_follow_ups', () => quoteFollowUps(db(), base)],

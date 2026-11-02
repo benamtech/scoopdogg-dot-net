@@ -164,11 +164,13 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     if (event.type === 'customer.subscription.deleted') {
       const s = obj as unknown as Stripe.Subscription;
       const { rows } = await db().query(
-        `update subscriptions u set state = 'cancelled', cancelled_at = now(), updated_at = now() from (select id, state from subscriptions where stripe_subscription_id = $1) old
-          where u.id = old.id and old.state <> 'cancelled' returning u.id, old.state as from_state`, [s.id]);
+        `update subscriptions u set state = 'cancelled', cancelled_at = now(), updated_at = now() from (select id, state, cancel_at_period_end from subscriptions where stripe_subscription_id = $1) old
+          where u.id = old.id and old.state <> 'cancelled' returning u.id, old.state as from_state, old.cancel_at_period_end as asked`, [s.id]);
       if (rows[0]) {
         await db().query(`update visits set state = 'cancelled', updated_at = now() where subscription_id = $1 and state = 'scheduled' and scheduled_for > current_date`, [rows[0].id]);
         await appendEvent(db(), { subjectKind: 'subscription', subjectId: rows[0].id, type: 'subscription.cancelled', from: rows[0].from_state, to: 'cancelled', actorKind: 'system' });
+        // A customer's own cancel told Josue when they pressed it. This one happened at Stripe: unpaid, or ended from its dashboard.
+        if (!rows[0].asked) await tellOwner(rows[0].id, 'owner_notice', (name, job) => `Plan ended: ${name} — ${job}`, 'This plan ended at Stripe, not from the customer\'s account. Visits after today are off the schedule.').catch((e) => safeError('stripe-webhook:owner-ended', e));
       }
     }
     await db().query(`update stripe_events set processed_at = now(), error = null where id = $1`, [event.id]);
