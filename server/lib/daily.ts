@@ -27,7 +27,7 @@ import { expireDuePauses } from './account.js';
 import { runCommsSweeps, sendCustomJobReviewRequests } from './comms.js';
 import { sendEmail } from './notify.js';
 import { reconcileOutbox } from './delivery.js';
-import { sendMissedBookingNotices } from './booking.js';
+import { sendMissedBookingNotices, expireAbandonedCheckouts } from './booking.js';
 import { safeError } from './http.js';
 
 export type Queryable = { query: (text: string, values?: unknown[]) => Promise<{ rows: any[]; rowCount?: number | null }> };
@@ -44,15 +44,17 @@ export const smsHref = (phone: string, body: string) => {
 
 /** Every sent quote past its date, expired in one pass. Same rule as quotes.ts expireIfDue. */
 export async function expireDueQuotes(q: Queryable = db()) {
+  // One statement, so a quote cannot expire and leave its plan waiting for ever.
   const { rows } = await q.query(
-    `update quotes set state = 'expired', updated_at = now()
-      where state = 'sent' and valid_until < (now() at time zone 'America/Los_Angeles')::date
-      returning id, subscription_id, number`);
+    `with ex as (
+       update quotes set state = 'expired', updated_at = now()
+        where state = 'sent' and valid_until < (now() at time zone 'America/Los_Angeles')::date
+        returning id, subscription_id, number),
+     plan as (
+       update subscriptions set state = 'cancelled', cancelled_at = now(), cancel_reason = 'quote expired', updated_at = now()
+        where id in (select subscription_id from ex) and state = 'quote_ready')
+     select * from ex`);
   for (const r of rows) {
-    if (r.subscription_id) {
-      await q.query(`update subscriptions set state = 'cancelled', cancelled_at = now(), cancel_reason = 'quote expired', updated_at = now()
-                      where id = $1 and state = 'quote_ready'`, [r.subscription_id]);
-    }
     await appendEvent(q as never, { subjectKind: 'quote', subjectId: r.id, type: 'quote.expired', from: 'sent', to: 'expired', actorKind: 'system', payload: { by: 'daily' } });
   }
   return { expired: rows.length, numbers: rows.map((r: any) => r.number) };
@@ -143,6 +145,7 @@ export async function runDaily(opts: { base?: string; by: string }) {
   const steps: Step[] = [
     ['pauses', () => expireDuePauses()],
     ['quote_expiry', () => expireDueQuotes()],
+    ['abandoned_checkouts', () => expireAbandonedCheckouts()],
     ['quote_follow_ups', () => quoteFollowUps(db(), base)],
     ['job_review', () => sendCustomJobReviewRequests()],
     ['comms', () => runCommsSweeps()],

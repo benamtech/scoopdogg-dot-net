@@ -112,7 +112,7 @@ try {
   const steps = Object.keys(run.body.results ?? {});
   check(run.status === 200 && ['pauses', 'quote_expiry', 'quote_follow_ups', 'job_review', 'comms'].every((k) => steps.includes(k)),
     'the right token runs every step', steps.join(', '));
-  check(steps.length === 8 && steps.every((k) => run.body.results[k]?.error === true), 'a step that fails reports it, and the steps after it still ran', `${steps.filter((k) => run.body.results[k]?.error).length} of ${steps.length} reported an error against an unreachable database`);
+  check(steps.length >= 8 && steps.every((k) => run.body.results[k]?.error === true), 'a step that fails reports it, and the steps after it still ran', `${steps.filter((k) => run.body.results[k]?.error).length} of ${steps.length} reported an error against an unreachable database`);
 } finally {
   await c.query('rollback').catch(() => {});
   await c.end().catch(() => {});

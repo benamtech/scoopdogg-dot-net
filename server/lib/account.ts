@@ -57,7 +57,7 @@ export async function overview(customerId: string) {
             s.current_period_end, s.cancel_at_period_end, s.payment_state, s.paused_from::text as paused_from, s.paused_until::text as paused_until,
             s.livemode, s.resume_catch_up_cents, s.resume_catch_up_tier_id, pk.name || coalesce((select ' + ' || string_agg(x->>'label', ' + ') from jsonb_array_elements(s.extras) x where x ? 'package_id'), '') as package_name, pk.short_label, p.address, p.city, p.gate_code is not null as has_gate_code, p.access_notes
        from subscriptions s join properties p on p.id = s.property_id left join packages pk on pk.id = s.package_id
-      where s.customer_id = $1 and s.state in ('active','paused','deposit_pending','draft')
+      where s.customer_id = $1 and s.state in ('active','paused','deposit_pending','draft','completed')
       order by s.created_at desc`, [customerId]);
   const ids = subs.map((s: Record<string, any>) => s.id);
   const { rows: visits } = ids.length ? await db().query(
@@ -288,6 +288,14 @@ export async function cancelPlan(customerId: string, subscriptionId: string, rea
   if (!['active', 'paused'].includes(s.state)) throw new AccountError('That plan is not active.', 409);
   if (s.stripe_subscription_id) {
     await stripeFor(mode(s)).subscriptions.update(s.stripe_subscription_id, { cancel_at_period_end: true }, { stripeAccount: s.account_id });
+  }
+  // No Stripe subscription means no webhook will ever finish this, so it ends here.
+  if (!s.stripe_subscription_id) {
+    await db().query(
+      `update subscriptions set state = 'cancelled', cancelled_at = now(), cancel_reason = $2, updated_at = now() where id = $1`,
+      [subscriptionId, reason.slice(0, 500)]);
+    await db().query(`update visits set state = 'cancelled', updated_at = now() where subscription_id = $1 and state = 'scheduled' and scheduled_for > current_date`, [subscriptionId]);
+    await appendEvent(db(), { subjectKind: 'subscription', subjectId: subscriptionId, type: 'subscription.cancelled', from: s.state, to: 'cancelled', actorKind: 'customer', actorId: customerId, payload: { reason: reason.slice(0, 200) } });
   }
   await db().query(
     `update subscriptions set cancel_at_period_end = true, cancel_reason = $2, updated_at = now() where id = $1`,

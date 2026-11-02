@@ -710,7 +710,8 @@ export async function completeQuoteJob(q: Queryable, quoteId: string, opts: { by
   if (qt.deposit_cents > 0 && !qt.deposit_paid_at) throw new QuoteError('The deposit has not been paid yet.', 409, 'deposit_unpaid');
   const balance = qt.total_cents - (qt.deposit_paid_at ? qt.deposit_cents : 0);
   await q.query(`update quotes set completed_at = coalesce(completed_at, now()), updated_at = now() where id = $1`, [quoteId]);
-  await appendEvent(q as never, { subjectKind: 'quote', subjectId: qt.id, type: 'quote.completed', actorKind: 'owner', payload: { by: opts.by, balance, method: opts.method } });
+  // Once: a declined balance is retried, and the work was only finished one time.
+  if (!qt.completed_at) await appendEvent(q as never, { subjectKind: 'quote', subjectId: qt.id, type: 'quote.completed', actorKind: 'owner', payload: { by: opts.by, balance, method: opts.method } });
   if (balance <= 0) return { balance: 0, paid: true };
   const mode: StripeMode = qt.livemode ? 'live' : 'test';
   const { rows: [lead] } = await q.query(`select * from leads where id = $1`, [qt.lead_id]);
