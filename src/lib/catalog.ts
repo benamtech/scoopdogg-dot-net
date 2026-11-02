@@ -66,7 +66,7 @@ export type Review = {
 };
 
 export type Raw = {
-  zones?: Catalog['zones']; work_tasks?: Catalog['work_tasks']; work?: Catalog['work']; relations?: Catalog['relations'];
+  zones?: Catalog['zones']; work_tasks?: Catalog['work_tasks']; work?: Catalog['work']; relations?: Catalog['relations']; bundles?: Catalog['bundles'];
   pulled_at: string;
   services: CatalogService[];
   /** Slugs of retired services: their pages redirect to /services instead of answering 404. */
@@ -238,7 +238,7 @@ export const reviewSummary = {
  */
 export function setCatalog(raw: Raw) {
   data = { ...raw, postal_codes: raw.postal_codes ?? {}, settings: raw.settings ?? {} };
-  catalog = { services: data.services, tiers: data.tiers, packages: data.packages, offers: data.offers, zones: data.zones, work_tasks: data.work_tasks, work: data.work, relations: data.relations };
+  catalog = { services: data.services, tiers: data.tiers, packages: data.packages, offers: data.offers, zones: data.zones, work_tasks: data.work_tasks, work: data.work, relations: data.relations, bundles: data.bundles };
   services = data.services;
   areas = data.areas;
   reviews = data.reviews;

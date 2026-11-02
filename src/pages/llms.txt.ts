@@ -6,7 +6,7 @@
  */
 import type { APIRoute } from 'astro';
 import {
-  services, packagesForService, tiersFor, formatCents, formatTierPrice, headlineOffer, markets, regionSentence,
+  services, packagesForService, tiersFor, formatCents, formatTierPrice, headlineOffer, markets, regionSentence, catalog,
   business, trust, reviewSummary,
 } from '../lib/catalog';
 import { weeklyCents } from '../shared/pricing';
@@ -34,6 +34,10 @@ export const GET: APIRoute = () => {
     if (s.intro) L.push(firstSentence(s.intro));
     if (pk.length) L.push(`Weekly plans, billed monthly: ${pk.map((p) => `${p.short_label} ${formatCents(weeklyCents(p))}/week (${formatCents(p.monthly_price_cents)}/month)`).join('; ')}`);
     if (tiers.length) L.push(`${pk.length ? 'Per visit' : 'Prices'}: ${tiers.map((t) => `${t.label} ${formatTierPrice(t, 'custom quote')}`).join('; ')}`);
+    const goes = (catalog.relations ?? []).filter((r) => r.base_slug === s.slug);
+    const nameOf = (slug: string) => services.find((x) => x.slug === slug)?.name ?? slug;
+    if (goes.some((r) => r.kind === 'add_on')) L.push(`Can be added to the same visit: ${goes.filter((r) => r.kind === 'add_on').map((r) => nameOf(r.other_slug)).join('; ')}`);
+    if (goes.some((r) => r.kind === 'follow_on')) L.push(`Weekly service to keep it up afterward: ${goes.filter((r) => r.kind === 'follow_on').map((r) => nameOf(r.other_slug)).join('; ')}`);
     L.push(`Details: ${SITE_URL}/services/${s.slug}`, '');
   }
 

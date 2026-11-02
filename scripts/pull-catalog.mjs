@@ -109,10 +109,12 @@ try {
   const work_tasks = await q(`select slug, name, stage from work_tasks`);
   const work = await q(`select service_slug, zone_slug, task_slug, depth from service_work`);
   const relations = await q(`select base_slug, other_slug, kind, customer_line from service_relations`);
+  const bundles = await q(`select b.slug, b.name, b.customer_line, b.base_slug, coalesce(array_agg(m.service_slug) filter (where m.service_slug is not null), '{}') as members
+      from bundles b left join bundle_members m on m.bundle_slug = b.slug group by b.slug order by b.sort_order`);
   catalog = {
     pulled_at: new Date().toISOString(),
     source: 'database',
-    services, tiers, packages, offers, areas, reviews, zones, work_tasks, work, relations,
+    services, tiers, packages, offers, areas, reviews, zones, work_tasks, work, relations, bundles,
     postal_codes: Object.fromEntries(postal_codes.map((r) => [r.postal_code, r.area_slug])),
     settings: Object.fromEntries(settings.map((r) => [r.key, r.value])),
   };

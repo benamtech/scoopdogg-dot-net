@@ -13,7 +13,7 @@
  *  - A tier with requires_quote has no price; it becomes a quote request, not a checkout.
  */
 
-import type { Zone, Task as WorkTask, Work, Approved } from './service-graph.js';
+import type { Zone, Task as WorkTask, Work, Approved, Bundle } from './service-graph.js';
 
 export type PriceBasis = 'dogs' | 'sqft' | 'boxes' | 'units' | 'levels' | 'choice' | 'flat';
 
@@ -89,6 +89,7 @@ export type Catalog = {
   work_tasks?: WorkTask[];
   work?: Work[];
   relations?: Approved[];
+  bundles?: Bundle[];
 };
 
 /** A qty lands in a tier when min <= qty and (max is null or qty < max) - except for

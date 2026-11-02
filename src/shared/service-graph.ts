@@ -20,7 +20,9 @@ export type Zone = { slug: string; name: string; indoors: boolean };
 export type Task = { slug: string; name: string; stage: number };
 export type Approved = { base_slug: string; other_slug: string; kind: 'add_on' | 'follow_on'; customer_line: string };
 export type GraphService = { slug: string; name: string; kind: string };
-export type Graph = { services: GraphService[]; packages: { service_slug: string }[]; zones: Zone[]; tasks: Task[]; work: Work[]; relations: Approved[] };
+/** A set of services for a real moment. No price of its own: the customer picks sizes and pays the sum. */
+export type Bundle = { slug: string; name: string; customer_line: string; base_slug: string; members: string[] };
+export type Graph = { services: GraphService[]; packages: { service_slug: string }[]; zones: Zone[]; tasks: Task[]; work: Work[]; relations: Approved[]; bundles?: Bundle[] };
 
 export type Relation = 'add_on' | 'follow_on' | 'included' | 'upgrade' | 'household' | 'not_a_base' | 'none';
 const RANK: Record<Depth, number> = { light: 1, spot: 2, full: 3 };
@@ -74,8 +76,8 @@ export function visitPlan(g: Graph, slugs: string[]) {
 }
 
 /** The graph inside a catalog snapshot. */
-export const graphOf = (c: { services: GraphService[]; packages: { service_slug: string }[]; zones?: Zone[]; work_tasks?: Task[]; work?: Work[]; relations?: Approved[] }): Graph =>
-  ({ services: c.services, packages: c.packages, zones: c.zones ?? [], tasks: c.work_tasks ?? [], work: c.work ?? [], relations: c.relations ?? [] });
+export const graphOf = (c: { services: GraphService[]; packages: { service_slug: string }[]; zones?: Zone[]; work_tasks?: Task[]; work?: Work[]; relations?: Approved[]; bundles?: Bundle[] }): Graph =>
+  ({ services: c.services, packages: c.packages, zones: c.zones ?? [], tasks: c.work_tasks ?? [], work: c.work ?? [], relations: c.relations ?? [], bundles: c.bundles ?? [] });
 
 /**
  * THE SERVER'S CHECK. Whatever the screen shows, a booking can only combine what goes together: a
@@ -106,6 +108,9 @@ export function graphProblems(g: Graph): string[] {
     if (!r.customer_line.trim()) out.push(`${name(r.other_slug)} on ${name(r.base_slug)} has no sentence for the customer.`);
     if (r.kind === 'add_on' && r.customer_line.length > 70) out.push(`${name(r.other_slug)} on ${name(r.base_slug)}: the customer's line is too long.`);
     seen.add(`${r.base_slug}|${r.other_slug}`);
+  }
+  for (const b of g.bundles ?? []) for (const m of b.members) {
+    if (!offeredWith(g, b.base_slug, 'add_on').some((r) => r.other_slug === m)) out.push(`${b.name} includes ${name(m)}, which is not an approved add-on of ${name(b.base_slug)}.`);
   }
   // The same work under two names is one thing a customer would be sold twice.
   const sig = new Map<string, string[]>();
