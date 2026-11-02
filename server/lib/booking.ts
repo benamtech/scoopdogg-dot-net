@@ -643,9 +643,9 @@ async function generateVisits(client: { query: (q: string, p: unknown[]) => Prom
 // ---------------------------------------------------------------------------------------
 
 const shell = (title: string, body: string) => `<div style="font-family:system-ui,-apple-system,sans-serif;max-width:560px;margin:0 auto;color:#1A1A1A">
-  <div style="padding:20px 0;border-bottom:1px solid #E6E1D8"><img src="${process.env.PUBLIC_SITE_URL ?? 'https://scoopdogg.vercel.app'}/brand/mark-96.png" width="40" height="40" alt="" style="vertical-align:middle;border-radius:50%"> <span style="font-family:Georgia,serif;font-size:22px;color:#143728;vertical-align:middle;margin-left:8px">Scoop Dogg</span></div>
+  <div style="padding:20px 0;border-bottom:1px solid #E6E1D8"><img src="${process.env.PUBLIC_SITE_URL ?? 'https://scoopdogg.net'}/brand/mark-96.png" width="40" height="40" alt="" style="vertical-align:middle;border-radius:50%"> <span style="font-family:Georgia,serif;font-size:22px;color:#143728;vertical-align:middle;margin-left:8px">Scoop Dogg</span></div>
   <h1 style="font-family:Georgia,serif;font-weight:400;font-size:28px;color:#0F2A1F;margin:28px 0 12px">${title}</h1>${body}
-  <p style="color:#5B6660;font-size:13px;margin-top:32px;border-top:1px solid #E6E1D8;padding-top:16px">Scoop Dogg · (805) 869-8070 · <a href="${process.env.PUBLIC_SITE_URL ?? 'https://scoopdogg.vercel.app'}/account" style="color:#24593F">Your account</a></p></div>`;
+  <p style="color:#5B6660;font-size:13px;margin-top:32px;border-top:1px solid #E6E1D8;padding-top:16px">Scoop Dogg · (805) 869-8070 · <a href="${process.env.PUBLIC_SITE_URL ?? 'https://scoopdogg.net'}/account" style="color:#24593F">Your account</a></p></div>`;
 
 async function sendWelcome(bookingId: string) {
   const { rows } = await db().query(
@@ -711,7 +711,7 @@ async function sendWelcome(bookingId: string) {
       agreedSentence: agreed,
       cancelEmail: String(settings.get('business.email') ?? ''),
       phone: String(settings.get('business.phone') ?? ''),
-      site: process.env.PUBLIC_SITE_URL ?? 'https://scoopdogg.vercel.app',
+      site: process.env.PUBLIC_SITE_URL ?? 'https://scoopdogg.net',
     });
   }
 
@@ -730,7 +730,7 @@ async function sendWelcome(bookingId: string) {
       </table>
       ${oneTime ? '' : '<p style="font-size:16px;line-height:1.6">You can skip a week, pause or cancel anytime from your account.</p>'}
       ${acknowledgment}
-      <p><a href="${process.env.PUBLIC_SITE_URL ?? 'https://scoopdogg.vercel.app'}/account" style="display:inline-block;background:#F4A024;color:#0F2A1F;font-weight:600;padding:12px 20px;border-radius:10px;text-decoration:none">Go to your account</a></p>`),
+      <p><a href="${process.env.PUBLIC_SITE_URL ?? 'https://scoopdogg.net'}/account" style="display:inline-block;background:#F4A024;color:#0F2A1F;font-weight:600;padding:12px 20px;border-radius:10px;text-decoration:none">Go to your account</a></p>`),
   });
   await notifyOwner('booking_owner',
     trialing ? `New customer, card saved: ${b.name} — ${jobName}` : `${paidLabel} paid: ${b.name} — ${jobName}`,
