@@ -25,6 +25,7 @@ const g = {
   tasks: await q(`select slug, name, stage from work_tasks`),
   work: await q(`select service_slug, zone_slug, task_slug, depth from service_work`),
   relations: await q(`select base_slug, other_slug, kind, customer_line from service_relations`),
+  bundles: (await q(`select b.slug, b.name, b.customer_line, b.base_slug, array_agg(m.service_slug) as members from bundles b join bundle_members m on m.bundle_slug = b.slug group by b.slug`)),
 };
 await c.end();
 
@@ -54,6 +55,8 @@ check(plant([{ base_slug: 'turf-deep-clean', other_slug: 'weekly-turf-maintenanc
 check(graphProblems({ ...g, work: g.work.filter((w) => w.service_slug !== 'cat-tree-cleaning') }).length > 0, 'NEGATIVE CONTROL: a service with no recorded work is named');
 const twin = g.work.filter((w) => w.service_slug === 'one-time-dog-poop-cleanup').map((w) => ({ ...w, service_slug: 'pressure-washing' }));
 check(graphProblems({ ...g, work: [...g.work.filter((w) => w.service_slug !== 'pressure-washing'), ...twin] }).some((p) => /same work/.test(p)), 'NEGATIVE CONTROL: the same work under two names is named');
+check(g.bundles.length >= 2, 'the visits people ask for are there', g.bundles.map((b) => b.name).join(', '));
+check(graphProblems({ ...g, bundles: [{ slug: 'x', name: 'Bad', customer_line: 'x', base_slug: 'turf-deep-clean', members: ['yard-sanitizing'] }] }).length > 0, 'NEGATIVE CONTROL: a bundle offering what its job already includes is refused');
 cleanupCompile(out);
 console.log(`RESULT: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

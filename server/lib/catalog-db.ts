@@ -47,5 +47,7 @@ export async function loadCatalog(): Promise<Catalog & { areas: AreaRow[]; setti
   const work_tasks = await q<NonNullable<Catalog['work_tasks']>[number]>(`select slug, name, stage from work_tasks`);
   const work = await q<NonNullable<Catalog['work']>[number]>(`select service_slug, zone_slug, task_slug, depth from service_work`);
   const relations = await q<NonNullable<Catalog['relations']>[number]>(`select base_slug, other_slug, kind, customer_line from service_relations`);
-  return { services, tiers, packages, offers, zones, work_tasks, work, relations, areas, settings: new Map(rows.map((r) => [r.key, r.value])) };
+  const bundles = await q<NonNullable<Catalog['bundles']>[number]>(`select b.slug, b.name, b.customer_line, b.base_slug, coalesce(array_agg(m.service_slug) filter (where m.service_slug is not null), '{}') as members
+      from bundles b left join bundle_members m on m.bundle_slug = b.slug group by b.slug order by b.sort_order`);
+  return { services, tiers, packages, offers, zones, work_tasks, work, relations, bundles, areas, settings: new Map(rows.map((r) => [r.key, r.value])) };
 }

@@ -153,6 +153,8 @@ export default function BookingFlow(props: Props) {
   const [openAddOn, setOpenAddOn] = useState('');
   /** The add-on a visitor arrived for or picked first, to show it chosen at the price step. */
   const [wantAddOn, setWantAddOn] = useState('');
+  /** The services of the moment a customer chose, shown first and marked on the price step. */
+  const [wantSet, setWantSet] = useState<string[]>([]);
   const [lane, setLane] = useState<Lane>('prepay');
   const [dates, setDates] = useState<DateOption[] | null>(null);
   const [startDate, setStartDate] = useState('');
@@ -321,7 +323,8 @@ export default function BookingFlow(props: Props) {
     tiers: catalog.tiers.filter((t) => t.service_slug === r.other_slug && tierPrice(t).kind === 'price').sort((a, b) => a.sort_order - b.sort_order),
     plans: catalog.packages.filter((p) => p.service_slug === r.other_slug).sort((a, b) => a.sort_order - b.sort_order),
   })).filter((r) => r.tiers.length || r.plans.length);
-  const addOnRows = useMemo(() => offerRows('add_on'), [service]);
+  // The services of the chosen moment come first, then the rest in the order they were approved.
+  const addOnRows = useMemo(() => offerRows('add_on').sort((a, b) => Number(wantSet.includes(b.other_slug)) - Number(wantSet.includes(a.other_slug))), [service, wantSet]);
   const followRows = useMemo(() => offerRows('follow_on'), [service]);
   const addOnServices = useMemo(() => props.services.filter((s) => s.kind === 'addon'), [props.services]);
   const toggleTier = (rowTiers: Tier[], id: string) => setAddOns((a) => {
@@ -593,7 +596,7 @@ export default function BookingFlow(props: Props) {
                   return (
                     <Choice key={s.slug} selected={service === s.slug} badge={s.slug === 'weekly-pooper-scooper-service' ? 'Most popular' : undefined}
                       onClick={() => {
-                        setService(s.slug); setPackageId(''); setTierId(''); setAddPlans([]); setAddOns([]); setWantAddOn(''); setLastCleaned(''); setDeepClean('');
+                        setService(s.slug); setPackageId(''); setTierId(''); setAddPlans([]); setAddOns([]); setWantAddOn(''); setWantSet([]); setLastCleaned(''); setDeepClean('');
                         if (shape === 'quote') { window.location.href = `/custom-quote?service=${s.slug}`; return; }
                         go('size');
                       }}>
@@ -613,6 +616,13 @@ export default function BookingFlow(props: Props) {
                     </Choice>
                   );
                 })}
+                {(catalog.bundles ?? []).map((b) => (
+                  <Choice key={b.slug} data-bundle={b.slug}
+                    onClick={() => { setService(b.base_slug); setPackageId(''); setTierId(''); setAddPlans([]); setAddOns([]); setWantAddOn(''); setWantSet(b.members); setLastCleaned(''); setDeepClean(''); go('size'); }}>
+                    <span className="block text-lg font-semibold text-forest-900">{b.name}</span>
+                    <span className="mt-1 block text-base text-ink-500">{b.customer_line}</span>
+                  </Choice>
+                ))}
                 {addOnServices.filter((a) => a.slug === 'yard-sanitizing').map((a) => {
                   const low = catalog.tiers.filter((t) => t.service_slug === a.slug && t.price_cents).sort((x, y) => (x.price_cents ?? 0) - (y.price_cents ?? 0))[0];
                   return (
@@ -726,10 +736,10 @@ export default function BookingFlow(props: Props) {
                       const chosenTier = r.tiers.find((t) => addOns.includes(t.id));
                       const chosenPlan = r.plans.find((p) => addPlans.includes(p.id));
                       const chosen = chosenTier ?? chosenPlan;
-                      const open = openAddOn === r.other_slug || wantAddOn === r.other_slug;
+                      const open = openAddOn === r.other_slug || wantAddOn === r.other_slug || (wantSet.includes(r.other_slug) && !chosen);
                       const from = r.plans.length ? `from ${formatCents(Math.min(...r.plans.map((p) => weeklyCents(p))))}/week` : r.tiers.length > 1 ? `from ${formatCents(Math.min(...r.tiers.map((t) => t.price_cents ?? 0)))}` : `${formatCents(r.tiers[0]?.price_cents ?? 0)}${r.tiers[0]?.price_suffix ?? ''}`;
                       return (
-                        <div key={r.other_slug} data-add-on={r.other_slug} className={`rounded-lg border bg-paper ${chosen ? 'border-forest-600' : wantAddOn === r.other_slug ? 'border-2 border-amber-400' : 'border-line'}`}>
+                        <div key={r.other_slug} data-add-on={r.other_slug} className={`rounded-lg border bg-paper ${chosen ? 'border-forest-600' : wantAddOn === r.other_slug || wantSet.includes(r.other_slug) ? 'border-2 border-amber-400' : 'border-line'}`}>
                           <button type="button" aria-expanded={open} className="flex w-full items-center justify-between gap-3 p-4 text-left"
                             onClick={() => {
                               if (r.tiers.length === 1 && !r.plans.length) { toggleTier(r.tiers, r.tiers[0].id); return; }

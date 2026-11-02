@@ -28,7 +28,7 @@ const PROTOCOL_VERSIONS = ['2025-11-25', '2025-06-18', '2025-03-26'];
 /** What the server needs from the site. api/mcp.ts wires the real ones; the test wires fakes. */
 export type McpDeps = {
   snapshot: () => Promise<{
-    services: any[]; tiers: any[]; packages: any[]; areas: any[]; settings: Record<string, unknown>;
+    services: any[]; tiers: any[]; packages: any[]; areas: any[]; settings: Record<string, unknown>; relations?: any[];
   }>;
   resolveZip: (zip: string) => Promise<{ known: boolean; served: boolean; area_name?: string; city_name?: string; area_slug?: string | null }>;
   /** The site's own price and start days for a weekly package or a one-time tier at a ZIP. */
@@ -63,6 +63,9 @@ function serviceView(s: Awaited<ReturnType<McpDeps['snapshot']>>, svc: any, site
     slug: svc.slug, name: svc.name, kind: svc.kind,
     monthly_plans: s.packages.filter((p) => p.service_slug === svc.slug)
       .map((p) => ({ package: p.slug, label: p.name, per_month: dollars(p.monthly_price_cents) })),
+    // What goes with it, from the same rows the booking checks. Prices stay with `prices`.
+    add_to_same_visit: (s.relations ?? []).filter((r: any) => r.base_slug === svc.slug && r.kind === 'add_on').map((r: any) => r.other_slug),
+    keep_it_up_with: (s.relations ?? []).filter((r: any) => r.base_slug === svc.slug && r.kind === 'follow_on').map((r: any) => r.other_slug),
     prices: s.tiers.filter((t) => t.service_slug === svc.slug)
       .map((t) => ({ tier_id: t.id, label: t.label, price: t.requires_quote ? 'custom quote' : `${t.price_is_from ? 'from ' : ''}${dollars(t.price_cents)}${t.price_suffix || ''}` })),
     page: `${site}/services/${svc.slug}`,
