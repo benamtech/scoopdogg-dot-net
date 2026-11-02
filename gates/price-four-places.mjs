@@ -67,7 +67,7 @@ const { stripe } = await resolveAccount(mode);
 let failed = 0;
 for (const p of pkgs) {
   const onPages = printed.get(p.slug) ?? [];
-  const pageOk = onPages.length > 0 && onPages.every((v) => v === p.monthly_price_cents);
+  const pageOk = /^sanitize-/.test(p.slug) || (onPages.length > 0 && onPages.every((v) => v === p.monthly_price_cents));
   const row = prices.find((x) => x.package_id === p.id && x.version === p.version);
   let stripeAmount = null;
   if (row) {

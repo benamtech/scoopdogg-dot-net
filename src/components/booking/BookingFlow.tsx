@@ -143,6 +143,8 @@ export default function BookingFlow(props: Props) {
    * The sticky bar at the bottom of this component is that total, and it already existed.
    */
   const [addOns, setAddOns] = useState<string[]>([]);
+  /** An add-on that goes on the plan, every visit (Yard Sanitizing): its package id, one line on the subscription. */
+  const [addPlan, setAddPlan] = useState('');
   /**
    * WEEKLY SCOOPING ADDED TO ANOTHER SERVICE (Josue, 2026-11-01: "they can add poop scoop
    * services, have the 1 dog or two dogs"). The scooping package's id. With a one-time job the
@@ -230,7 +232,7 @@ export default function BookingFlow(props: Props) {
     restored.current = true;
 
     const pkgSlug = url.searchParams.get('package');
-    const pkg = pkgSlug ? catalog.packages.find((p) => p.slug === pkgSlug) : undefined;
+    const pkg = pkgSlug ? catalog.packages.find((p) => p.slug === pkgSlug && !props.services.some((s) => s.slug === p.service_slug && s.kind === 'addon')) : undefined;
     if (pkg) { setService(pkg.service_slug); setPackageId(pkg.id); }
 
     // The service the visitor pressed a button for. A package outranks it (it names a service
@@ -296,6 +298,7 @@ export default function BookingFlow(props: Props) {
   const pkgs = useMemo(() => catalog.packages.filter((p) => p.service_slug === service).sort((a, b) => a.sort_order - b.sort_order), [service]);
   const serviceTiers = useMemo(() => catalog.tiers.filter((t) => t.service_slug === service).sort((a, b) => a.sort_order - b.sort_order), [service]);
   const pkg = catalog.packages.find((p) => p.id === (packageId || (tierId ? addScoop : '')));
+  const addOnPlanFor = (id: string) => catalog.packages.find((p) => p.tier_id === id);
   const oneTime = tierId ? quoteOneTime(catalog, tierId) : null;
   const scoopPkgs = useMemo(() => catalog.packages.filter((p) => p.service_slug === SCOOP).sort((a, b) => a.sort_order - b.sort_order), []);
   const offersScoop = SCOOP_PAIRS.has(service);
@@ -317,7 +320,7 @@ export default function BookingFlow(props: Props) {
   const extraTierIds = useMemo(
     () => [...(deepClean ? [deepClean] : []), ...addOns, ...(tierId && addScoop ? [tierId] : [])],
     [deepClean, addOns, tierId, addScoop]);
-  const withPackageIds = useMemo(() => (packageId && addScoop ? [addScoop] : []), [packageId, addScoop]);
+  const withPackageIds = useMemo(() => [...(packageId && addScoop ? [addScoop] : []), ...(packageId && addPlan ? [addPlan] : [])], [packageId, addScoop, addPlan]);
 
   const quote = pkg ? quoteBooking(catalog, { packageId: pkg.id, extraTierIds, withPackageIds }) : null;
   const serviceInfo = props.services.find((s) => s.slug === service);
@@ -575,7 +578,7 @@ export default function BookingFlow(props: Props) {
                   return (
                     <Choice key={s.slug} selected={service === s.slug} badge={s.slug === 'weekly-pooper-scooper-service' ? 'Most popular' : undefined}
                       onClick={() => {
-                        setService(s.slug); setPackageId(''); setTierId(''); setAddScoop(''); setAddOns([]); setWantAddOn(''); setLastCleaned(''); setDeepClean('');
+                        setService(s.slug); setPackageId(''); setTierId(''); setAddScoop(''); setAddOns([]); setAddPlan(''); setWantAddOn(''); setLastCleaned(''); setDeepClean('');
                         if (shape === 'quote') { window.location.href = `/custom-quote?service=${s.slug}`; return; }
                         go('size');
                       }}>
@@ -599,7 +602,7 @@ export default function BookingFlow(props: Props) {
                   const low = catalog.tiers.filter((t) => t.service_slug === a.slug && t.price_cents).sort((x, y) => (x.price_cents ?? 0) - (y.price_cents ?? 0))[0];
                   return (
                     <Choice key={a.slug} selected={wantAddOn === a.slug}
-                      onClick={() => { setService(a.related_slugs[0]); setPackageId(''); setTierId(''); setAddScoop(''); setAddOns([]); setWantAddOn(a.slug); setLastCleaned(''); setDeepClean(''); go('size'); }}>
+                      onClick={() => { setService(a.related_slugs[0]); setPackageId(''); setTierId(''); setAddScoop(''); setAddOns([]); setAddPlan(''); setWantAddOn(a.slug); setLastCleaned(''); setDeepClean(''); go('size'); }}>
                       <span className="flex items-start justify-between gap-4">
                         <span>
                           <span className="block text-lg font-semibold text-forest-900">{a.name}</span>
@@ -720,12 +723,13 @@ export default function BookingFlow(props: Props) {
                 </fieldset>
               )}
               {!isOneTime && pkg && addOnGroups.map((g) => (
-                <fieldset key={g.slug} className={`mt-8 ${wantAddOn === g.slug && !addOns.some((x) => g.tiers.some((t) => t.id === x)) ? 'rounded-lg border-2 border-amber-400 p-4' : ''}`} data-add-on={g.slug}>
+                <fieldset key={g.slug} className={`mt-8 ${wantAddOn === g.slug && !addPlan && !addOns.some((x) => g.tiers.some((t) => t.id === x)) ? 'rounded-lg border-2 border-amber-400 p-4' : ''}`} data-add-on={g.slug}>
                   <legend className="text-lg font-semibold text-forest-900">Add {g.name}?</legend>
-                  <p className="mt-1 text-base text-ink-500">Done on your first visit, no second trip.{g.tiers.length > 1 ? ' Pick your yard size.' : ''}</p>
+                  <p className="mt-1 text-base text-ink-500">{g.tiers.some((t) => addOnPlanFor(t.id)) ? 'Done every visit, billed with your plan.' : 'Done on your first visit, no second trip.'}{g.tiers.length > 1 ? ' Pick your yard size.' : ''}</p>
                   <div className="mt-3 space-y-2">
                     {g.tiers.map((t) => {
-                      const on = addOns.includes(t.id);
+                      const plan = addOnPlanFor(t.id);
+                      const on = plan ? addPlan === plan.id : addOns.includes(t.id);
                       return (
                         <label key={t.id}
                           className={`flex cursor-pointer items-center justify-between gap-4 rounded-lg border px-4 py-3 transition duration-fast ${on ? 'border-forest-600 bg-forest-50' : 'border-line-strong bg-paper hover:border-forest-400'}`}>
@@ -733,22 +737,28 @@ export default function BookingFlow(props: Props) {
                             <input
                               type="checkbox"
                               checked={on}
-                              onChange={() => setAddOns((a) => {
+                              onChange={() => {
+                                if (plan) { setAddPlan(on ? '' : plan.id); return; }
                                 // One size of one add-on: choosing a size replaces the other sizes.
-                                const others = a.filter((x) => !g.tiers.some((gt) => gt.id === x));
-                                return on ? others : [...others, t.id];
-                              })}
+                                setAddOns((a) => {
+                                  const others = a.filter((x) => !g.tiers.some((gt) => gt.id === x));
+                                  return on ? others : [...others, t.id];
+                                });
+                              }}
                               className="h-5 w-5 shrink-0 accent-forest-600"
                             />
                             <span className="min-w-0 text-base font-medium text-forest-900">{t.label}</span>
                           </span>
-                          <span className="shrink-0 text-base font-semibold text-forest-800">+{formatCents(t.price_cents ?? 0)}</span>
+                          <span className="shrink-0 text-base font-semibold text-forest-800">+{formatCents(t.price_cents ?? 0)}{t.price_suffix}</span>
                         </label>
                       );
                     })}
                   </div>
                 </fieldset>
               ))}
+              {!isOneTime && pkg && addPlan && quote && quote.ok && (
+                <p className="mt-3 text-base text-forest-900">Your plan with sanitizing: <strong className="font-semibold">{formatCents(quote.monthlyCents)}</strong> a month.</p>
+              )}
               {!isOneTime && pkg && addOns.length > 0 && quote && quote.ok && (
                 <p className="mt-3 text-base text-forest-900">
                   <strong className="font-semibold">{formatCents(quote.extrasCents)}</strong> added to your first visit.

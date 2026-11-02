@@ -13,7 +13,7 @@ import GuaranteeStamp from '../components/site/GuaranteeStamp.astro';
 import Faq from '../components/site/Faq.astro';
 import CloseCta from '../components/site/CloseCta.astro';
 import { services, packagesForService, tiersFor, formatTierPrice, trust, headlineOffer, addOnsFor } from '../lib/catalog';
-const plans = services.filter((s) => packagesForService(s.slug).length);
+const plans = services.filter((s) => s.kind !== 'addon' && packagesForService(s.slug).length);
 const oneTime = services.filter((s) => s.kind !== 'addon' && !packagesForService(s.slug).length);
 /** A quote-only service has no number to show, so its card says what to do instead. */
 const quoteOnly = (slug: string) => tiersFor(slug).every((t) => t.requires_quote || t.price_cents === null);
